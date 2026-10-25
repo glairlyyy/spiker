@@ -952,7 +952,8 @@ const step = async (name, fn) => {
     // the hand bar (T-347): five places, the piles; the queued card lifted
     await ev(() => {
       handTick(true); // (the bar's own rAF loop is slow under a software GL)
-      if (!$('#hand') || $('#hand').hidden || $('#hand').querySelectorAll('.hslot').length !== 5) throw new Error('no hand bar');
+      if (!$('#hand') || $('#hand').hidden || $('#hand').querySelectorAll('.hmain > .hcards .hslot').length !== 5)
+        throw new Error('no hand bar');
     });
     await ev(() => {
       if (!$('#hand .hc.q') || !$('#hand .hpile.deck') || !$('#hand .hpile.disc')) throw new Error('no queued card / piles on the bar');
@@ -997,7 +998,8 @@ const step = async (name, fn) => {
     await ev(() => {
       if ($('#hlist').hidden || !/Deck/.test($('#hlist').textContent)) throw new Error('the deck list did not open');
       const n = [...document.querySelectorAll('#hlist .hli b')].reduce((s, b) => s + +b.textContent.replace('×', ''), 0);
-      if (n !== A.m.deck[0].draw.length) throw new Error(`deck list counts ${n}, deck ${A.m.deck[0].draw.length}`);
+      const nd = A.m.deck[0].draw.length + A.m.deck[0].dpile.length; // (the duel pile listed too, T-374)
+      if (n !== nd) throw new Error(`deck list counts ${n}, deck ${nd}`);
     });
     await pg.click('#hand .hpile.disc', { force: true });
     await ev(() => {
@@ -1017,7 +1019,8 @@ const step = async (name, fn) => {
       handTick();
       const D = A.m.deck[0],
         gaps = document.querySelectorAll('#hand .hc.gap').length;
-      if (gaps !== D.hand.filter(x => !x).length)
+      if (gaps !== [...D.hand, ...D.duel].filter(x => !x).length)
+        // (the duel slots' gaps too, T-374)
         throw new Error(
           `the turn did not deal: ${gaps} gaps, hand ${JSON.stringify(D.hand)} shown ${JSON.stringify(A.hshow)} pts ${A.m.pts} ps ${A.ptsShown} side ${handSide()} hidden ${$('#hand').hidden} done ${A.done}`
         );
@@ -1030,7 +1033,8 @@ const step = async (name, fn) => {
     });
     // no captain's chips (owner, 2026-10-14) and no ⚙ Prompts; Play as sets your player
     await ev(() => {
-      if (A.m.human !== A.m.t[0].ws[0].id) throw new Error('Play as did not set your player');
+      // (the opening first wing: a sub may have changed t.ws by now — T-374's stream moved one in)
+      if (A.m.human !== A.m.lineup0[0].P[2].id) throw new Error('Play as did not set your player');
       if (/Prompts/.test(settingsMenu()) || typeof promptCaptain !== 'undefined' || $('#prompts'))
         throw new Error('captain chips / Prompts still there');
     });
@@ -1122,7 +1126,8 @@ const step = async (name, fn) => {
       D.hand = ['iblk', 'idig', 'ifake', 'iatk', 'isrv'];
       A.hshow[0] = [...D.hand];
       handTick(true);
-      if (!$('#hand') || $('#hand').hidden || $('#hand').querySelectorAll('.hc[data-h]').length !== 5) throw new Error('no hand bar');
+      if (!$('#hand') || $('#hand').hidden || $('#hand').querySelectorAll('.hmain > .hcards .hc[data-h]').length !== 5)
+        throw new Error('no hand bar');
     });
     // drag Improve Block onto Improve Dig: the cards it fuses with light up with the result's name and cost → result
     const box = async h => (await pg.$(`#hrow .hc[data-h="${h}"]`)).boundingBox();
@@ -1218,7 +1223,7 @@ const step = async (name, fn) => {
         if (Y.ids.includes(drop) || !Y.ids.includes(add)) throw new Error(`the pick did not change the deck: ${Y.ids}`);
         prepStart();
         handTick(true);
-        if ($('#hand').hidden || $('#hand').querySelectorAll('.hslot').length !== 3) throw new Error('no hand bar of 3');
+        if ($('#hand').hidden || $('#hand').querySelectorAll('.hmain > .hcards .hslot').length !== 3) throw new Error('no hand bar of 3');
         if (!$('#hand .hreq')) throw new Error('no Request button');
       },
       [drop, add]
@@ -1275,13 +1280,14 @@ const step = async (name, fn) => {
     });
     await ev(() => {
       const D = A.m.deck[0],
-        all = [...D.draw, ...D.hand];
+        all = [...D.draw, ...D.hand, ...D.duel, ...D.dpile]; // (duel cards: the duel slots and pile, T-374)
       if (Cards.my(A.m, 0) || D.by !== 'you') throw new Error('not the team hand');
       if (!A.myPick.length || !A.myPick.every(id => all.includes(id))) throw new Error('your picks are not in the team deck');
       if ($('#prep .cdeck .hmini').querySelectorAll('.hc').length !== 5) throw new Error('prep: not a hand of 5');
       prepStart();
       handTick(true);
-      if ($('#hand').querySelectorAll('.hslot').length !== 5 || $('#hand .hreq')) throw new Error('captain: hand of 5, no Request');
+      if ($('#hand').querySelectorAll('.hmain > .hcards .hslot').length !== 5 || $('#hand .hreq'))
+        throw new Error('captain: hand of 5, no Request');
     });
     const k = await ev(() => A.m.deck[0].hand.findIndex((id, j) => id && !Cards.can(A.m, 0, j)));
     if (k >= 0) {
@@ -1306,8 +1312,23 @@ const step = async (name, fn) => {
         prepStart();
         A.hold = true; // (stepped by hand below)
         Object.assign(RULES.hes, { margin: { srv: 99, atk: 99, blk: 99 }, cap: 99, n: 4 }); // every duel hesitates; quick odds
-        A.m.deck[0].hand = ['pressure', 'dtempo', 'disguise', 'commit', 'hide'];
+        A.m.deck[0].duel = ['pressure', 'hide']; // (the duel slots, T-374: both answer a serve hesitation)
         A.hshow = null;
+      });
+      // the duel slot beside the hand (T-374): 2 as captain, no duel card in the hand; the ⚙ Hesitations setting
+      await ev(() => {
+        handTick(true);
+        const D = A.m.deck[0];
+        if ($('#hand .hduel .hc[data-h]')?.dataset.h !== String(D.hand.length)) throw new Error('no duel slot beside the hand');
+        if ($('#hand .hduel').querySelectorAll('.hslot').length !== DECK.duel.slots.cap) throw new Error('not 2 duel slots as captain');
+        if (D.hand.some(id => id && CARDS[id].kind === 'duel')) throw new Error('a duel card in the hand');
+        if (!$('#hand .hduel .hc.no') || !/Plays in a hesitation/.test($('#hand .hduel').textContent))
+          throw new Error('the duel slot is not dimmed between points');
+        if (!/<kbd>6<\/kbd>/.test($('#hand .hduel').innerHTML)) throw new Error('the duel slot hotkey is not printed');
+        if (!/Hesitations/.test(settingsMenu())) throw new Error('no ⚙ Hesitations setting');
+        setOpt('hes', 'often');
+        if (A.m.hesLv !== 'often' || hesLevel() !== 'often') throw new Error('the Hesitations setting did not take');
+        setOpt('hes', 'normal');
       });
       /** Step the match until a hesitation of yours is up (want: one with a lit duel card). */
       const reach = want =>
@@ -1341,8 +1362,9 @@ const step = async (name, fn) => {
       if (qa) await pg.screenshot({ path: qa });
       const card = await ev(() => {
         const c = A.hes.cards[0],
-          el = $(`#hand .hc.duel[data-h="${c.h}"]`);
-        if (!el) throw new Error('the duel card is not lit on the bar');
+          el = $(`#hand .hduel .hc.duel[data-h="${c.h}"]`);
+        if (!el) throw new Error('the duel card is not lit in the duel slot');
+        if (!$('#hand .hduel.on')) throw new Error('the duel slot is not lit');
         if (!/→ .* · /.test(el.textContent)) throw new Error('no option · odds on the lit card');
         el.click();
         if (A.hes) throw new Error('the card did not resolve the hesitation');

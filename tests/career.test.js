@@ -949,12 +949,16 @@ test('career: challenge loss and injury', () => {
   for (const p of g.squadOf(run.teams[ti])) for (const k of g.STATK) p[k] = 99;
   for (const p of g.squadOf(run.pickup)) for (const k of g.STATK) p[k] = 25;
   const sta0 = run.sta,
+    max0 = run.staMax,
     mood0 = run.mood,
     rep0 = g.City.rep(run, r);
   let res = play();
   assert(res.m.winner === 1, 'weakened side loses');
+  // (match XP may raise your stamina cap: that growth is not the loss's — T-374)
   assert(
-    run.sta <= sta0 - g.LOSS.sta - g.CLASH.sta + 1 && run.mood === mood0 + g.LOSS.mood && g.City.rep(run, r) <= rep0 + g.LOSS.rep,
+    run.sta - (run.staMax - max0) <= sta0 - g.LOSS.sta - g.CLASH.sta + 1 &&
+      run.mood === mood0 + g.LOSS.mood &&
+      g.City.rep(run, r) <= rep0 + g.LOSS.rep,
     `a loss costs stamina, mood and standing: ${res.line}`
   );
   eq(run.losses[r], 1, 'the loss is counted');

@@ -1400,7 +1400,10 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   - Engine (orders.js `hesit(m, kind, side, p, opts, ai)`, no draws): at the three AI picks — serveWalk `tgtPick` (tgtAI's scores
     `m.tgtAIc.S`), laneAim `atkOrd` (atkPick's plain / fight / avoid; `atkPlay` = what each plays, `atkWord` its words), blockApproach
     `blkCommit(…, hes)` → `blkRead` (blkPick's read / commit; memo `m.blkM` per possession + attacks so far, since fakeSet asks first)
-    — the AI pick and the runner-up within `RULES.hes.margin[kind]` (× `late[1]` from `late[0]` points) hesitate: ≤ `cap` a side a match
+    — the AI pick and the runner-up within `RULES.hes.margin[kind]` (× `late[1]` from `late[0]` points; × the level's `m` on your
+    side — `hesLvOf`: `m.hesLv` 'rare' | 'normal' | 'often' → `RULES.hes.lv`, applied only where `hesSide` (a side by 'you' or holding
+    `m.human`); set from the ⚙ Hesitations setting (`hesLevel()`, KEYS.hes) in handMount, so simmed / AI-vs-AI matches stay Normal,
+    T-374) hesitate: ≤ `cap` (the level's `cap` on your side) a side a match
     (`m.hesN`), one a possession (`m.hesP`), never in a probe. `m.hesR` counts this rally's (reset in rallyStart with `m.hesP`,
     `m.duelOn`, `m.blkM`). Pick: `m.hesF[n]` (forced by a replay: { v, card, vs, at }) → else, not yours (`hesYou`: a side by 'you',
     or `m.human`), the AI side's duel card (`Cards.duelAI`) → else the AI's pick. A serve hesitation also lets the receiving side's
@@ -1423,8 +1426,12 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
     (real ms) runs the odds a few rallies a frame and the timer (RULES.hes.ms → the AI's pick).
   - Screen (match-cards.js): `hesShow` (acts.js `hesit`) → `A.hes` { a, t, mine, you, cards, odds, jobs }; `#hes` panel (`hesDraw`:
     whose call, two `.hesb` options with your point odds — the AI's pick the ink one — keys 1 / 2, a draining bar, Esc = AI pick);
-    playable duel cards lit `.hc.duel` on the bar (from the hand as the rally started, `A.hesRec.S.m`) with "→ option · odds",
-    click → `hesCard` → `hesPick(…, c)`. css/style.css `.hes`.
+    playable duel cards lit `.hc.duel` in the bar's duel slot (from the slots as the rally started, `A.hesRec.S.m`) with "→ option ·
+    odds", click or its key → `hesCard` → `hesPick(…, c)`. css/style.css `.hes`.
+  - Duel slot on the bar (T-374): `handHTML` draws `.hduel` (label "Duel · n left", the slot cards / gaps at places `hand.length + k`,
+    keys printed: 4 as a player, 6–7 as captain) between the hand and the discard pile — dimmed (`.hc.no`, "Plays in a hesitation",
+    tooltip "Waits for a hesitation"), `.hduel.on` while a card in it is lit. `A.hshow[i]` holds hand + slots (`handSync`); the
+    slot's key in `cardsKey` plays a lit card (hesCard), Shift discards; no drag-to-fuse from it. The deck list counts the duel pile.
 
 ## Momentum stages (spec §2.14, T-259)
 
@@ -1488,6 +1495,11 @@ defaulted by kind at load; `CARD_EDGE` / `EDGE` (fit / counter edges, T-299); `C
 **State** `m.deck[i]` (null with `opts.cards === false`):
 - `by` 'you' | 'ai' (who plays the team hand), `me` (a non-captain with their own hand: your id), `my` (that hand, below; null)
 - `size` hand places (5; a Broken war unit fewer), `hand` [id | null] (null = a gap until the next turn), `draw` [ids, top first],
+  `duel` [id | null] the duel slot(s) (T-374: DECK.duel.slots.cap 2; your own hand `D.my.duel` .me 1) and `dpile` (the duel pile) —
+  `duelSplit` moves the deck's duel cards there after the shuffle (no draws), so the hand never draws one; a slot is addressed as
+  hand index `hand.length + k` (`slotOf` / `slotPut`: Cards.can → 'duel', `discard`, `duelCan`, `duelPlay`); `refill` / `myRefill`
+  refill its gaps at turns from `dpile`, an empty one taking its cooled duel cards back (`duelRefill`, hashed `deckMix`); the hand's
+  reshuffle takes only non-duel cooled cards. `Cards.myDeck` drops a duel card only you bring from the team's slots / pile (no Basic).
   `disc` [{ id, cd }] (cd = points left cooling; 0 → shuffled back when the draw runs out), `used` [OP ids gone for the match]
 - `act` [{ id, left, per, by, pids, who, lv, at, pin? }] — active cards: `left` points (serves of this side for per 'srv'), `by`
   the player who played it (holder / captain), `pids` its holders (`self` cards: only `by`), `who` the payer ids, `lv` holder

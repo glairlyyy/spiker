@@ -15,8 +15,18 @@ const RULES = {
   // The hesitation moment (spec §2.39, T-367): a duel (serve target, spike fight / avoid, block read / commit) whose AI pick and
   // runner-up score within `margin` (that duel's score points; × late[1] once either side has late[0] points) hesitates — at
   // most `cap` a side a set, one a possession. Yours on screen: the world at `slow` for `ms` real ms; the odds from `n` replays
-  // of the rally (fresh dice from the hesitation, seeds from `seed`)
-  hes: { margin: { srv: 0.5, atk: 2, blk: 3 }, late: [11, 1.6], cap: 3, ms: 8000, slow: 0.1, n: 32, seed: 9100 }
+  // of the rally (fresh dice from the hesitation, seeds from `seed`). `lv` (T-374): the ⚙ Hesitations setting for your side only
+  // (m.hesLv; played matches — simmed and AI-vs-AI ones stay Normal): margin × m, cap (Normal: `cap` above)
+  hes: {
+    margin: { srv: 0.5, atk: 2, blk: 3 },
+    late: [11, 1.6],
+    cap: 3,
+    ms: 8000,
+    slow: 0.1,
+    n: 32,
+    seed: 9100,
+    lv: { rare: { m: 0.6, cap: 2 }, normal: { m: 1 }, often: { m: 1.6, cap: 5 } }
+  }
 };
 /**
  * Substitutions: at most `max` per team per set. The captain takes a player off when their match stamina is under `sta`, or

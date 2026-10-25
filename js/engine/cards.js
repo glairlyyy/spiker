@@ -118,6 +118,8 @@ function cardsInit(m, opts) {
       size: DECK.hand, // hand size (a Broken war unit: fewer, weakSet)
       draw: [], // the deck, top first
       hand: [], // DECK.hand places: a card id or null (a gap: played / discarded, refilled at the next turn)
+      duel: [], // the duel slot(s) (spec §2.39, T-374: DECK.duel.slots.cap): hand index hand.length + k; a gap until the next turn
+      dpile: [], // the duel pile: the deck's duel cards, top first (the slots draw only from it)
       disc: [], // the discard pile: { id, cd } (cd: points left cooling; 0 → shuffled back when the deck runs out)
       used: [], // OP cards gone for the match
       act: [], // active cards: { id, left, per, by, pids, who, lv, at, pin? }
@@ -147,12 +149,49 @@ function cardsInit(m, opts) {
     const ids = o.deck ? [...o.deck] : o.pin ? [] : deckOwn(m, i);
     if (o.fill !== false && !o.pin) for (let k = 0; ids.length < DECK.size; k++) ids.push(DECK.basics[k % DECK.basics.length]);
     D.draw = deckShuffle(ids.slice(0, DECK.size));
+    duelSplit(D, DECK.duel.slots.cap);
     D.hand = D.draw.splice(0, D.size);
     while (D.hand.length < D.size) D.hand.push(null);
     for (const id of o.pin || []) D.act.push({ id, left: Infinity, per: 'pts', by: null, pids: null, who: [], lv: 1, at: [0, 0], pin: 1 });
     D.held = [...D.hand];
     cardApply(m, i);
   }
+}
+/**
+ * Pile P's deck split (spec §2.39 Duel slot, T-374): its duel cards (kind 'duel') leave the draw for the duel pile `dpile` (order
+ * kept), `n` duel slots dealt from it — the hand draws only cards played between points. No draws.
+ */
+function duelSplit(P, n) {
+  P.dpile = P.draw.filter(id => CARDS[id].kind === 'duel');
+  P.draw = P.draw.filter(id => CARDS[id].kind !== 'duel');
+  P.duel = P.dpile.splice(0, n);
+  while (P.duel.length < n) P.duel.push(null);
+}
+/** Pile P's card at place h: the hand, then its duel slot(s) (h = hand.length + k). */
+const slotOf = (P, h) => (h < P.hand.length ? P.hand[h] : (P.duel || [])[h - P.hand.length]) || null;
+/** Put v (an id or null: a gap) at place h of pile P (slotOf's places). */
+function slotPut(P, h, v) {
+  if (h < P.hand.length) P.hand[h] = v;
+  else if (P.duel) P.duel[h - P.hand.length] = v;
+}
+/** Pile P's duel slot gaps refill from its duel pile; an empty one takes its cooled duel cards back (hashed shuffle, no R()). */
+function duelRefill(m, P, salt) {
+  let n = 0;
+  for (let k = 0; k < (P.duel || []).length; k++) {
+    if (P.duel[k]) continue;
+    if (!P.dpile.length) {
+      const cool = P.disc.filter(e => e.cd <= 0 && CARDS[e.id].kind === 'duel');
+      P.disc = P.disc.filter(e => !cool.includes(e));
+      P.dpile = deckMix(
+        cool.map(e => e.id),
+        `${cardKey(m)}|duel|${salt}`
+      );
+    }
+    if (!P.dpile.length) break;
+    P.duel[k] = P.dpile.shift();
+    n++;
+  }
+  return n;
 }
 /** A Fisher–Yates shuffle with the game's R() (the only draws the deck makes). */
 function deckShuffle(a) {
@@ -410,13 +449,17 @@ function myRefill(m, Y) {
   for (let h = 0; h < Y.size; h++) {
     if (Y.hand[h]) continue;
     if (!Y.draw.length) {
-      const cool = Y.disc.filter(e => e.cd <= 0).map(e => e.id);
-      Y.disc = Y.disc.filter(e => e.cd > 0);
-      Y.draw = deckMix(cool, `${cardKey(m)}|my`);
+      const cool = Y.disc.filter(e => e.cd <= 0 && CARDS[e.id].kind !== 'duel');
+      Y.disc = Y.disc.filter(e => !cool.includes(e));
+      Y.draw = deckMix(
+        cool.map(e => e.id),
+        `${cardKey(m)}|my`
+      );
     }
     if (!Y.draw.length) break;
     Y.hand[h] = Y.draw.shift();
   }
+  duelRefill(m, Y, 'my');
 }
 
 const Cards = {
@@ -520,6 +563,10 @@ const Cards = {
     const swap = id => (id && CARDS[id].src !== 'base' && onlyYou(id) ? DECK.basics[b++ % DECK.basics.length] : id);
     D.draw = D.draw.map(swap);
     D.hand = D.hand.map(swap);
+    // (a duel card only you bring leaves the duel pile and slots: no Basic there — the slot refills from the pile)
+    D.dpile = D.dpile.filter(id => !onlyYou(id));
+    D.duel = D.duel.map(id => (id && onlyYou(id) ? null : id));
+    duelRefill(m, D, 'team');
     D.by = 'ai';
     D.me = pid;
     const Y = (D.my = {
@@ -528,12 +575,15 @@ const Cards = {
       size: DECK.myHand,
       draw: deckMix([...own], `${cardKey(m)}|${pid}|${own.join()}`),
       hand: [],
+      duel: [], // your duel slot (DECK.duel.slots.me, spec §2.39 T-374) and duel pile
+      dpile: [],
       disc: [],
       used: [],
       pt: -1,
       got: [], // cards a request moved into your hand (yours for this match)
       req: { bond: o.bond || 0, trusted: !!o.trusted, n: -1, cool: 0, asks: 0, yes: 0, last: null }
     });
+    duelSplit(Y, DECK.duel.slots.me);
     Y.hand = Y.draw.splice(0, Y.size);
     while (Y.hand.length < Y.size) Y.hand.push(null);
     return Y;
@@ -553,6 +603,7 @@ const Cards = {
     const all = [...new Set([...ids.filter(id => CARDS[id]), ...deckOwn(m, i)])].slice(0, DECK.size);
     for (let k = 0; all.length < DECK.size; k++) all.push(DECK.basics[k % DECK.basics.length]);
     D.draw = deckMix(all, `${cardKey(m)}|team|${all.join()}`);
+    duelSplit(D, DECK.duel.slots.cap);
     D.hand = D.draw.splice(0, D.size);
     D.disc = [];
     D.held = [...D.hand];
@@ -630,7 +681,7 @@ const Cards = {
     const D = deckOf(m, i),
       H = Cards.pile(m, i, y);
     if (!D || !H || m.over) return 'off';
-    const id = H.hand[h];
+    const id = slotOf(H, h); // (a duel slot: h past the hand)
     if (!id) return 'gap';
     return Cards.canId(m, i, id, y, H);
   },
@@ -745,9 +796,9 @@ const Cards = {
   discard(m, i, h, y) {
     const D = deckOf(m, i),
       P = Cards.pile(m, i, y);
-    if (!D || !P || m.over || !P.hand[h]) return false;
-    const id = P.hand[h];
-    P.hand[h] = null;
+    if (!D || !P || m.over || !slotOf(P, h)) return false;
+    const id = slotOf(P, h); // (a duel slot too: h past the hand, spec §2.39 T-374)
+    slotPut(P, h, null);
     Cards.toDisc(m, i, id, y);
     D.log.push({ k: 'discard', id, at: [...m.pts], ...(y ? { y: 1 } : {}) });
     return true;
@@ -829,7 +880,7 @@ const Cards = {
    */
   duelCan(m, i, h, y, hz) {
     const P = Cards.pile(m, i, y),
-      id = P && P.hand[h];
+      id = P && slotOf(P, h);
     if (!id) return 'gap';
     const c = CARDS[id];
     if (c.kind !== 'duel') return 'duel';
@@ -858,8 +909,9 @@ const Cards = {
     const hz = { kind, side: vs ? 1 - i : i, pid: p ? p.id : null, opts: two };
     let best = null,
       bv = 0;
-    D.hand.forEach((id, h) => {
-      if (!id || CARDS[id].kind !== 'duel' || Cards.duelCan(m, i, h, false, hz)) return;
+    D.duel.forEach((id, k) => {
+      const h = D.hand.length + k; // (its duel slots, spec §2.39 T-374)
+      if (!id || Cards.duelCan(m, i, h, false, hz)) return;
       const c = CARDS[id],
         inf = Cards.duelInfo(m, i, id, hz),
         payer = c.duel.vs || !p ? m.t[i].cap || m.t[i].P[0] : p,
@@ -883,14 +935,14 @@ const Cards = {
   duelPlay(m, i, d, p, kind, two, v) {
     const P = Cards.pile(m, i, d.y),
       D = deckOf(m, i);
-    if (!P || P.hand[d.h] !== d.id) return null;
+    if (!P || slotOf(P, d.h) !== d.id) return null;
     const c = CARDS[d.id],
       hz = { kind, side: c.duel.vs ? 1 - i : i, pid: p ? p.id : null, opts: two },
       inf = Cards.duelInfo(m, i, d.id, hz),
       payer = c.duel.vs || !p ? m.t[i].cap || m.t[i].P[0] : p,
       who = cardPay(m, i, [payer], inf.cost),
       at = [...m.pts];
-    P.hand[d.h] = null;
+    slotPut(P, d.h, null);
     Cards.toDisc(m, i, d.id, d.y);
     D.played[d.id] = (D.played[d.id] || 0) + 1;
     D.log.push({ k: 'duel', id: d.id, at, by: payer.id, ...(inf.borrow ? { borrow: 1 } : {}), ...(d.y ? { y: 1 } : {}) });
@@ -936,14 +988,15 @@ const Cards = {
     for (let h = 0; h < D.size; h++) {
       if (D.hand[h]) continue;
       if (!D.draw.length) {
-        const cool = D.disc.filter(e => e.cd <= 0).map(e => e.id);
-        D.disc = D.disc.filter(e => e.cd > 0);
-        D.draw = deckShuffle(cool);
+        const cool = D.disc.filter(e => e.cd <= 0 && CARDS[e.id].kind !== 'duel'); // (duel cards: back to the duel pile)
+        D.disc = D.disc.filter(e => !cool.includes(e));
+        D.draw = deckShuffle(cool.map(e => e.id));
       }
       if (!D.draw.length) break;
       D.hand[h] = D.draw.shift();
       n++;
     }
+    n += duelRefill(m, D, 'team');
     D.held = [...D.hand];
     if (D.my) myRefill(m, D.my);
     return n;

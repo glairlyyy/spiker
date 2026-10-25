@@ -996,8 +996,21 @@ the AI coach fills every slot you leave with the same function. Built and measur
     cost); no action → the AI's pick. As a player: your own hesitations only; as captain: any teammate's. About 3 a set at
     most; late points hesitate more easily. Simmed matches: the AI always picks.
   - **Duel slot and frequency** (owner, 2026-10-26: "duel cards sit as trash in the hand if nobody hesitates — improve the
-    threshold, maybe a slider, or a reserve slot") **[draft — T-374]**: duel cards leave the hand for their own slot (a player 1,
-    a captain 2), refilled from the deck's duel cards; a ⚙ "Hesitations" setting Rare / Normal / Often for your side.
+    threshold, maybe a slider, or a reserve slot") **[built 2026-10-26 — T-374]**: duel cards leave the hand for their own slot (a
+    player 1, a captain 2), refilled from the deck's duel cards; a ⚙ "Hesitations" setting Rare / Normal / Often for your side.
+    - Built (`DECK.duel.slots`, `RULES.hes.lv`): after the deck's shuffle its duel cards go to a duel pile (the deck keeps its 12;
+      the hand of 3 / 5 draws only the rest); the slot is a gap after a play or a discard and refills from the duel pile at the
+      next turn (an empty pile takes its cooled duel cards back — hashed, no draws); AI captains' teams hold 2 slots too. On the
+      bar the slot sits between the hand and the discard pile ("Duel · n left", keys 4 as a player, 6–7 as captain), dimmed
+      between points ("Plays in a hesitation", tooltip "Waits for a hesitation"), lit in one. ⚙ Hesitations (stored): Rare =
+      margin × 0.6, at most 2 a set; Normal as before; Often = margin × 1.6, at most 5 — on your side only (a side you captain or
+      your player's); simmed and AI-vs-AI matches play Normal. Recipes with a duel part (Sniper, Lockdown, Target / Read Block
+      full forms) no longer form in a hand.
+    - Measured (2026-10-26; 200 matches, a side yours, hesitations a side a set): league Rare / Normal / Often 1.46 / 2.28 / 3.90
+      (your own player's 0.34 / 0.54 / 0.88; the other side 2.2 throughout), tour 1.13 / 1.78 / 2.87 (0.34 / 0.47 / 0.74; other
+      1.75). `npm run cards -- 250` (league / tour): captain +10.6 / +10.4 → +10.5 / +9.7 % points (wins +33 / +35 → +35 / +34),
+      random +8.9 / +8.3 → +8.1 / +5.6, amplifiers only +4.1 / +3.1 → +5.1 / +2.2 — the order holds; spam Power +1.8 vs +4.2 /
+      +2.8 vs +3.8; Iron Floor fused +13.7 / +9.4 vs apart +8.4 / +6.5.
   - **Card kinds**: duel cards (Target Serve, Read Block, Disguise, Commit, Tempo, Pressure — the target doesn't settle for
     3 serves, Hide — the weak passer screened for 3 serves) play only in a hesitation; power-up and team-play cards any time.
   - **Built** (T-366, 2026-10-25 **[built]**; numbers in `ORDERS` js/data/tactics.js, `RULES.settle` js/data/rules.js):

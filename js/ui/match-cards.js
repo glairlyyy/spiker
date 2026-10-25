@@ -257,7 +257,7 @@ function handCard(m, i, h, id, o = {}) {
           : fits
             ? '<span class="hfit">✓ Fits now</span>'
             : '';
-  return `<div class="hc k-${c.kind} z-${c.zone} t-${c.type}${c.parts ? ' fused' : ''}${mine ? ' me' : ''}${fits && !why ? ' fits' : ''}${lit ? ' duel' : ''}${why ? ' no' : ''}${o.q ? ' q' : ''}${o.mini ? ' mini' : ''}${F ? (F.to ? ' fz' : F.src ? ' fsrc' : ' fdim') : ''}" data-h="${h}" data-id="${esc(id)}" role="button" tabindex="${ok ? 0 : -1}" aria-disabled="${!ok}" ${tip(cardTip(id))}${
+  return `<div class="hc k-${c.kind} z-${c.zone} t-${c.type}${c.parts ? ' fused' : ''}${mine ? ' me' : ''}${fits && !why ? ' fits' : ''}${lit ? ' duel' : ''}${why ? ' no' : ''}${o.q ? ' q' : ''}${o.mini ? ' mini' : ''}${F ? (F.to ? ' fz' : F.src ? ' fsrc' : ' fdim') : ''}" data-h="${h}" data-id="${esc(id)}" role="button" tabindex="${ok ? 0 : -1}" aria-disabled="${!ok}" ${tip(c.kind === 'duel' && !lit ? `Waits for a hesitation — lit when it can answer one. ${cardTip(id)}` : cardTip(id))}${
     lit ? ` onclick="hesCard(${i},${h})"` : ok ? ` onclick="handPlay(${i},${h})"` : ''
   }${mine && !o.q ? ` oncontextmenu="return handDisc(event,${i},${h})"` : ''}>
     <span class="hcb"><span>${o.mini ? '' : `${cardKind(c).replace('Technique', 'Tech').replace('Amplifier', 'Amp')} · ${TYPE_SHORT[c.type]}`}</span><kbd>${h + 1}</kbd></span>
@@ -305,7 +305,7 @@ function handDisc(e, i, h) {
   if (!A || !A.m || !A.m.deck || A.done) return false;
   const m = A.m,
     y = !!Cards.my(m, i),
-    id = handP(m, i).hand[h];
+    id = slotOf(handP(m, i), h); // (a duel slot too: h past the hand, T-374)
   if (!id || !(y || Cards.mine(m, i)) || !Cards.discard(m, i, h, y)) return false;
   hesOp(() => Cards.discard(m, i, h, y));
   if (A.hshow && A.hshow[i]) A.hshow[i][h] = null;
@@ -353,7 +353,8 @@ function handFuse(i, a, b) {
 /** Drag-to-fuse: press a card of yours and drag — the cards it fuses with light up (name, cost → result); drop on one to fuse. */
 function handDragStart(e) {
   const c = e.target.closest && e.target.closest('#hrow .hc[data-h]');
-  if (!c || e.button !== 0 || c.classList.contains('gap') || c.classList.contains('q') || !A || !A.m || A.done) return;
+  if (!c || e.button !== 0 || c.classList.contains('gap') || c.classList.contains('q') || c.closest('.hduel') || !A || !A.m || A.done)
+    return;
   const i = handSide();
   if (i == null || !(Cards.my(A.m, i) || Cards.mine(A.m, i))) return;
   A.hdrag = { i, h: +c.dataset.h, x: e.clientX, y: e.clientY, on: false, el: null };
@@ -443,12 +444,13 @@ function handSwitch() {
  */
 function handSync(m, i) {
   const D = handP(m, i),
+    all = [...D.hand, ...(D.duel || [])], // the hand, then its duel slot(s) (spec §2.39, T-374)
     S = A.hshow || (A.hshow = []),
-    s = S[i] || (S[i] = [...D.hand]),
+    s = S[i] || (S[i] = [...all]),
     caught = (m.turnAt || 0) <= (A.ptsShown || 0), // (the last turn is on screen: the opening hand at once, a turn's cards once its point shows)
     dealt = [];
-  for (let h = 0; h < D.hand.length; h++) {
-    const now = D.hand[h] || null;
+  for (let h = 0; h < all.length; h++) {
+    const now = all[h] || null;
     if (now === (s[h] || null)) continue;
     if (now && caught) {
       s[h] = now;
@@ -471,6 +473,7 @@ function setTurnPause(on) {
 /** Mount the bar and the active-card rows (startMatch); the loop redraws only on a change. */
 function handMount() {
   const st = $('#match');
+  if (A && A.m) A.m.hesLv = hesLevel(); // the ⚙ Hesitations level for your side (spec §2.39, T-374; simmed matches never get one)
   if (!st || !A || !A.m.deck) return;
   st.insertAdjacentHTML(
     'beforeend',
@@ -522,11 +525,12 @@ function handHTML(m, i) {
     S = cardsSides(m),
     s = A.hshow[i],
     q = handQ(m, i),
-    n = s.length,
+    n = D.hand.length,
     Z = handFz(m, i),
     FL = Z && Z.h != null ? Cards.fusable(m, i, Z.h, !!Y) : null,
     fz = h => (!FL ? null : h === Z.h ? { src: 1 } : { to: (FL.find(x => x.h === h) || {}).id || null }),
     cards = s
+      .slice(0, n)
       .map((id, h) => {
         const mid = (n - 1) / 2,
           f = `style="--r:${((h - mid) * 2.5).toFixed(1)}deg;--y:${(Math.abs(h - mid) ** 2 * 3).toFixed(0)}px"`;
@@ -535,6 +539,19 @@ function handHTML(m, i) {
         return `<div class="hslot" ${f}><div class="hc gap" data-h="${h}"><kbd>${h + 1}</kbd><span>Empty</span><small>Refills at the turn</small></div></div>`;
       })
       .join(''),
+    // the duel slot(s) beside the hand (spec §2.39, T-374): dimmed between points, lit in a hesitation it can answer
+    duel = (D.duel || [])
+      .map((x, k) => {
+        const h = n + k,
+          id = s[h] || null;
+        return `<div class="hslot" style="--r:0deg;--y:0px">${
+          id
+            ? handCard(m, i, h, id)
+            : `<div class="hc gap" data-h="${h}"><kbd>${h + 1}</kbd><span>Empty</span><small>Refills at the turn</small></div>`
+        }</div>`;
+      })
+      .join(''),
+    dlit = A.hes && A.hes.cards.some(c => c.i === i && c.h >= n),
     left = TURN.pts - (ptsPlayed(m) - m.turnAt),
     cool = D.disc.filter(e => e.cd > 0).length,
     pile = (k, lab, nb, sub) =>
@@ -550,15 +567,16 @@ function handHTML(m, i) {
             ? `Fuse: pick a card <kbd>1</kbd>–<kbd>${n}</kbd>`
             : `Fuse ${esc(CARDS[D.hand[Z.h]] ? CARDS[D.hand[Z.h]].name : '')} with ${FL && FL.length ? FL.map(x => `<kbd>${x.h + 1}</kbd>`).join(' ') : '— no recipe'}`
         } · <kbd>Esc</kbd> cancels</span>`
-      : `<span class="hkeys"><kbd>1</kbd>–<kbd>${n}</kbd> play · <kbd>Shift</kbd> or right-click discard · drag onto a card or <kbd>F</kbd> fuse</span>`
+      : `<span class="hkeys"><kbd>1</kbd>–<kbd>${n}</kbd> play${
+          D.duel && D.duel.length ? ` · <kbd>${n + 1}</kbd>${D.duel.length > 1 ? `–<kbd>${n + D.duel.length}</kbd>` : ''} duel` : ''
+        } · <kbd>Shift</kbd> or right-click discard · drag onto a card or <kbd>F</kbd> fuse</span>`
   }${
     Y ? handReqBtn(m, i) : ''
-  }</div><div class="hmain">${pile('deck', 'Deck', D.draw.length, 'draw order hidden')}<div class="hcards">${cards}</div>${pile(
-    'disc',
-    'Discard',
-    D.disc.length,
-    D.used.length ? `${cool} cooling · ${D.used.length} used` : `${cool} cooling`
-  )}</div>`;
+  }</div><div class="hmain">${pile('deck', 'Deck', D.draw.length, 'draw order hidden')}<div class="hcards">${cards}</div>${
+    duel
+      ? `<div class="hduel${dlit ? ' on' : ''}" ${tip('Duel cards play only in a hesitation: this slot waits for one, then lights up. Refills from the deck’s duel cards at the turn.')}><span class="lab">Duel · ${D.dpile.length} left</span><div class="hcards">${duel}</div></div>`
+      : ''
+  }${pile('disc', 'Discard', D.disc.length, D.used.length ? `${cool} cooling · ${D.used.length} used` : `${cool} cooling`)}</div>`;
 }
 /** Click a pile: its list over the bar (again: closes). */
 function handPile(k) {
@@ -577,8 +595,8 @@ function handPileList(m, i, k) {
   let head, rows;
   if (k === 'deck') {
     const n = {};
-    for (const id of D.draw) n[id] = (n[id] || 0) + 1;
-    head = `Deck · ${D.draw.length}`;
+    for (const id of [...D.draw, ...(D.dpile || [])]) n[id] = (n[id] || 0) + 1;
+    head = `Deck · ${D.draw.length}${D.dpile && D.dpile.length ? ` + ${D.dpile.length} duel` : ''}`;
     rows = Object.keys(n)
       .sort(order)
       .map(id => row(id, `×${n[id]}`))
@@ -774,11 +792,19 @@ function cardsKey(e) {
     handPile('req');
     return true;
   }
-  const k = /^Digit([1-9])$/.exec(e.code || '');
-  if (!k || +k[1] > handP(A.m, i).hand.length) return false;
+  const k = /^Digit([1-9])$/.exec(e.code || ''),
+    P = handP(A.m, i);
+  if (!k || +k[1] > P.hand.length + (P.duel || []).length) return false;
   if (A.railTab === 'tac' && !$('#mrail').hidden && !e.shiftKey) return false; // the Tactics tab's 1–9 flip techniques (§9.10)
   e.preventDefault();
   const h = +k[1] - 1;
+  if (h >= P.hand.length) {
+    // the duel slot (spec §2.39, T-374): its key plays it in a hesitation it is lit for; Shift discards
+    if (e.shiftKey) handDisc(null, i, h);
+    else if (hesLit(i, h)) hesCard(i, h);
+    else $(`#hrow .hc[data-h="${h}"]`)?.classList.add('nope');
+    return true;
+  }
   if (A.hfz && A.hfz.key && !e.shiftKey) {
     if (A.hfz.h == null) {
       if (handP(A.m, i).hand[h]) A.hfz = { i, h, key: 1 };
@@ -844,7 +870,7 @@ function cardsDeck(i) {
             : `<div class="hc gap mini" data-h="${h}"><kbd>${h + 1}</kbd><span>Empty</span></div>`
       )
       .join(''),
-    all = [...D.hand.filter(Boolean), ...(q ? [q.id] : []), ...D.draw, ...D.disc.map(e => e.id)],
+    all = [...D.hand.filter(Boolean), ...(q ? [q.id] : []), ...D.draw, ...D.duel.filter(Boolean), ...D.dpile, ...D.disc.map(e => e.id)], // (duel cards too: T-374)
     own = all.filter(id => CARDS[id].kind !== 'basic'),
     bas = all.length - own.length,
     src = id => {
@@ -1016,10 +1042,13 @@ function hesShow(a) {
     hh = S.deck ? hesHand(m, a) : null,
     mine = hesYou(m, a.side, { id: a.pid }),
     cards = [];
-  if (hh)
-    Cards.pile(S, hh.i, hh.y).hand.forEach((id, h) => {
+  if (hh) {
+    const P = Cards.pile(S, hh.i, hh.y);
+    (P.duel || []).forEach((id, k) => {
+      const h = P.hand.length + k; // (the duel slot(s), T-374)
       if (id && !Cards.duelCan(S, hh.i, h, hh.y, a)) cards.push({ h, id, y: hh.y, i: hh.i, ...Cards.duelInfo(S, hh.i, id, a), p: null });
     });
+  }
   for (const c of cards) c.ch = hesCh(a, c.v, c);
   const jobs = [
     ...a.opts.map((o, k) => ({ k, ch: hesCh(a, o.v, null), won: 0, done: 0 })),
