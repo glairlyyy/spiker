@@ -60,6 +60,8 @@ const DECK = {
     balanced: ['power', 'cover', 'tip']
   },
   book: [2, 3],
+  // each style's duel card (spec §2.39, T-367), in the deck after its playbook
+  duelBook: { bombers: 'pressure', mind: 'disguise', tempo: 'dtempo', wall: 'hide', counter: 'hide' },
   iq: 0.7,
   lv: { ref: 65, min: 0.6, max: 1.2 },
   strong: 13,
@@ -68,7 +70,11 @@ const DECK = {
   // active with its group's amplifier: edges × `with`; a full form (amplifier + technique fused): the technique's edges and buffs × `full`
   amp: { rate: 0.25, plus: 0.8, with: 1.25, full: 1.5 },
   mine: 6, // a non-captain career player's own deck (spec §2.37 Your hand, T-349): picked in match prep, Basics fill
-  myHand: 3 // … and their hand
+  myHand: 3, // … and their hand
+  // duel cards (spec §2.39, T-367): a borrowed technique (a teammate's, the hesitating player has not learned it) costs × borrow;
+  // Target Serve: exact, the receive − target;
+  // Tempo: block coverage ×; Disguise: [coverage ×, errors ×]; Commit (right): coverage ×; Read Block: coverage ×; Pressure / Hide: serves
+  duel: { borrow: 2, target: 20, tempo: 0.7, disguise: [0.75, 0.9], commit: 1.5, read: 1.2, serves: 3 }
 };
 /**
  * Requests (spec §2.37, T-349): at a turn (until `win` points after it) a non-captain asks the captain for one team play from
@@ -97,7 +103,7 @@ const REQ = {
 /**
  * The tactic cards (spec §2.33, §2.37). zone: 'atk' | 'def' | 'op' (what it plays on; the hand's colour band). kind: 'basic'
  * (small, 1 point) | 'play' | 'once' (instant: `on`, then cools) | 'trap' (`trap`: armed `dur` points — the other side's card it
- * names is caught when played: cost paid, no effect) | 'op' (once a match). src: 'base' (Basics: fill the deck) | 'book' (the
+ * names is caught when played: cost paid, no effect) | 'op' (once a match) | 'duel' (only in a hesitation, spec §2.39: `duel`). src: 'base' (Basics: fill the deck) | 'book' (the
  * captain's playbook, DECK.books) | 'tech' (a squad player owns `need`) | 'trait' (trait `trait`) | 'op' (DECK.op / element players) |
  * 'duo' (m.duo[side][id] = the pair's ids, both on court). Played (js/engine/cards.js) it acts for `dur` points (`per: 'srv'`: your
  * serves), then cools `cd` points in the discard pile (OP: used up). cost / after = { who: 'holder' | 'captain' | 'court', bar:
@@ -355,13 +361,52 @@ const CARDS = {
   commit: {
     name: 'Commit',
     zone: 'def',
-    kind: 'play',
+    kind: 'duel',
+    duel: { on: 'blk', opt: 'commit' },
     src: 'book',
     ord: ['blk', 'commit'],
     who: 'mb',
     grp: 'blk',
     tally: 'defend',
-    desc: 'Middles jump with their quick'
+    desc: 'In a hesitation: commit on their hitter — right, the block +50 %'
+  },
+  // duel cards (spec §2.39, T-367): played only in a hesitation (kind 'duel', `duel`: { on: the duel 'srv' | 'atk' | 'blk', opt:
+  // the option it plays — 'aim' a passer / the seam, 'fight', 'avoid', 'read', 'commit' — or vs: the other side's card })
+  pressure: {
+    name: 'Pressure',
+    zone: 'atk',
+    kind: 'duel',
+    duel: { on: 'srv', opt: 'aim' },
+    src: 'book',
+    tally: 'serve',
+    desc: 'In a hesitation: the aimed serve — that passer does not settle for 3 serves'
+  },
+  hide: {
+    name: 'Hide',
+    zone: 'def',
+    kind: 'duel',
+    duel: { on: 'srv', vs: 1 },
+    src: 'book',
+    tally: 'recv',
+    desc: 'Their server hesitates: your weak passer screened for 3 serves'
+  },
+  dtempo: {
+    name: 'Tempo',
+    zone: 'atk',
+    kind: 'duel',
+    duel: { on: 'atk', opt: 'fight' },
+    src: 'book',
+    tally: 'attack',
+    desc: 'In a hesitation: fight the block on a fast set — it comes up late, coverage −30 %'
+  },
+  disguise: {
+    name: 'Disguise',
+    zone: 'atk',
+    kind: 'duel',
+    duel: { on: 'atk', opt: 'avoid' },
+    src: 'book',
+    tally: 'attack',
+    desc: 'In a hesitation: avoid the block, the shot hidden — coverage −25 %, errors −10 %'
   },
   sdig: {
     name: 'Speed Dig',
@@ -405,13 +450,14 @@ const CARDS = {
   target: {
     name: 'Target Serve',
     zone: 'atk',
-    kind: 'play',
+    kind: 'duel',
+    duel: { on: 'srv', opt: 'aim' },
     src: 'tech',
     need: 'target',
     who: 'holders',
     buff: { serve: 2 },
     tally: 'serve',
-    desc: 'Holders’ aimed serves land exact, no aim error; serve +2 %'
+    desc: 'In a hesitation: the aimed serve lands exact on the spot — no aim error, their pass −20'
   },
   delay: {
     name: 'Delayed Spike',
@@ -496,12 +542,13 @@ const CARDS = {
     name: 'Read Block',
     clean: 20,
     zone: 'def',
-    kind: 'play',
+    kind: 'duel',
+    duel: { on: 'blk', opt: 'read' },
     src: 'tech',
     need: 'readblk',
     buff: { jump: 6 },
     tally: 'defend',
-    desc: 'Holders read the quick in time; block +6 %'
+    desc: 'In a hesitation: read the set, in time even on the quick; block +20 %'
   },
   softblk: {
     name: 'Soft Block',
@@ -1001,29 +1048,31 @@ const EDGE = { ctr: -1.2, mis: -0.6, k: 4.5 };
   for (const [id, c] of Object.entries(CARDS)) {
     if (c.parts) continue; // (fused: below)
     const K =
-      c.kind === 'basic'
-        ? { dur: 3, cd: 3, cost: { who: 'court', bar: 'hp', amt: 0.02 } }
-        : c.kind === 'op'
-          ? { dur: 3, cd: Infinity }
-          : c.kind === 'trap'
-            ? { dur: 6, cd: 8, cost: { who: 'captain', bar: 'mor', amt: 0.05 } }
-            : c.kind === 'once'
-              ? {
-                  dur: 0,
-                  cd: 12,
-                  cost: c.on === 'wind' ? { who: 'court', bar: 'mor', amt: 0.1 } : { who: 'captain', bar: 'sta', amt: 0.1 }
-                }
-              : c.src === 'tech'
-                ? { dur: 4, cd: big(id) ? 12 : 10, cost: { who: 'holder', bar: 'sta', amt: 0.04 } }
-                : c.src === 'trait'
-                  ? { dur: 4, cd: 8, cost: { who: 'holder', bar: id === 'take' ? 'hp' : 'sta', amt: 0.03 } }
-                  : c.src === 'duo'
-                    ? { dur: 4, cd: 6, cost: { who: 'holder', bar: 'sta', amt: 0.03 } }
-                    : {
-                        dur: 4,
-                        cd: 8,
-                        cost: team.includes(id) ? { who: 'court', bar: 'sta', amt: 0.01 } : { who: 'captain', bar: 'mor', amt: 0.06 }
-                      };
+      c.kind === 'duel'
+        ? { dur: 0, cd: 8, cost: { who: 'holder', bar: 'sta', amt: 0.04 } } // (paid by the hesitating player: Cards.duelPlay)
+        : c.kind === 'basic'
+          ? { dur: 3, cd: 3, cost: { who: 'court', bar: 'hp', amt: 0.02 } }
+          : c.kind === 'op'
+            ? { dur: 3, cd: Infinity }
+            : c.kind === 'trap'
+              ? { dur: 6, cd: 8, cost: { who: 'captain', bar: 'mor', amt: 0.05 } }
+              : c.kind === 'once'
+                ? {
+                    dur: 0,
+                    cd: 12,
+                    cost: c.on === 'wind' ? { who: 'court', bar: 'mor', amt: 0.1 } : { who: 'captain', bar: 'sta', amt: 0.1 }
+                  }
+                : c.src === 'tech'
+                  ? { dur: 4, cd: big(id) ? 12 : 10, cost: { who: 'holder', bar: 'sta', amt: 0.04 } }
+                  : c.src === 'trait'
+                    ? { dur: 4, cd: 8, cost: { who: 'holder', bar: id === 'take' ? 'hp' : 'sta', amt: 0.03 } }
+                    : c.src === 'duo'
+                      ? { dur: 4, cd: 6, cost: { who: 'holder', bar: 'sta', amt: 0.03 } }
+                      : {
+                          dur: 4,
+                          cd: 8,
+                          cost: team.includes(id) ? { who: 'court', bar: 'sta', amt: 0.01 } : { who: 'captain', bar: 'mor', amt: 0.06 }
+                        };
     c.dur ??= K.dur;
     c.cd ??= K.cd;
     c.cost ??= K.cost;
@@ -1031,7 +1080,13 @@ const EDGE = { ctr: -1.2, mis: -0.6, k: 4.5 };
     // the card's type (spec §2.37 Card types, T-349): a team play changes how the whole side plays (the captain's; yours only by
     // request), an opponent debuff is aimed at them, the rest (techniques, traits, duos, Basics, Titan) are individual plays
     c.type ??=
-      c.kind === 'trap' || debuff.includes(id) ? 'debuff' : c.src === 'book' || ['god', 'inzone', 'surge'].includes(id) ? 'team' : 'solo';
+      c.kind === 'duel'
+        ? 'solo'
+        : c.kind === 'trap' || debuff.includes(id)
+          ? 'debuff'
+          : c.src === 'book' || ['god', 'inzone', 'surge'].includes(id)
+            ? 'team'
+            : 'solo';
   }
   /** A fused card's deck numbers from its parts (spec §2.37): 3 points (its lead's serves for a serve card), no cost of its own (the parts pay), cools as its slowest part. */
   const fuseDefaults = c => {

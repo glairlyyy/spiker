@@ -721,3 +721,72 @@ function simMatch(a, b, opts) {
   while (!m.over && g++ < SIM_MAX_RALLIES) playRally(m);
   return m;
 }
+
+// ---- The hesitation moment's replay (spec §2.39, T-367): the rally again from its serve, the same dice, your choice ----
+
+/** Match m as it is now (before a rally): its plain state copied (stCopy), the teams' lineups and the players' seats. */
+function rallySnap(m) {
+  return {
+    m: stCopy(m),
+    t: m.t.map(t => ({ P: [...t.P], bench: [...(t.bench || [])], s: t.s, mb: t.mb, ws: t.ws ? [...t.ws] : t.ws, cap: t.cap })),
+    p: m.t.flatMap(t => squadOf(t).map(p => [p, p.slot, p.cap]))
+  };
+}
+/** Put m back as rallySnap S saw it (m keeps its identity). */
+function rallyRestore(m, S) {
+  for (const k of Object.keys(m)) if (!(k in S.m)) delete m[k];
+  Object.assign(m, stCopy(S.m));
+  m.t.forEach((t, i) =>
+    Object.assign(t, { ...S.t[i], P: [...S.t[i].P], bench: [...S.t[i].bench], ws: S.t[i].ws ? [...S.t[i].ws] : S.t[i].ws })
+  );
+  for (const [p, slot, cap] of S.p) [p.slot, p.cap] = [slot, cap];
+  CM = m;
+}
+/**
+ * Play the rally of snapshot S again with the dice `draws` (then fresh ones) and the hesitations `forced` ({ n: { v, card?,
+ * vs?, at? } }). Returns { r (playRally's result), draws (every die this run used) }.
+ */
+function rallyReplay(m, S, draws, forced) {
+  rallyRestore(m, S);
+  m.hesF = forced;
+  const nx = RNG.next,
+    rec = [];
+  let i = 0;
+  RNG.next = () => {
+    const v = i < draws.length ? draws[i++] : nx();
+    rec.push(v);
+    return v;
+  };
+  try {
+    const r = playRally(m);
+    return { r, draws: rec };
+  } finally {
+    RNG.next = nx;
+    delete m.hesF;
+  }
+}
+/**
+ * The odds of hesitation n with choice ch (the rest of `forced` as played): the share of `seeds` rallies (the dice up to the
+ * hesitation as drawn, fresh seeded ones from it) won by side `side`. Pure: m (and the random stream) come back as they were.
+ */
+function hesOdds(m, S, draws, forced, n, ch, side, seeds) {
+  const live = rallySnap(m),
+    nx = RNG.next,
+    rec0 = m.rec;
+  let won = 0;
+  try {
+    for (const j of seeds) {
+      rallyRestore(m, S);
+      m.rec = false;
+      m.hesF = { ...forced, [n]: { ...ch, at: () => RNG.seed(RULES.hes.seed + j) } };
+      let i = 0;
+      RNG.next = () => (i < draws.length ? draws[i++] : 0.5);
+      won += playRally(m).w === side;
+    }
+  } finally {
+    RNG.next = nx;
+    rallyRestore(m, live);
+    m.rec = rec0;
+  }
+  return won / Math.max(1, seeds.length);
+}

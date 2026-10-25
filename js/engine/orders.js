@@ -59,6 +59,15 @@ function tgtOpts(p, T) {
 }
 /** The serve target the server plays: their order, else the AI's pick (tgtAI). */
 const tgtOf = (m, server, s) => ordOf(m, server, 'tgt') || tgtAI(m, server, s);
+/** The serve target served (serveWalk): the order, else the AI's read — a close call hesitates (hesit, spec §2.39). No draws. */
+function tgtPick(m, server, s) {
+  const o = ordOf(m, server, 'tgt');
+  if (o) return o;
+  const v = tgtAI(m, server, s),
+    L = tgtOpts(server, m.t[1 - s]),
+    opts = m.tgtAIc.S.map(q => ({ v: q.v, score: q.score, label: (L.find(x => x.v === q.v) || { label: q.v }).label }));
+  return hesit(m, 'srv', s, server, opts, v).v;
+}
 /**
  * The AI server's target (spec §2.39), no draws: every option scored by its serve odds (srvOdds — settling counted), score =
  * hit × ORDERS.srv.ai − err; the best wins (the first on a tie). Cached for the serve (m.tgtAIc). Returns the option's value.
@@ -80,14 +89,23 @@ function tgtScores(m, server, s) {
       return { v: o.v, score: 100 * (d.hit * ORDERS.srv.ai - d.err), err: d.err, hit: d.hit };
     });
 }
-/** Settling (spec §2.39): rc's receive score × (1 + step × the serves in a row at them so far, at most cap). */
+/**
+ * Settling (spec §2.39): rc's receive score × (1 + step × the serves in a row at them so far, at most cap). Duel cards (T-367):
+ * Pressure — the passer it aimed at does not settle (m.press[serving side]); Hide — their weak passer as if fully settled
+ * (m.hide[receiving side]).
+ */
 function settled(m, rc, rs) {
-  const n = (m.settle && m.settle[rc.id]) || 0,
-    S = RULES.settle;
-  return rs > 0 ? rs * (1 + Math.min(S.cap, S.step * n)) : rs;
+  const S = RULES.settle,
+    i = rc.team === m.t[0] ? 0 : 1,
+    pr = m.press && m.press[1 - i],
+    hd = m.hide && m.hide[i],
+    n = pr && pr.id === rc.id ? 0 : (m.settle && m.settle[rc.id]) || 0,
+    k = hd && hd.id === rc.id ? S.cap : Math.min(S.cap, S.step * n);
+  return rs > 0 ? rs * (1 + k) : rs;
 }
-/** A serve taken by rc (side RT): their count +1; each teammate's fades by RULES.settle.fade. No draws. */
+/** A serve taken by rc (side RT): their count +1; each teammate's fades by RULES.settle.fade; Pressure / Hide count a serve. No draws. */
 function settleLog(m, RT, rc) {
+  for (const L of [m.press, m.hide]) if (L) for (const i of [0, 1]) if (L[i] && --L[i].n <= 0) L[i] = null;
   const S = m.settle || (m.settle = {});
   for (const p of RT.P) if (p !== rc && S[p.id]) S[p.id] = Math.max(0, S[p.id] - RULES.settle.fade);
   S[rc.id] = (S[rc.id] || 0) + 1;
@@ -108,7 +126,7 @@ function srvApply(m, server, sType, sq) {
 function tgtResolve(m, server, RT, o) {
   if (!o || o === 'auto') return null;
   if (o === 'deep' || o === 'safe') return { zone: o };
-  const exact = hasTech(server, 'target');
+  const exact = hasTech(server, 'target') || duelOn(m, server, 'target'); // (Target Serve played in a hesitation: T-367)
   if (o === 'seam') return { rc: seamOf(RT)[0], exact, seam: true };
   const rc = passersOf(RT).find(p => p.id === o);
   return rc ? { rc, exact, seam: false } : null;
@@ -289,21 +307,41 @@ function atkPick(m, spiker, defT, x) {
       avoid: free ? 50 + I.k * (cov - I.mid) * clamp(W(spiker) / A.openWit, 0.5, 1) : 0
     },
     v = S.fight > S.plain && S.fight >= S.avoid ? 'fight' : S.avoid > S.plain ? 'avoid' : 'plain';
-  const r = { v, S, aim: undefined, shot: undefined };
-  if (v === 'fight') r.shot = cov >= A.tool.cov[0] && cov < A.tool.cov[1] ? 'tool' : 'power';
+  return { v, S, ...atkPlay(spiker, defT, x, v) };
+}
+/** What fight / avoid / plain plays for this hitter against this block: { aim, shot } (fight: Tool on a mid block, else Power). */
+function atkPlay(spiker, defT, x, v) {
+  const A = ORDERS.atk,
+    r = { aim: undefined, shot: undefined };
+  if (v === 'fight') r.shot = x.cov >= A.tool.cov[0] && x.cov < A.tool.cov[1] ? 'tool' : 'power';
   if (v === 'avoid') {
     const q = W(spiker) >= A.openWit ? null : weakDigger(defT, x.blockers || []);
     r.aim = q ? q.id : 'open';
   }
   return r;
 }
+/** A spike option's words (the hesitation's buttons). */
+function atkWord(defT, v, k) {
+  if (v === 'fight') return k.shot === 'tool' ? 'Fight · tool it' : 'Fight · power';
+  if (v === 'avoid') {
+    const q = defT.P.find(p => p.id === k.aim);
+    return q ? `Avoid · at #${q.num} ${firstName(q)}` : 'Avoid · open court';
+  }
+  return 'Plain swing';
+}
 /** The aim and shot a hitter plays: their orders, else (neither set) their own read (atkPick). { aim, shot, pick? }. */
 function atkOrd(m, spiker, defT, x) {
   const aim = ordOf(m, spiker, 'aim'),
     shot = ordOf(m, spiker, 'shot');
   if (aim || shot) return { aim, shot };
-  const k = atkPick(m, spiker, defT, x);
-  return { aim: k.aim, shot: k.shot, pick: k };
+  const k = atkPick(m, spiker, defT, x),
+    opts = ['plain', 'fight', 'avoid']
+      .filter(v => v === 'plain' || k.S[v] > 0)
+      .map(v => ({ v, score: k.S[v], label: atkWord(defT, v, atkPlay(spiker, defT, x, v)) })),
+    h = hesit(m, 'atk', sideOf(spiker), spiker, opts, k.v); // a close call hesitates (spec §2.39)
+  if (h.v === k.v) return { aim: k.aim, shot: k.shot, pick: k, duel: h.card };
+  const pl = atkPlay(spiker, defT, x, h.v);
+  return { aim: pl.aim, shot: pl.shot, pick: { ...k, v: h.v, ...pl }, duel: h.card };
 }
 /**
  * The aim and shot (ao = atkOrd) bent into laneAim's channel lean and the attack's dials: { p, powK, errK, cutK, cutMax, covK }.
@@ -325,6 +363,9 @@ function atkApply(m, spiker, defT, spZ, p, ao) {
   if (shot === 'power') Object.assign(r, { powK: r.powK * A.pow, errK: r.errK * A.powErr, cutK: -1 });
   if (shot === 'tool') Object.assign(r, { errK: r.errK * A.tool.err, cutK: -1 });
   if (shot === 'cut') Object.assign(r, { cutK: A.cut, cutMax: 0.9 });
+  // duel cards played in a hesitation (spec §2.39, T-367): Tempo — a fast set, the block late; Disguise — the shot hidden
+  if (ao.duel === 'dtempo') r.covK *= DECK.duel.tempo;
+  if (ao.duel === 'disguise') Object.assign(r, { covK: r.covK * DECK.duel.disguise[0], errK: r.errK * DECK.duel.disguise[1] });
   return r;
 }
 /** Where an aimed ball lands (landingSpot): toward the chosen player, or the biggest gap among their floor defenders. */
@@ -461,12 +502,40 @@ function blkPick(m, ds, b) {
   return { v: S.commit > S.read ? L[i].id : null, S };
 }
 /**
+ * Blocker b's own read for this attack (blkPick), decided once (memo m.blkM by possession and attacks so far: fakeSet asks
+ * before formBlock). `hes` (blockApproach): a close read / commit call hesitates (hesit, spec §2.39) — Read Block played there
+ * reads ('read'), Commit commits. The hitter's id, 'read', or null (the team's setting). No draws.
+ */
+function blkRead(m, ds, b, teamC, hes) {
+  const key = `${m.rallyN}|${m.att ? m.att[0].n + m.att[1].n : 0}`;
+  if (!m.blkM || m.blkM.k !== key) m.blkM = { k: key, v: {} };
+  if (b.id in m.blkM.v) return m.blkM.v[b.id];
+  const k = blkPick(m, ds, b);
+  let v = k.v;
+  if (hes && k.S.on) {
+    const q = m.t[1 - ds].P.find(p => p.id === k.S.on),
+      h = hesit(
+        m,
+        'blk',
+        ds,
+        b,
+        [
+          { v: '', score: k.S.read, label: teamC ? 'Read · the team’s call' : 'Read the set' },
+          { v: k.S.on, score: k.S.commit, label: `Commit on #${q.num} ${firstName(q)}` }
+        ],
+        v || ''
+      );
+    v = h.card === 'readblk' ? 'read' : h.v || null;
+  }
+  return (m.blkM.v[b.id] = v);
+}
+/**
  * Whom blocker b (side ds) commits to (spec §2.39): their block order (Read / Stay back → nobody; Commit → 'quick': whoever
  * goes quick; a hitter's id → that hitter), else their own read (blkPick), else the team's Commit (teamC: the team setting,
  * or a front-row middle's Commit order for this attack — 'quick'). The hitter, 'quick', or null (reading).
  */
-function blkCommit(m, ds, b, teamC = m.dset[ds] === 'commit') {
-  const o = ordOf(m, b, 'blk') || blkPick(m, ds, b).v,
+function blkCommit(m, ds, b, teamC = m.dset[ds] === 'commit', hes = false) {
+  const o = ordOf(m, b, 'blk') || blkRead(m, ds, b, teamC, hes),
     A = m.t[1 - ds];
   if (o === 'read' || o === 'back') return null;
   if (o === 'commit' || (!o && teamC)) return 'quick';
@@ -502,4 +571,91 @@ function ordSubs(m, side) {
     out.push(...subDo(m, side, p, inn, 'rest'));
   }
   return out;
+}
+
+// ---- The hesitation moment (spec §2.39, T-367): a duel whose AI pick and runner-up score close ----
+
+/** Is this hesitation yours: as captain (your side's team hand) any teammate's, as a player only your own. */
+function hesYou(m, side, p) {
+  const D = m.deck && m.deck[side];
+  return !!(D && D.by === 'you') || (m.human != null && !!p && p.id === m.human);
+}
+/** Could any hesitation in m be yours (a side you captain, or your player)? */
+const hesLive = m => m.human != null || !!(m.deck && m.deck.some(D => D && D.by === 'you'));
+/** Is duel card `id` on for p this play (spec §2.39: played in its hesitation; m.duelOn, the possession it was played in)? */
+const duelOn = (m, p, id) => !!(m && m.duelOn && p && m.duelOn.pid === p.id && m.duelOn.id === id && m.duelOn.pos === m.rallyN);
+/** Does duel option class `opt` ('aim' | 'fight' | …) name option value v? */
+const duelOpt = (opt, v) =>
+  opt === 'aim' ? v !== 'deep' && v !== 'safe' && v !== 'plain' : opt === 'read' ? !v : opt === 'commit' ? !!v : v === opt;
+/** The option of the two (`two`, the AI's pick first) duel card id plays, or null (its kind / option is not in this hesitation). */
+function duelFor(id, kind, two) {
+  const d = CARDS[id] && CARDS[id].duel;
+  if (!d || d.on !== kind) return null;
+  if (d.vs) return two[0]; // (Hide: their server's pick goes through)
+  return two.find(o => duelOpt(d.opt, o.v)) || null;
+}
+/**
+ * A duel's choice (spec §2.39), no draws: opts [{ v, score, label }] scored by the AI's own read, `ai` its pick. When the
+ * runner-up is within RULES.hes.margin[kind] (× late[1] once either side has late[0] points) the play hesitates — at most
+ * RULES.hes.cap a side a set, one a possession, never in an odds probe. The pick that goes through: a forced one (m.hesF[n]:
+ * the rally replayed with your choice; its `at` hook first), else the AI side's duel card (Cards.duelAI), else the AI's pick.
+ * Logs m.hesLog; a hesitation of yours on a recorded rally gets its beat at once (m.hesB). Returns { v, card } (card: the
+ * duel card played, its id).
+ */
+function hesit(m, kind, side, p, opts, ai) {
+  const H = RULES.hes,
+    none = { v: ai, card: null };
+  if (m.probe || opts.length < 2 || m.hesP === m.rallyN) return none;
+  const a0 = opts.find(o => o.v === ai) || opts[0],
+    a1 = opts.filter(o => o !== a0).reduce((a, o) => (!a || o.score > a.score ? o : a), null),
+    late = Math.max(m.pts[0], m.pts[1]) >= H.late[0] ? H.late[1] : 1;
+  if (!a1 || a0.score - a1.score > H.margin[kind] * late) return none;
+  const N = m.hesN || (m.hesN = [0, 0]);
+  if (N[side] >= H.cap) return none;
+  N[side]++;
+  m.hesP = m.rallyN;
+  const n = m.hesR++,
+    two = [a0, a1],
+    you = hesYou(m, side, p),
+    f = m.hesF && m.hesF[n];
+  let v = ai,
+    cd = null,
+    act = null;
+  if (f) {
+    if (f.at) f.at(); // (the odds: fresh dice from here)
+    v = f.v;
+    cd = f.card || null;
+  } else if (!you) {
+    cd = Cards.duelAI(m, side, p, kind, two);
+    if (cd) v = cd.v;
+  }
+  if (cd) act = Cards.duelPlay(m, side, cd, p, kind, two, v);
+  // the other side of a serve duel: Hide (their captain screens the weak passer — yours as captain: in the replay, f.vs)
+  const r = 1 - side,
+    vsd = kind !== 'srv' ? null : f ? f.vs || null : !hesYou(m, r, null) ? Cards.duelAI(m, r, null, kind, two, true) : null,
+    vs = vsd ? Cards.duelPlay(m, r, vsd, null, kind, two, v) : null;
+  const h = {
+    n,
+    kind,
+    side,
+    pid: p.id,
+    opts: two.map(o => ({ v: o.v, label: o.label, score: +o.score.toFixed(1) })),
+    ai,
+    v,
+    card: act ? act.id : null,
+    cd: act ? { h: cd.h, id: cd.id, y: cd.y } : null,
+    vs: vs ? vs.id : null,
+    vsd: vs ? { h: vsd.h, id: vsd.id, y: vsd.y } : null,
+    you,
+    at: [...m.pts]
+  };
+  (m.hesLog || (m.hesLog = [])).push(h);
+  if (m.rec && m.hesB) {
+    const hz = { kind, side, pid: p.id, opts: two },
+      hide = // (their server's hesitation is yours to see only with a Hide to play: your side's team hand)
+        kind === 'srv' && hesYou(m, r, null) && m.deck && m.deck[r].hand.some((id, k) => id && !Cards.duelCan(m, r, k, false, hz));
+    if (you || hide) m.hesB({ dur: 600, slow: RULES.hes.slow, hes: n, acts: [{ k: 'hesit', ...h }] });
+    for (const a of [act, vs]) if (a) m.hesB({ dur: 900, acts: [a] });
+  }
+  return { v, card: act ? act.id : null };
 }

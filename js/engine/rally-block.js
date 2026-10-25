@@ -72,7 +72,7 @@ function blockApproach(c, x) {
     teamC = mo ? mo === 'commit' : m.dset[ds] === 'commit',
     cm = new Map(
       c.defT.P.filter(p => c.front(ds, p) && !stayBack(m, p))
-        .map(p => [p, blkCommit(m, ds, p, teamC)])
+        .map(p => [p, blkCommit(m, ds, p, teamC, true)]) // (a close call hesitates: hesit)
         .filter(([, h]) => h)
     ),
     right = b => !!b && cm.has(b) && (cm.get(b) === 'quick' ? quick : cm.get(b) === spiker),
@@ -171,7 +171,7 @@ function blockCoverage(c, x, f) {
   const { pj, hS, c0, c1 } = blockHands(c, x, f);
   let cov = Math.max(c0.c, c1.c) + (c0.c > 0.4 && c1.c > 0.4 ? 0.25 : 0) + readBonus;
   // techniques that beat (or read) the block
-  const readB = quick && !cm.has(b0) && hasTech(b0, 'readblk') && W(b0) >= 1.1, // Read Block: a reading blocker in time on the quick
+  const readB = quick && !cm.has(b0) && ((hasTech(b0, 'readblk') && W(b0) >= 1.1) || duelOn(m, b0, 'readblk')), // Read Block: a reading blocker in time on the quick
     pipeCombo = back && hasTech(setter, 'pipecombo') && (cardForce(setter, 'pipecombo') || (m.pts[0] + m.pts[1] + n) % 2 === 0); // planned play, not every time
   if (readB) techFire(m, b0, 'readblk');
   if (pipeCombo) techFire(m, setter, 'pipecombo');
@@ -247,8 +247,10 @@ function blockHands(c, x, f) {
     if (!cv.c) return;
     if (late) cv.c *= BLOCK.lateCov;
     if (readQ(b) < 0.35) cv.c *= BLOCK.splitCov;
-    if (right(b)) cv.c *= BLOCK.commitQuick;
+    if (right(b))
+      cv.c *= BLOCK.commitQuick * (duelOn(c.m, b, 'commit') ? DECK.duel.commit : 1); // (Commit played in a hesitation)
     else if (wrong(b)) cv.c *= BLOCK.commitMiss;
+    if (duelOn(c.m, b, 'readblk')) cv.c *= DECK.duel.read; // (Read Block played in a hesitation: T-367)
     if (bunch) cv.c *= midAtk ? BLOCK.bunchMid : BLOCK.bunchPin;
     cv.c = Math.min(cv.c, 1.2); // the height factor's own ceiling: a setting can't turn a wall into a block break
   };

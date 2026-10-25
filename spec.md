@@ -979,7 +979,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     40 / 51 → 46 / 55 %; casual 46 / 44 → 49 / 51 %, odds 37 / 42 → 38 / 43; ratings unchanged (77.8 / 94.7 → 77.6 / 95.0).
 - §2.39 The three duels and the hesitation moment (owner, 2026-10-25: "target the weak passer is the go-to strat … make those our
   main feature"; "add a hesitation moment where the player can intervene") **[the duels, free aiming and settling built
-  2026-10-25 — T-366; the hesitation moment and duel cards draft — T-367]**:
+  2026-10-25 — T-366; the hesitation moment and duel cards built 2026-10-25 — T-367]**:
   - **The three duels** are the match's core: the **server** aims at a passer, the seam, deep or safe ↔ the receiving side hides
     or covers its weak passer; the **spiker** fights the block (power through, tool off the hands) or avoids it (their weak
     digger, the open court) ↔ the **blocker** reads (waits for the set: solid, late on fast sets) or commits (guesses the hitter
@@ -1022,7 +1022,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
       any fake, the commit net-touch rate. A blocker with no order commits on a hitter once 8+ attacks are in and that hitter
       takes over half of their side's; else the team's setting. Read Block = a reading blocker in time on the quick.
     - Not built: the Plan board's UI (removed in T-298 — the orders and their odds are engine API; the bot and tests use them).
-  - **Measured** (T-366, 2026-10-25): fixed target orders vs the servers' own read (`npm run bot -- 300 league tgt:weak|tgt:alt`,
+  - **Measured** (T-366, 2026-10-25, settling at 0.04 / 15 %): fixed target orders vs the servers' own read (`npm run bot -- 300 league tgt:weak|tgt:alt`,
     tour 1000 pairs): always the weakest passer −0.80 / −1.17 % points (wins −5.3 / −4.0), alternating the two weakest −0.48 /
     −1.38 (−1.7 / −5.0) — the fixed weak order is no longer best (league: alternating better; tour: level within noise). Hunting
     one passer (500 matches; serves they took, by the serves in a row at them before it; aces + broken passes): league 27.2 ·
@@ -1034,6 +1034,21 @@ the AI coach fills every slot you leave with the same function. Built and measur
     +3.7 / +3.8 → +4.1 / +3.1 — the order holds; spam Power +1.6 vs +3.3 / +5.2 vs +6.2 → +2.1 vs +3.6 / +4.0 vs +5.9. Career
     (`npm run career -- 20 both`): ratings unchanged (casual 67.0 / 83.8 → 66.9 / 83.0, good 80.3 / 96.8 → 80.3 / 96.8), Cup match
     wins and odds vs her squad within the 20-run noise.
+  - **Built** (T-367, 2026-10-25 **[built]**; goldens updated; `RULES.hes` js/data/rules.js, `DECK.duel` / `DECK.duelBook` js/data/cards.js; orders.js
+    `hesit`, match.js rally replay): a hesitation is read from the scores the AI already computes (serve target, spike fight /
+    avoid / plain, block read / commit) — no draws; at most 3 a side a match, one a possession, the margin × 1.6 once either side
+    has 11. Yours (or any teammate's as captain) on a played rally: a `hesit` beat at 0.1× for 8 s — two options with your point
+    odds, keys 1 / 2, a draining timer, Esc = the AI's pick, playable duel cards lit on the hand bar; your pick replays the rally
+    on the same dice from that moment (the beats before it unchanged). Simmed / headless: the AI's pick at once; AI captains play
+    their duel cards by their card read. Duel cards (play only in a hesitation): Target Serve (also receive −20), Read Block,
+    Commit, Pressure (the target doesn't settle for 3 serves), Hide (your weak passer screened for 3 serves), Tempo, Disguise;
+    borrowing a teammate's technique costs 2× the bar. Playbooks: bombers → Pressure, mind → Disguise, tempo → Tempo, wall /
+    counter → Hide (after their book; in the career through the captain's deck, not the personal collection). **Hide** is the
+    one exception to "your side's hesitations": the opponent's serve hesitation shows when you captain and hold Hide. Fused
+    cards with a duel part stay normal cards.
+  - **Measured** (T-367, 2026-10-25): ≈ 2.35 hesitations a side a set in league matches (1.8 tour). Your point odds with the card
+    (an all-one-card deck, 60 league matches): Target Serve 39.0 → 44.3 %, Tempo 49.6 → 50.9, Disguise 47.3 → 49.4, Pressure
+    38.8 → 39.0 and Hide 46.6 → 46.6 (their effect lands on the next serves), Commit ≈ 0 (pays only when the guess is right).
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two

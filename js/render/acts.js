@@ -231,6 +231,10 @@ const ACTS_FX = {
 };
 /** Match-screen UI: banners, calls, the scoreboard, the captain's talk. */
 const ACTS_UI = {
+  /** A hesitation of yours (spec §2.39, T-367): the moment's panel, the lit duel cards, the timer (js/ui/match-cards.js). */
+  hesit(a, d, bs) {
+    if (typeof hesShow === 'function') hesShow(a);
+  },
   tech(a, d, bs) {
     // technique name pops over the player who used it
     if (!d) return;

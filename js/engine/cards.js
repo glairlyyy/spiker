@@ -164,7 +164,7 @@ function deckShuffle(a) {
 }
 /**
  * Side i's own cards (spec §2.37), at most DECK.size: one OP card per OP player's role (DECK.op) and Element Surge for element
- * players, the captain's playbook (DECK.books by style, 2 or 3 by the captain's read), each technique a squad player owns (most
+ * players, the captain's playbook (DECK.books by style, 2 or 3 by the captain's read, then its duel card DECK.duelBook), each technique a squad player owns (most
  * holders on court first), trait cards. Duo cards join later (Cards.duo: the career's setup). No draws.
  */
 function deckOwn(m, i) {
@@ -176,6 +176,7 @@ function deckOwn(m, i) {
   if (sq.some(p => p.elOn)) add('surge');
   const book = DECK.books[T.sk] || DECK.books.balanced;
   for (const id of book.slice(0, DECK.book[capIQ(T) >= DECK.iq ? 1 : 0])) add(id);
+  if (DECK.duelBook[T.sk]) add(DECK.duelBook[T.sk]); // (its duel card: T-367)
   const techs = Object.keys(CARDS).filter(id => CARDS[id].src === 'tech' && sq.some(p => hasTech(p, CARDS[id].need))),
     nOn = id => T.P.filter(p => hasTech(p, CARDS[id].need)).length;
   techs.sort((a, b) => nOn(b) - nOn(a));
@@ -660,6 +661,7 @@ const Cards = {
   parts: id => (CARDS[id] && CARDS[id].parts) || [],
   /** Why card id (in pile H of side i: a hand card, or a fused card not made yet) can't be played now, or null (Cards.can after the gap). */
   canId(m, i, id, y, H) {
+    if (CARDS[id].kind === 'duel') return 'duel'; // (only in a hesitation: Cards.duelCan, spec §2.39)
     if (H.pt === ptsPlayed(m)) return 'point';
     const on = actIds(m, i),
       mine = cardComps(id).map(x => x[0]);
@@ -820,12 +822,110 @@ const Cards = {
     if (pair) return Cards.fuse(m, i, pair[0], pair[1]) ? pair[0] : -1;
     return best;
   },
+  /**
+   * Duel cards (spec §2.39, T-367): why hand card h of side i (`y`: your own hand) can't be played in hesitation `hz` (a
+   * hesitation log entry: { kind, side, pid, opts }), or null. 'duel' (not a duel card), 'opt' (its option is not one of the
+   * two), 'need' (nobody on court knows its technique — none to borrow), 'gap'.
+   */
+  duelCan(m, i, h, y, hz) {
+    const P = Cards.pile(m, i, y),
+      id = P && P.hand[h];
+    if (!id) return 'gap';
+    const c = CARDS[id];
+    if (c.kind !== 'duel') return 'duel';
+    if (!!c.duel.vs !== (i !== hz.side) || !duelFor(id, hz.kind, hz.opts)) return 'opt';
+    const p = squadOf(m.t[hz.side]).find(q => q.id === hz.pid);
+    if (c.need && !c.duel.vs && p && !ownsTech(p, c.need) && !m.t[i].P.some(q => ownsTech(q, c.need))) return 'need';
+    return null;
+  },
+  /** A duel card's play in hesitation hz: { id, v (the option it plays), borrow (a teammate's technique: × DECK.duel.borrow), cost }. */
+  duelInfo(m, i, id, hz) {
+    const c = CARDS[id],
+      o = duelFor(id, hz.kind, hz.opts),
+      p = squadOf(m.t[hz.side]).find(q => q.id === hz.pid),
+      borrow = !!(c.need && !c.duel.vs && p && !ownsTech(p, c.need)),
+      cost = c.cost ? { ...c.cost, amt: +(c.cost.amt * (borrow ? DECK.duel.borrow : 1)).toFixed(3) } : null;
+    return { id, v: o ? o.v : null, borrow, cost };
+  },
+  /**
+   * The AI side's duel card for a hesitation (no draws): the best playable duel card in its team hand (not a side you run)
+   * by capPlay's scores (CARD_AI: its source, + read when it fits), affordable for its payer. { h, id, v } or null. `vs`: the
+   * receiving side's (Hide).
+   */
+  duelAI(m, i, p, kind, two, vs) {
+    const D = deckOf(m, i);
+    if (!D || D.by === 'you' || m.over) return null;
+    const hz = { kind, side: vs ? 1 - i : i, pid: p ? p.id : null, opts: two };
+    let best = null,
+      bv = 0;
+    D.hand.forEach((id, h) => {
+      if (!id || CARDS[id].kind !== 'duel' || Cards.duelCan(m, i, h, false, hz)) return;
+      const c = CARDS[id],
+        inf = Cards.duelInfo(m, i, id, hz),
+        payer = c.duel.vs || !p ? m.t[i].cap || m.t[i].P[0] : p,
+        C = inf.cost;
+      if (
+        C &&
+        (C.bar === 'sta' ? (m.sta[payer.id] ?? 1) : C.bar === 'hp' ? hpOf(m, payer) : morOf(m, payer)) - C.amt < CARD_AI.floor[C.bar]
+      )
+        return;
+      const v = (CARD_AI[c.src] || CARD_AI.play) + (Cards.fits(m, i, id) ? CARD_AI.read : 0) - (inf.borrow ? 1 : 0);
+      if (v > bv) [bv, best] = [v, { h, id, v: inf.v }];
+    });
+    return best;
+  },
+  /**
+   * Play duel card d ({ h, id, y }) of side i in a hesitation (spec §2.39), mid-rally: its payer (the hesitating player p, a
+   * Hide the captain) pays — × DECK.duel.borrow on a borrowed technique — the place is a gap until the next turn, the card cools;
+   * its effect for this play (m.duelOn) — Pressure / Hide for DECK.duel.serves serves (m.press / m.hide). v: the option played.
+   * Returns the `card` act, or null (the card is no longer there).
+   */
+  duelPlay(m, i, d, p, kind, two, v) {
+    const P = Cards.pile(m, i, d.y),
+      D = deckOf(m, i);
+    if (!P || P.hand[d.h] !== d.id) return null;
+    const c = CARDS[d.id],
+      hz = { kind, side: c.duel.vs ? 1 - i : i, pid: p ? p.id : null, opts: two },
+      inf = Cards.duelInfo(m, i, d.id, hz),
+      payer = c.duel.vs || !p ? m.t[i].cap || m.t[i].P[0] : p,
+      who = cardPay(m, i, [payer], inf.cost),
+      at = [...m.pts];
+    P.hand[d.h] = null;
+    Cards.toDisc(m, i, d.id, d.y);
+    D.played[d.id] = (D.played[d.id] || 0) + 1;
+    D.log.push({ k: 'duel', id: d.id, at, by: payer.id, ...(inf.borrow ? { borrow: 1 } : {}), ...(d.y ? { y: 1 } : {}) });
+    if (c.duel.vs) {
+      const wp = weakPasser(m.t[i]);
+      (m.hide || (m.hide = [null, null]))[i] = { id: wp.id, n: DECK.duel.serves };
+    } else {
+      m.duelOn = { pid: p.id, id: d.id, pos: m.rallyN };
+      if (d.id === 'pressure') {
+        const RT = m.t[1 - i],
+          tg = tgtResolve(m, p, RT, v);
+        if (tg && tg.rc) (m.press || (m.press = [null, null]))[i] = { id: tg.rc.id, n: DECK.duel.serves };
+      }
+    }
+    return {
+      k: 'card',
+      side: i,
+      id: d.id,
+      by: payer.id,
+      op: false,
+      dur: 0,
+      per: 'pts',
+      who,
+      cost: inf.cost,
+      st: 'fit',
+      duel: kind,
+      ...(inf.borrow ? { borrow: 1 } : {})
+    };
+  },
   /** At a turn: the captain discards its dead cards held since the last turn (no holder on court, or not fitting), if sharp enough. */
   capClear(m, i) {
     const D = deckOf(m, i);
     if (!D || D.by === 'you' || capIQ(m.t[i]) < CARD_AI.waitOp) return;
     D.hand.forEach((id, h) => {
-      if (!id || !D.held.includes(id) || Cards.strong(id) || CARDS[id].kind === 'trap') return;
+      if (!id || !D.held.includes(id) || Cards.strong(id) || CARDS[id].kind === 'trap' || CARDS[id].kind === 'duel') return;
       if (!Cards.holders(m, i, id).length || !Cards.fits(m, i, id)) Cards.discard(m, i, h);
     });
   },

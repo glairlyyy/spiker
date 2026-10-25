@@ -123,6 +123,7 @@ function cardKind(c) {
   if (c.kind === 'basic') return 'Amplifier';
   if (c.kind === 'trap') return 'Trap';
   if (c.kind === 'once') return 'One-shot';
+  if (c.kind === 'duel') return 'Duel';
   return { tech: 'Technique', trait: 'Trait', duo: 'Duo' }[c.src] || 'Play';
 }
 /** Each read in words (the card's tooltip, registrar voice). */
@@ -192,6 +193,9 @@ const CAN_WORD = {
   holder: 'No holder on court',
   off: 'Match over',
   mine: "Captain's card",
+  duel: 'Plays in a hesitation',
+  opt: 'Not this duel',
+  need: 'Nobody knows it',
   // requests (Cards.canAsk)
   type: 'Not a team play',
   turn: 'Ask at a turn',
@@ -224,7 +228,8 @@ function handCard(m, i, h, id, o = {}) {
   const c = CARDS[id],
     y = !!Cards.my(m, i), // your own hand of 3 (spec §2.37 Your hand)
     mine = y || Cards.mine(m, i),
-    why = o.q ? null : !mine ? 'mine' : Cards.can(m, i, h, y),
+    lit = !o.q && !o.mini && hesLit(i, h), // a duel card you may play in this hesitation (spec §2.39)
+    why = o.q || lit ? null : !mine ? 'mine' : Cards.can(m, i, h, y),
     ok = !o.q && !why,
     fits = cardFits(m, i, id),
     Cs = cardCosts(id),
@@ -243,15 +248,17 @@ function handCard(m, i, h, id, o = {}) {
       F && F.to
         ? `<span class="hfz"><span class="lab">Fuse → ${esc(CARDS[F.to].name)}</span><small>${esc(cardFuseLine(F.to))}</small></span>`
         : '',
-    foot = o.q
-      ? '<span class="hcw q">Queued · next serve</span>'
-      : why
-        ? `<span class="hcw">${CAN_WORD[why] || ''}</span>`
-        : fits
-          ? '<span class="hfit">✓ Fits now</span>'
-          : '';
-  return `<div class="hc k-${c.kind} z-${c.zone} t-${c.type}${c.parts ? ' fused' : ''}${mine ? ' me' : ''}${fits && !why ? ' fits' : ''}${why ? ' no' : ''}${o.q ? ' q' : ''}${o.mini ? ' mini' : ''}${F ? (F.to ? ' fz' : F.src ? ' fsrc' : ' fdim') : ''}" data-h="${h}" data-id="${esc(id)}" role="button" tabindex="${ok ? 0 : -1}" aria-disabled="${!ok}" ${tip(cardTip(id))}${
-    ok ? ` onclick="handPlay(${i},${h})"` : ''
+    foot = lit
+      ? `<span class="hfit">→ ${esc((A.hes.a.opts.find(x => x.v === lit.v) || A.hes.a.opts[0]).label)} · ${hesPct(lit.p)}${lit.borrow ? ' · borrowed ×2 cost' : ''}</span>`
+      : o.q
+        ? '<span class="hcw q">Queued · next serve</span>'
+        : why
+          ? `<span class="hcw">${CAN_WORD[why] || ''}</span>`
+          : fits
+            ? '<span class="hfit">✓ Fits now</span>'
+            : '';
+  return `<div class="hc k-${c.kind} z-${c.zone} t-${c.type}${c.parts ? ' fused' : ''}${mine ? ' me' : ''}${fits && !why ? ' fits' : ''}${lit ? ' duel' : ''}${why ? ' no' : ''}${o.q ? ' q' : ''}${o.mini ? ' mini' : ''}${F ? (F.to ? ' fz' : F.src ? ' fsrc' : ' fdim') : ''}" data-h="${h}" data-id="${esc(id)}" role="button" tabindex="${ok ? 0 : -1}" aria-disabled="${!ok}" ${tip(cardTip(id))}${
+    lit ? ` onclick="hesCard(${i},${h})"` : ok ? ` onclick="handPlay(${i},${h})"` : ''
   }${mine && !o.q ? ` oncontextmenu="return handDisc(event,${i},${h})"` : ''}>
     <span class="hcb"><span>${o.mini ? '' : `${cardKind(c).replace('Technique', 'Tech').replace('Amplifier', 'Amp')} · ${TYPE_SHORT[c.type]}`}</span><kbd>${h + 1}</kbd></span>
     <b class="hcn">${cardYours(m, i, id) ? '◆ ' : ''}${esc(cardName(m, i, id))}</b>${
@@ -286,6 +293,7 @@ function handPlay(i, h) {
     y = !!Cards.my(m, i),
     id = handP(m, i).hand[h];
   if (!id || !(y || Cards.mine(m, i)) || !Cards.play(m, i, h, y)) return false;
+  hesOp(() => Cards.play(m, i, h, y));
   (A.hq || (A.hq = []))[i] = { h, id, at: ptsPlayed(m) };
   if (A.hshow && A.hshow[i]) A.hshow[i][h] = null;
   cardsRedraw();
@@ -299,10 +307,15 @@ function handDisc(e, i, h) {
     y = !!Cards.my(m, i),
     id = handP(m, i).hand[h];
   if (!id || !(y || Cards.mine(m, i)) || !Cards.discard(m, i, h, y)) return false;
+  hesOp(() => Cards.discard(m, i, h, y));
   if (A.hshow && A.hshow[i]) A.hshow[i][h] = null;
   handNote(m.t[i], `Discarded ${cardName(m, i, id)}`, 'disc');
   cardsRedraw();
   return false;
+}
+/** A bar action during a rally that a hesitation may replay (A.hesRec.ops): done again after the replay (playback hesReplay). */
+function hesOp(f) {
+  if (A && A.hesRec) A.hesRec.ops.push(f);
 }
 /** Is your queued card still waiting for its serve? */
 const handQ = (m, i) => {
@@ -324,6 +337,7 @@ function handFuse(i, a, b) {
     pa = P.hand[a],
     pb = P.hand[b],
     r = Cards.fuse(m, i, a, b, y);
+  if (r) hesOp(() => Cards.fuse(m, i, a, b, y));
   if (!r) {
     handNote(m.t[i], 'No recipe: those two don’t fuse', 'disc');
     handTick(true);
@@ -637,6 +651,7 @@ function handAsk(i, h) {
     id = m.deck[i].hand[h],
     r = Cards.ask(m, i, h);
   if (!r) return false;
+  hesOp(() => Cards.ask(m, i, h));
   const cap = firstName(t.cap || t.P[0]);
   if (typeof DBG !== 'undefined')
     DBG.log('info', `request: ${t.short} asks ${cap} for ${CARDS[id].name} · ${r.word} (${r.p.toFixed(2)}) → ${r.ok ? 'yes' : 'no'}`);
@@ -971,4 +986,153 @@ function teamWatch(m) {
           }
   }
   requestAnimationFrame(() => teamWatch(m));
+}
+
+/* ---------- the hesitation moment (spec §2.39, T-367) ---------- */
+
+const HES_KIND = { srv: 'Serve', atk: 'Spike', blk: 'Block' };
+/** The hand you may play duel cards from in hesitation hz: { i, y } (captain: the team hand; player: your own), or null. */
+function hesHand(m, hz) {
+  for (const i of cardsSides(m))
+    if (i === hz.side ? hesYou(m, i, { id: hz.pid }) : hz.kind === 'srv' && m.deck[i].by === 'you') return { i, y: !!Cards.my(m, i) };
+  return null;
+}
+/** The forced choice for option v; a duel card c ({ h, id, y }; Hide: the receiving side's — their server's pick goes through). */
+function hesCh(a, v, c) {
+  const d = c ? { h: c.h, id: c.id, y: c.y } : null;
+  if (d && CARDS[d.id].duel.vs) return { v: a.v, card: a.cd || null, vs: d };
+  return { v, card: d, vs: a.vsd || null };
+}
+/**
+ * A hesitation of yours starts (acts.js `hesit`): the world at RULES.hes.slow, the two options with their point odds (hesOdds,
+ * filled a few rallies a frame), the duel cards you may play lit on the bar (from the hand as the rally started: what it is
+ * replayed from), a timer of RULES.hes.ms real ms. A hesitation already decided (a replay's beat) does nothing.
+ */
+function hesShow(a) {
+  const R = A && A.hesRec;
+  if (!R || R.done.includes(a.n) || (A.hes && A.hes.a.n === a.n)) return;
+  const m = A.m,
+    S = R.S.m,
+    hh = S.deck ? hesHand(m, a) : null,
+    mine = hesYou(m, a.side, { id: a.pid }),
+    cards = [];
+  if (hh)
+    Cards.pile(S, hh.i, hh.y).hand.forEach((id, h) => {
+      if (id && !Cards.duelCan(S, hh.i, h, hh.y, a)) cards.push({ h, id, y: hh.y, i: hh.i, ...Cards.duelInfo(S, hh.i, id, a), p: null });
+    });
+  for (const c of cards) c.ch = hesCh(a, c.v, c);
+  const jobs = [
+    ...a.opts.map((o, k) => ({ k, ch: hesCh(a, o.v, null), won: 0, done: 0 })),
+    ...cards.map((c, k) => ({ c: k, ch: c.ch, won: 0, done: 0 }))
+  ];
+  A.hes = { a, t: 0, mine, you: mine ? a.side : hh ? hh.i : a.side, cards, odds: a.opts.map(() => null), jobs };
+  const p = squadOf(m.t[a.side]).find(q => q.id === a.pid);
+  DBG.log(
+    'info',
+    `hesitation: ${HES_KIND[a.kind]} · #${p ? p.num : '?'} ${p ? firstName(p) : ''} — ${a.opts.map(o => `${o.label} ${o.score}`).join(' vs ')} (AI: ${a.opts[0].label})${
+      cards.length ? ` · duel cards ${cards.map(c => c.id).join(', ')}` : ''
+    }`
+  );
+  hesDraw();
+  handTick(true);
+}
+/** Each frame of a hesitation (playback step, real ms): a few odds rallies, the timer; at its end the AI's pick goes through. */
+function hesTick(ms) {
+  const H = A && A.hes,
+    R = A && A.hesRec;
+  if (!H || !R) return;
+  H.t += ms;
+  const t0 = performance.now(),
+    N = RULES.hes.n;
+  while (H.jobs.length && performance.now() - t0 < 8) {
+    const J = H.jobs[0],
+      k = Math.min(4, N - J.done),
+      seeds = Array.from({ length: k }, (_, j) => J.done + j);
+    J.won += Math.round(hesOdds(A.m, R.S, R.draws, R.forced, H.a.n, J.ch, H.you, seeds) * k);
+    J.done += k;
+    if (J.done < N) continue;
+    if (J.k != null) H.odds[J.k] = J.won / N;
+    else H.cards[J.c].p = J.won / N;
+    H.jobs.shift();
+    hesDraw();
+    handTick(true);
+  }
+  const bar = $('#hes .hest i');
+  if (bar) bar.style.width = `${Math.max(0, 100 - (100 * H.t) / RULES.hes.ms).toFixed(1)}%`;
+  if (H.t >= RULES.hes.ms) hesPick(null, 'time');
+}
+/**
+ * Resolve the hesitation: option k (yours to pick), a lit duel card (c: an A.hes.cards entry), or null — the AI's pick (`why`:
+ * 'time' | 'esc'). A choice other than what the engine played replays the rally (hesReplay). Never waits past the timer.
+ */
+function hesPick(k, why, c) {
+  const H = A && A.hes;
+  if (!H) return;
+  const a = H.a,
+    R = A.hesRec;
+  if (k != null && !H.mine) return;
+  A.hes = null;
+  R.done.push(a.n);
+  const ch = c ? c.ch : k != null ? hesCh(a, a.opts[k].v, null) : null;
+  if (ch && (ch.v !== a.v || ch.card || (ch.vs && ch.vs !== a.vsd))) hesReplay(a.n, ch);
+  const word = c
+    ? `${CARDS[c.id].name}${c.borrow ? ' (borrowed)' : ''} → ${(a.opts.find(o => o.v === c.v) || a.opts[0]).label}`
+    : k != null
+      ? a.opts[k].label
+      : `AI pick ${a.opts[0].label}`;
+  DBG.log('info', `hesitation → ${word} (${why || 'you'})`);
+  if (c) handNote(A.m.t[c.i], `${esc(A.m.t[c.i].name)} plays <b>${esc(CARDS[c.id].name)}</b>${c.borrow ? ' · borrowed' : ''}`, 'duel');
+  hesDraw();
+  handTick(true);
+}
+/** A lit duel card clicked (the bar, side i place h): it plays in the hesitation. */
+function hesCard(i, h) {
+  const H = A && A.hes,
+    c = H && H.cards.find(x => x.i === i && x.h === h);
+  if (c) hesPick(null, 'card', c);
+  return false;
+}
+/** The lit card for place h of side i in the current hesitation, or null. */
+const hesLit = (i, h) => (A && A.hes ? A.hes.cards.find(x => x.i === i && x.h === h) || null : null);
+const hesPct = p => (p == null ? '…' : `${Math.round(p * 100)} %`);
+/** The moment's panel over the court (#hes): whose call, the two options (1 / 2) with your point odds, the timer, the cards' line. */
+function hesDraw() {
+  const st = $('#match');
+  if (!st) return;
+  let el = $('#hes');
+  const H = A && A.hes;
+  if (!H) return void (el && el.remove());
+  if (!el) {
+    st.insertAdjacentHTML('beforeend', '<div class="hes" id="hes" role="dialog" aria-label="Hesitation"></div>');
+    el = $('#hes');
+  }
+  const a = H.a,
+    m = A.m,
+    p = squadOf(m.t[a.side]).find(q => q.id === a.pid),
+    who = p ? `#${p.num} ${firstName(p)}` : 'They';
+  el.style.setProperty('--tc', m.t[a.side].color);
+  el.innerHTML = `<div class="hesh"><span class="lab">${esc(HES_KIND[a.kind])} · ${esc(who)} hesitates</span><small>${
+    H.mine ? 'Pick one, or play a lit duel card' : 'Their call — a lit card answers it'
+  }</small></div><div class="heso">${a.opts
+    .map(
+      (o, k) =>
+        `<button class="btn hesb${k === 0 ? ' hot' : ''}" ${H.mine ? `onclick="hesPick(${k})"` : 'disabled'}><kbd>${k + 1}</kbd><b>${esc(o.label)}</b><span class="odds">${hesPct(
+          H.odds[k]
+        )}</span><small>${k === 0 ? 'AI’s pick' : 'the other read'}</small></button>`
+    )
+    .join(
+      ''
+    )}</div><div class="hest" aria-hidden="true"><i style="width:${Math.max(0, 100 - (100 * H.t) / RULES.hes.ms).toFixed(1)}%"></i></div><small class="hesf">${
+    H.cards.length ? `${H.cards.length} duel card${H.cards.length > 1 ? 's' : ''} lit on the bar · ` : ''
+  }your point odds · <kbd>Esc</kbd> AI’s pick</small>`;
+}
+/** Keys in a hesitation: 1 / 2 the options, Esc the AI's pick. Returns true when it took the key. */
+function hesKey(e) {
+  if (!A || !A.hes || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return false;
+  if (e.key === 'Escape') return (hesPick(null, 'esc'), true);
+  const k = /^Digit([12])$/.exec(e.code || '');
+  if (!k || !A.hes.mine) return false;
+  e.preventDefault();
+  hesPick(+k[1] - 1);
+  return true;
 }

@@ -26,7 +26,9 @@ test('engine: a human player (m.human) plays the same rallies as the sim flow, b
     if (human) m.human = T[1].P[2].id;
     let out = '',
       rallies = 0;
-    while (!m.over && rallies++ < 400) out += JSON.stringify(g.playRally(m).beats);
+    // (your hesitation's beat, spec §2.39 T-367, is presentation only: the rally after it is the same)
+    while (!m.over && rallies++ < 400)
+      out += JSON.stringify(g.playRally(m).beats.filter(b => !(b.acts || []).some(a => a.k === 'hesit')));
     return out + JSON.stringify([m.setScores, m.stat]);
   };
   assert(play(true) === play(false), 'm.human changes nothing in the engine (only the captain chips read it)');

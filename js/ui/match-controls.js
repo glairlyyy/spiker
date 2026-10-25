@@ -125,6 +125,7 @@ function toggleFullscreen() {
 }
 addEventListener('keydown', e => {
   if (!A || e.target.closest('input,select,textarea')) return;
+  if (hesKey(e)) return; // a hesitation of yours (spec §2.39): 1 / 2, Esc
   if (cardsKey(e)) return; // the hand bar (spec §2.37): 1–5 play, Shift+1–5 discard, Tab the other hand
   if (e.target.closest('button')) return;
   if (A.prep) {

@@ -1379,6 +1379,35 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
     blockApproach builds `cm` (front-row blocker → hitter); `right(b)` = committed on the spiker (reach × `commitReach`,
     coverage × `commitQuick`, a double forms), `wrong(b)` (coverage × `commitMiss`); fakeSet: a committed blocker bites; netTouch:
     a committed blocker lunges (`commit` rate); Read Block only for a reading blocker.
+- The hesitation moment and duel cards (spec §2.39, T-367):
+  - Engine (orders.js `hesit(m, kind, side, p, opts, ai)`, no draws): at the three AI picks — serveWalk `tgtPick` (tgtAI's scores
+    `m.tgtAIc.S`), laneAim `atkOrd` (atkPick's plain / fight / avoid; `atkPlay` = what each plays, `atkWord` its words), blockApproach
+    `blkCommit(…, hes)` → `blkRead` (blkPick's read / commit; memo `m.blkM` per possession + attacks so far, since fakeSet asks first)
+    — the AI pick and the runner-up within `RULES.hes.margin[kind]` (× `late[1]` from `late[0]` points) hesitate: ≤ `cap` a side a match
+    (`m.hesN`), one a possession (`m.hesP`), never in a probe. `m.hesR` counts this rally's (reset in rallyStart with `m.hesP`,
+    `m.duelOn`, `m.blkM`). Pick: `m.hesF[n]` (forced by a replay: { v, card, vs, at }) → else, not yours (`hesYou`: a side by 'you',
+    or `m.human`), the AI side's duel card (`Cards.duelAI`) → else the AI's pick. A serve hesitation also lets the receiving side's
+    captain Hide. Log `m.hesLog` [{ n, kind, side, pid, opts [two: AI pick first], ai, v, card, cd, vs, vsd, you, at }]. Recorded
+    and yours (or their serve with a Hide in your hand): a beat `{ dur 600, slow RULES.hes.slow, hes: n, acts: [{ k: 'hesit', …log }] }`
+    pushed at once through `m.hesB` (playRally's B — before the toss / the set); a duel card's `card` act on a 900 ms beat after it.
+  - Duel cards (`kind: 'duel'`, `duel: { on, opt | vs }`; DECK.duel numbers): Target Serve, Pressure (srv, aim), Hide (srv, vs),
+    Tempo `dtempo` / Disguise (atk: fight / avoid), Read Block / Commit (blk). `Cards.canId` → 'duel' (never between points; the
+    captain's capPlay / capClear skip them). `Cards.duelCan(m, i, h, y, hz)` (null | 'duel' | 'opt' | 'need' | 'gap'),
+    `duelInfo` ({ v, borrow, cost × DECK.duel.borrow }), `duelAI` (capPlay's scores: CARD_AI by source + read, affordable),
+    `duelPlay` (mid-rally: the hesitating player pays — Hide the captain — gap, discard, D.log `duel`; `m.duelOn` { pid, id, pos =
+    m.rallyN } read by `duelOn(m, p, id)`; Pressure `m.press[i]`, Hide `m.hide[i]` { id, n: DECK.duel.serves }, counted down by
+    settleLog, read by settled). Effects: Target — tgtResolve exact, serveAim receive − DECK.duel.target; Tempo / Disguise —
+    atkApply covK (/ errK); Commit — a right commit's coverage × commit; Read Block — coverage × read, in time on the quick (readB).
+  - Replay (match.js): `rallySnap(m)` (stCopy + lineups + seats) / `rallyRestore`; `rallyReplay(m, S, draws, forced)` = the rally
+    again on the recorded dice (then fresh); `hesOdds(m, S, draws, forced, n, ch, side, seeds)` = the share won with fresh seeded
+    dice from hesitation n (its `at` hook), m put back. Playback `rallyPull` keeps `A.hesRec` { S, draws, forced, done, ops } when
+    `hesLive(m)`; `hesReplay(n, ch)` swaps the beats after the hesitation's for the replay's, keeps a timeout you asked for and
+    redoes the bar's plays since the serve (`hesOp`). step(): the hesitation beat waits at its end while `A.hes` is up; `hesTick`
+    (real ms) runs the odds a few rallies a frame and the timer (RULES.hes.ms → the AI's pick).
+  - Screen (match-cards.js): `hesShow` (acts.js `hesit`) → `A.hes` { a, t, mine, you, cards, odds, jobs }; `#hes` panel (`hesDraw`:
+    whose call, two `.hesb` options with your point odds — the AI's pick the ink one — keys 1 / 2, a draining bar, Esc = AI pick);
+    playable duel cards lit `.hc.duel` on the bar (from the hand as the rally started, `A.hesRec.S.m`) with "→ option · odds",
+    click → `hesCard` → `hesPick(…, c)`. css/style.css `.hes`.
 
 ## Momentum stages (spec §2.14, T-259)
 

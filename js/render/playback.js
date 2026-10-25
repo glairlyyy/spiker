@@ -602,11 +602,57 @@ function endBeat(b) {
 
 /* ---------- the rally source ---------- */
 
-/** Get the next rally's beats: the engine plays it whole (playRally); playback keeps its own shallow copies. */
+/**
+ * Get the next rally's beats: the engine plays it whole (playRally); playback keeps its own shallow copies. A match where a
+ * hesitation can be yours (spec §2.39, hesLive) keeps the rally's start and its dice (A.hesRec: rallySnap, draws) so a choice
+ * of yours plays it again from there (hesReplay).
+ */
 function rallyPull() {
-  const r = playRally(A.m);
+  const m = A.m;
+  A.hes = null;
+  if (!hesLive(m)) {
+    A.hesRec = null;
+    const r = playRally(m);
+    A.beats = r.beats.map(b => ({ ...b }));
+    A.bi = 0;
+    return;
+  }
+  const S = rallySnap(m),
+    draws = [],
+    nx = RNG.next;
+  RNG.next = () => {
+    const v = nx();
+    draws.push(v);
+    return v;
+  };
+  let r;
+  try {
+    r = playRally(m);
+  } finally {
+    RNG.next = nx;
+  }
+  A.hesRec = { S, draws, forced: {}, done: [], ops: [] };
   A.beats = r.beats.map(b => ({ ...b }));
   A.bi = 0;
+}
+/**
+ * Your choice in hesitation n (forced: { v, card?, vs? }): the rally again from its serve with the same dice (rallyReplay); the
+ * beats after the hesitation's are the new ones. What you did on the bar since the rally started (A.hesRec.ops) and a timeout
+ * you asked for are done again.
+ */
+function hesReplay(n, ch) {
+  const R = A.hesRec,
+    m = A.m;
+  if (!R) return;
+  const toReq = m.toReq ? [...m.toReq] : null;
+  R.forced[n] = ch;
+  const out = rallyReplay(m, R.S, R.draws, R.forced);
+  R.draws = out.draws;
+  const nb = out.r.beats.map(b => ({ ...b })),
+    j = nb.findIndex(b => b.hes === n);
+  if (j >= 0) A.beats = [...A.beats.slice(0, A.bi + 1), ...nb.slice(j + 1)];
+  if (toReq) m.toReq = toReq;
+  for (const f of R.ops) f();
 }
 
 /* ---------- per frame ---------- */
@@ -656,12 +702,14 @@ function step(dt) {
     DBG.log('warn', `Beat ${A.bi} has no valid duration (${b.dur}) — skipped`, b.acts.map(a => a.k).join(','));
     b.dur = 1;
   }
+  if (b.hes != null && A.hes) hesTick(raw / Math.max(0.01, (A.speed || 1) * PACE)); // the hesitation's timer runs on real time
+  const hold = b.hes != null && A.hes && A.hes.a.n === b.hes; // (it waits at its end for your pick: at most RULES.hes.ms)
   const t = Math.min(1, A.el / b.dur);
   applyBeat(b, t);
   ballPhysics(dt);
   stepTrail();
   stepGait(dt);
-  if (t >= 1) {
+  if (t >= 1 && !hold) {
     endBeat(b);
     A.bi++;
   }

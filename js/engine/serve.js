@@ -20,6 +20,7 @@ function playRally(m) {
     B.ins = (i, ...bs) => beats.splice(i, 0, ...bs);
     B.last = () => beats[beats.length - 1]; // (the fake set rides on the pass beat: fakeSet)
   }
+  m.hesB = V ? B : null; // (a hesitation's beat goes in at its moment: hesit)
   if (V && m.cardActs.length) B({ dur: 1100, acts: m.cardActs }); // the cards played since the last serve (spec §2.37)
   const s = m.serve,
     r = 1 - s,
@@ -54,6 +55,11 @@ function rallyStart(m) {
   m.defBeats = [];
   m.att0 = m.att ? [m.att[0].n, m.att[1].n] : [0, 0]; // the cards' tally (spec §2.33): who attacked this rally
   m.srv0 = m.serve;
+  // the hesitation moment (spec §2.39, T-367): this rally's count, its queued beats, the one-possession guard, the duel card on
+  m.hesR = 0;
+  m.hesP = -1;
+  m.duelOn = null;
+  m.blkM = null;
   m.cardActs = Cards.serve(m); // the captains play (spec §2.37); each active play fits, misfits or is countered this rally
 }
 /** Choose the serve up front and walk everyone to their spots; the reset and the server's routine beats. */
@@ -90,7 +96,7 @@ function serveWalk(c) {
       acts: []
     });
   // the target (spec §2.39): the server's order, else their own read (tgtAI: the odds, settling counted — no draws)
-  const tgtV = tgtOf(m, server, s);
+  const tgtV = tgtPick(m, server, s); // (a close call hesitates: its beat now, before the toss)
   Object.assign(c, { oS, oR, server, sq, sType, errK, jumpSrv, runM, endX, startX, tgtV });
   m.srvP0 = server;
 }
@@ -105,7 +111,9 @@ function serveToss(c) {
     tech = (id, r) => (r ? !o || o === id : o === id),
     killer = jumpSrv && hasTech(server, 'killer') && tech('killer', R() < 0.5),
     drive = !jumpSrv && hasTech(server, 'drive') && tech('drive', R() < 0.5),
-    targeted = hasTech(server, 'target') && (R() < 0.3 || (!!tgtV && tgtV !== 'deep' && tgtV !== 'safe')); // aimed: Target Serve lands it exact
+    targeted =
+      (hasTech(server, 'target') && (R() < 0.3 || (!!tgtV && tgtV !== 'deep' && tgtV !== 'safe'))) || // aimed: Target Serve lands it exact
+      (duelOn(m, server, 'target') && tgtV !== 'deep' && tgtV !== 'safe'); // (played in a hesitation, T-367: no draw)
   if (killer) sq *= 1.1;
   if (killer || drive || targeted) techFire(m, server, killer ? 'killer' : drive ? 'drive' : 'target');
   dr(m, server, jumpSrv ? 0.03 : 0.015);
@@ -237,6 +245,7 @@ function serveAim(c) {
   if (cp.weakRs) rs += rc === weakPasser(RT) ? cp.weakRs : cp.otherRs;
   if (tg && tg.seam && rc === tg.rc) rs -= ORDERS.srv.seam;
   if (tg && tg.zone === 'deep') rs -= ORDERS.srv.deep.rs;
+  if (tg && tg.rc === rc && duelOn(m, c.server, 'target')) rs -= DECK.duel.target; // Target Serve played in a hesitation (T-367): on the spot
   if (rollR) rs += Math.max(0, d0 - 0.1) * 45 * (1.3 - rc.speed / 100) * 0.5;
   if (m.wind && GROUNDS.wind[c.sType]) rs -= m.wind * GROUNDS.wind[c.sType] * rnd(0.5, 1.5); // a float wanders in the wind (spec §4.38: one draw, only with wind)
   rs = settled(m, rc, rs); // settling (spec §2.39): served at again and again, they settle in

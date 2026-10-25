@@ -374,7 +374,8 @@ function myMatch(g, seed, ids, o = {}) {
 test('cards: every card has a type — team plays (the playbook, God Resolve, INZONE!!), debuffs (traps, Float, Short), individual (spec §2.37, T-349)', () => {
   const g = load(91);
   for (const [id, c] of Object.entries(g.CARDS)) assert(['team', 'solo', 'debuff'].includes(c.type), `${id} typed`);
-  for (const id of ['power', 'quick', 'commit', 'feedhot', 'wall', 'god', 'inzone']) eq(g.CARDS[id].type, 'team', id);
+  for (const id of ['power', 'quick', 'feedhot', 'wall', 'god', 'inzone']) eq(g.CARDS[id].type, 'team', id);
+  eq(g.CARDS.commit.type, 'solo', 'Commit: a duel card (T-367) — the blocker who hesitates');
   for (const id of ['strap', 'qtrap', 'bait', 'float', 'short']) eq(g.CARDS[id].type, 'debuff', id);
   for (const id of ['killer', 'delay', 'readblk', 'take', 'titan', 'iatk', 'duo_quick']) eq(g.CARDS[id].type, 'solo', id);
   eq(g.DECK.mine, 6, 'your deck of 6');
@@ -729,4 +730,124 @@ test('cards: the captain fuses by the same rules (no draws) and plays the fused 
   Y.hand = ['ifake', 'iatk', null];
   eq(g.Cards.fuse(m, 0, 0, 1, true), 'decoy', 'your Fake + Attack = Decoy');
   eq(Y.hand.join(), ['decoy', null, null].join(), 'in your hand');
+});
+
+// ---- the hesitation moment and duel cards (spec §2.39, T-367) ----
+const DUELS = ['pressure', 'hide', 'dtempo', 'disguise', 'commit', 'readblk', 'target', 'pressure', 'dtempo', 'disguise', 'commit', 'hide'];
+/** One rally of m recorded with its start and dice (as playback's rallyPull). */
+function pulled(g, m) {
+  const S = g.rallySnap(m),
+    draws = [],
+    nx = g.RNG.next;
+  g.RNG.next = () => {
+    const v = nx();
+    draws.push(v);
+    return v;
+  };
+  try {
+    return { S, draws, r: g.playRally(m) };
+  } finally {
+    g.RNG.next = nx;
+  }
+}
+test('hesitation: a close duel call hesitates — at most RULES.hes.cap a side, no draws, the AI pick goes through (spec §2.39, T-367)', () => {
+  const g = load(11);
+  let sets = 0,
+    n = 0,
+    late = 0;
+  for (let j = 0; j < 40; j++) {
+    g.RNG.seed(7000 + j);
+    const L = g.mkLeagueTeams(),
+      m = g.newMatch(L[j % L.length], L[(j * 3 + 1) % L.length], false);
+    while (!m.over) g.playRally(m);
+    sets++;
+    for (const i of [0, 1]) assert(m.hesLog.filter(h => h.side === i).length <= g.RULES.hes.cap, 'over the cap');
+    for (const h of m.hesLog) {
+      n++;
+      late += Math.max(...h.at) >= g.RULES.hes.late[0];
+      assert(h.v === h.ai || h.card, 'nobody yours: the AI pick, or the captain’s duel card');
+      assert(
+        h.opts.length === 2 && h.opts[0].score - h.opts[1].score <= g.RULES.hes.margin[h.kind] * g.RULES.hes.late[1] + 1e-9,
+        'a close call'
+      );
+    }
+  }
+  const a = n / sets / 2;
+  assert(a >= 1.5 && a <= 3, `about 2 a side a set (${a.toFixed(2)})`);
+  assert(late / n > 0.3, `late points hesitate more easily (${((100 * late) / n).toFixed(0)} % of them at ${g.RULES.hes.late[0]}+)`);
+});
+test('hesitation: yours gets a beat; the rally replayed with the same dice is the same, your other pick changes only what follows (spec §2.39, T-367)', () => {
+  const g = load(11);
+  g.RNG.seed(5);
+  const L = g.mkLeagueTeams(),
+    m = g.newMatch(L[0], L[3], true, { cards: [{ by: 'you', deck: DUELS }, {}] }),
+    J = x => JSON.stringify(x);
+  let seen = 0;
+  while (!m.over) {
+    const { S, draws, r } = pulled(g, m),
+      live = g.rallySnap(m),
+      h = r.beats.findIndex(b => b.hes != null);
+    const same = g.rallyReplay(m, S, draws, {});
+    eq(J(same.r.beats), J(r.beats), 'the same dice, the same rally');
+    if (h >= 0) {
+      seen++;
+      const a = r.beats[h].acts[0];
+      eq(a.k, 'hesit', 'its act');
+      assert(r.beats[h].slow === g.RULES.hes.slow, 'slow motion');
+      const b = g.rallyReplay(m, S, draws, { [a.n]: { v: a.opts[1].v } });
+      eq(J(b.r.beats.slice(0, h)), J(r.beats.slice(0, h)), 'everything before the hesitation stays');
+      eq(b.r.beats[h].hes, a.n, 'the hesitation at the same beat');
+      const o = g.hesOdds(m, S, draws, {}, a.n, { v: a.opts[0].v }, a.side, [0, 1, 2, 3]);
+      assert(o >= 0 && o <= 1, 'odds');
+    }
+    g.rallyRestore(m, live);
+  }
+  assert(seen >= 2, `your hesitations seen (${seen})`);
+});
+test('duel cards: only in a hesitation — never played between points, the captain plays them there; costs, borrow, Pressure / Hide (spec §2.39, T-367)', () => {
+  const g = load(11);
+  for (const id of ['target', 'readblk', 'commit', 'pressure', 'hide', 'dtempo', 'disguise']) eq(g.CARDS[id].kind, 'duel', id);
+  let duel = 0;
+  for (let j = 0; j < 12; j++) {
+    g.RNG.seed(300 + j);
+    const L = g.mkLeagueTeams(),
+      m = g.newMatch(L[j % L.length], L[(j + 2) % L.length], false, { cards: [{ deck: DUELS }, { deck: DUELS }] });
+    for (const i of [0, 1]) m.deck[i].hand.forEach((id, h) => id && eq(g.Cards.can(m, i, h), 'duel', 'not between points'));
+    while (!m.over) g.playRally(m);
+    for (const i of [0, 1]) {
+      assert(!m.deck[i].log.some(e => e.k === 'play' && g.CARDS[e.id].kind === 'duel'), 'a duel card played between points');
+      duel += m.deck[i].log.filter(e => e.k === 'duel').length;
+    }
+  }
+  assert(duel >= 12, `the captains play duel cards in hesitations (${duel})`);
+  // Pressure: that passer does not settle for 3 serves; Hide: their weak passer as if fully settled
+  g.RNG.seed(9);
+  const T = g.mkLeagueTeams(),
+    m = g.newMatch(T[0], T[1], false),
+    RT = m.t[1],
+    a = g.weakPasser(RT);
+  g.playRally(m);
+  m.serve = 0;
+  for (let i = 0; i < 3; i++) g.settleLog(m, RT, a);
+  const S = g.RULES.settle;
+  m.press = [{ id: a.id, n: 3 }, null];
+  eq(g.settled(m, a, 50), 50, 'Pressure: no settling');
+  m.press = null;
+  m.hide = [null, { id: a.id, n: 3 }];
+  eq(g.settled(m, a, 50), 50 * (1 + S.cap), 'Hide: as if settled in');
+  for (let i = 0; i < 3; i++) g.settleLog(m, RT, a);
+  eq(m.hide[1], null, 'Hide lasts 3 serves');
+  // borrow: a technique the hesitating player has not learned, a teammate's — × DECK.duel.borrow
+  const p = m.t[0].P.find(q => !g.ownsTech(q, 'target')),
+    hz = { kind: 'srv', side: 0, pid: p.id, opts: [{ v: a.id }, { v: 'safe' }] },
+    mate = m.t[0].P.find(q => q !== p);
+  m.deck = null;
+  g.cardsInit(m, { cards: [{ deck: ['target'], fill: false }, {}] });
+  for (const q of m.t[0].P) if (q !== p && g.ownsTech(q, 'target')) q.wit = q.speed = q.power = 1; // (nobody else knows it by the stats)
+  if (m.t[0].P.some(q => g.ownsTech(q, 'target'))) return; // (career-learned: no case here)
+  eq(g.Cards.duelCan(m, 0, 0, false, hz), 'need', 'nobody knows it');
+  (mate.skills || (mate.skills = [])).push('target');
+  eq(g.Cards.duelCan(m, 0, 0, false, hz), null, 'a teammate knows it');
+  const inf = g.Cards.duelInfo(m, 0, 'target', hz);
+  assert(inf.borrow && inf.cost.amt === g.CARDS.target.cost.amt * g.DECK.duel.borrow, 'borrowed: the higher cost');
 });

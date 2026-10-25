@@ -131,6 +131,10 @@ onLeave }` (see Screens; `onLeave` only cleans up), opened by the UI with `watch
 - **One rally at a time**: `playRally(m)` plays a rally whole for every match; playback copies its beats (`rallyPull`). The
   in-rally decision points and one-press prompts (§2.13, §2.16) were removed (T-264); `m.human` (your player in a match you
   play, or the Monster game's Play as) marks your player; the captain's chips are gone too (owner, 2026-10-14).
+- **The hesitation moment** (spec §2.39, T-367): when a hesitation can be yours, playback keeps the rally's start and its dice
+  (`rallySnap`, `A.hesRec`); your pick replays the rally from its serve on the same dice with the choice forced (`rallyReplay`,
+  `m.hesF`) and swaps the beats after the hesitation's. Simmed / headless matches never wait (the AI's pick). ARCHITECTURE-details
+  "Plan board — role orders".
 - `rally()` (T-275) loops possessions: `possessionStart` (get-ups, the long-rally tire) → `setPhases(c)` (recover / free ball,
   setter or save-set, dump, set, attack choice, bad set over: `{ end }` or `{ s, h, a }`) → `attackPhases(c, …)` (fake set … dig);
   each possession ends `{ point }` or `{ next }` (`endOf`). `newMatch` builds its state from `matchTallies()`, `lineupOf(t)`,

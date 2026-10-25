@@ -138,6 +138,7 @@ function play(seed, smart) {
   return m;
 }
 let d = 0,
+  hes = 0,
   w0 = 0,
   w1 = 0;
 const t0 = Date.now(),
@@ -149,6 +150,7 @@ for (let j = 0; j < N; j++) {
   d += share(mb) - share(ma);
   w0 += ma.winner === 0;
   w1 += mb.winner === 0;
+  hes += (mb.hesLog || []).length; // (hesitations, both sides — spec §2.39 T-367)
   for (const o of Object.values(mb.ord))
     for (const [k, v] of Object.entries(o)) {
       const key = `${k}:${/^p\d/.test(String(v)) ? 'a player' : v}`;
@@ -163,6 +165,7 @@ console.log(
   `BOT ${TEAMS} ${MODE}: points ${((100 * d) / N).toFixed(2)} %, match wins ${((100 * (w1 - w0)) / N).toFixed(1)} % (Auto wins ${((100 * w0) / N).toFixed(0)} %)`
 );
 console.log('orders at the end of the matches:', JSON.stringify(pick));
+console.log(`hesitations a side a set: ${(hes / N / 2).toFixed(2)}`);
 console.log(
   'side 0 serves by serves in a row at the receiver before it (n: points won · aces + broken passes, % of serves):',
   Object.entries(inRow)

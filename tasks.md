@@ -59,7 +59,7 @@ Accept:
 QA: Monster game → Plan board shows the free orders; a match plays to its result with no page errors.
 Result: Serve targets free (each passer, seam, deep, safe; aimed = a lean + errors × 1.1, Target Serve = exact, no aim error; Auto = `tgtAI`: each option's srvOdds, settling counted, no draws — the AI serves mostly seam / safe); Hunt card / plan / AI picks / book & trap entries gone (SUB.hunt kept); settling `RULES.settle` 0.04 / cap 0.15 / fade 1 (`m.settle`); spike fight (Power, new Tool shot) vs avoid (a player / open: coverage × 0.8, pace × 0.92) with the hitter's own read `atkPick` when no order; block Read / Commit (the quick) / Commit on a hitter for every front-row blocker, own read `blkPick` (commit once a hitter takes > half of 8+ attacks), team Commit = 'quick' as before. Numbers in spec §2.39 (fixed weak −0.80 / −1.17 % pts vs alternating −0.48 / −1.38, league / tour; 10-OVR gap 71 → 72 %, tour 73 → 71; cards captain +11.3 / +12.6 → +10.6 / +10.4). Deviations: no Plan board UI exists since T-298 (no js/ui change; QA = test:ui's Monster game); also touched js/data/skills.js (Encyclopedia Target Serve / Read Block text), tests/bot.js (tgt:weak / tgt:alt modes, SETTLE env), tests/cards.js (spam default), tests/drone.test.js (terrain seed 4243 → 4244: noise), tests/engine.test.js / cards.test.js / ui-smoke.js (Hunt → orders / other cards); ORDERS.odds.dSeam 0.4 → 0.3 (the free seam's real run; odds within 3 points). Sims ~1.5× slower (tgtAI ≈ 1 ms a serve). Settling at the spec's size only levels hunting off (vs climbing without it) — a clear fall needs step ≈ 0.08 (owner). Goldens updated (serve targets and attack / block choices change every match).
 
-### [ ] T-367: The hesitation moment and duel cards
+### [x] T-367: The hesitation moment and duel cards
 Spec: §2.39, §2.37          Goldens: update only if the AI's default pick changes a draw (say why)          Save: no change
 Goal: when the AI's top two options in a duel are close, the play slows to ≈ 0.1× for ~8 s with the two options and their
 odds; you may play a duel card or borrow a teammate's technique; otherwise the AI's pick goes through.
@@ -82,7 +82,7 @@ Accept:
 - npm test, lint, test:ui (a new step: a Deck match reaches a hesitation, a duel card resolves it) pass.
 - About 2–4 hesitations a set in a league match; a duel card played in one shifts that duel's odds as shown.
 QA: Dev deck match as player and as captain → a hesitation appears, slow motion, pick / card / time-out each work.
-Result:
+Result: built; ≈ 2.35 hesitations a side a set (league); Target Serve +5.3 pts odds, Tempo +1.3, Disguise +2.1, Commit ≈ 0; rally replay on the same dice from the hesitation; playbook duel cards; Hide exception; goldens updated (AI captains play duel cards in hesitations; Commit / Target Serve / Read Block duel-only); the m.human test ignores the presentation-only hesit beat.
 
 ### [x] T-365: The running clock
 Spec: §4.43 (§4.41, §4.42, §4.37)          Goldens: unchanged          Save: the clock keeps game minutes (no version bump if `run.clock` reads old saves; else 26 — say)

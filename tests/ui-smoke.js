@@ -1278,6 +1278,70 @@ const step = async (name, fn) => {
       finishMatch();
     });
   });
+  await step(
+    'Hesitation (T-367): a Deck match as captain hesitates — slow motion, two options, a time-out → the AI pick, a duel card resolves one',
+    async () => {
+      await ev(() => navigate('menu'));
+      await ev(() => startDeckMatch('captain'));
+      await pg.waitForFunction(() => typeof A !== 'undefined' && A && A.m && A.prep && document.querySelector('#prep .cdeck'), null, {
+        timeout: 60000
+      });
+      await ev(() => {
+        prepStart();
+        A.hold = true; // (stepped by hand below)
+        Object.assign(RULES.hes, { margin: { srv: 99, atk: 99, blk: 99 }, cap: 99, n: 4 }); // every duel hesitates; quick odds
+        A.m.deck[0].hand = ['pressure', 'dtempo', 'disguise', 'commit', 'hide'];
+        A.hshow = null;
+      });
+      /** Step the match until a hesitation of yours is up (want: one with a lit duel card). */
+      const reach = want =>
+        ev(want => {
+          for (let n = 0; n < 60000 && !A.m.over; n++) {
+            step(16);
+            if (Dir.busy()) exchangeSkip();
+            if (A.paused) togglePause();
+            if (A.hes && (!want || A.hes.cards.length)) return true;
+            if (A.hes && want) hesPick(null, 'esc');
+          }
+          return false;
+        }, want);
+      if (!(await reach(false))) throw new Error('no hesitation in a whole match');
+      const first = await ev(() => {
+        if (!$('#hes') || $('#hes').querySelectorAll('.hesb').length !== 2) throw new Error('no panel with two options');
+        if (!/<kbd>1<\/kbd>/.test($('#hes').innerHTML) || !/<kbd>2<\/kbd>/.test($('#hes').innerHTML))
+          throw new Error('hotkeys 1 / 2 not printed');
+        const kind = HES_KIND[A.hes.a.kind];
+        for (let n = 0; n < 200 && A.hes; n++) step(16);
+        if (!A.hes || A.ts > 0.2) throw new Error(`not in slow motion (A.ts ${A.ts})`);
+        const n0 = A.hes.a.n;
+        for (let n = 0; n < 1200 && A.hes && A.hes.a.n === n0; n++) step(16); // 8 s of real time: the timer runs out
+        if (A.hes && A.hes.a.n === n0) throw new Error('the timer never ran out (a forever pause)');
+        if (!/hesitation → AI pick .*\(time\)/.test(DBG.text())) throw new Error('the time-out did not go to the AI pick');
+        return kind;
+      });
+      if (!(await reach(true))) throw new Error('no hesitation with a lit duel card');
+      await ev(() => handTick(true));
+      const qa = process.env.QA_SHOT;
+      if (qa) await pg.screenshot({ path: qa });
+      const card = await ev(() => {
+        const c = A.hes.cards[0],
+          el = $(`#hand .hc.duel[data-h="${c.h}"]`);
+        if (!el) throw new Error('the duel card is not lit on the bar');
+        if (!/→ .* · /.test(el.textContent)) throw new Error('no option · odds on the lit card');
+        el.click();
+        if (A.hes) throw new Error('the card did not resolve the hesitation');
+        if (!A.m.deck[0].log.some(e => e.k === 'duel' && e.id === c.id)) throw new Error('the duel card was not played');
+        if (!/hesitation → .*\(card\)/.test(DBG.text())) throw new Error('no hesitation line for the card');
+        for (let n = 0; n < 3000 && A.bi < A.beats.length - 1; n++) step(16);
+        return CARDS[c.id].name;
+      });
+      await ev(() => {
+        while (!A.m.over) playRally(A.m);
+        finishMatch();
+      });
+      return `${first} time-out · ${card} played`;
+    }
+  );
   const dbg = await ev(() => (typeof DBG !== 'undefined' ? DBG.text() : '')).catch(() => '');
   for (const l of dbg.split('\n')) if (/\berror\b/i.test(l) && !/STALL/.test(l)) errors.push(`DBG: ${l.slice(0, 200)}`);
   await browser.close();
