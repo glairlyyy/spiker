@@ -653,7 +653,7 @@ test('map3d: transport — buses and the ferry on their timetable, stops and pie
 });
 
 // ---------- T-364: street level streams the near blocks (spec §4.37 6 Streaming) ----------
-test('map3d streaming: the block grid, and the manager prepares the near blocks across frames, shows them when all are ready (yours at once: the walk never holds)', () => {
+test('map3d streaming: the block grid, and the manager prepares the near blocks across frames, shows the ready part (walking never waits; an action prepares with the larger budget)', () => {
   const { blockGrid, createStream, STREAM } = require('../js/map3d/stream3d.mjs'),
     G = blockGrid(4000, 3000, 200, 200);
   eq(`${G.nx}x${G.nz}`, '20x15', 'blocks a side');
@@ -691,17 +691,14 @@ test('map3d streaming: the block grid, and the manager prepares the near blocks 
       .join(',');
   r = S.tick({ ...at, st: 1 });
   assert(
-    !r.hold && log.show.length === 1 && log.show[0].split(',').includes('22'),
-    'your block prepared and drawn the first frame: no hold'
+    !r.wait && log.show.length === 1 && log.show[0].split(',').includes('22'),
+    'your block prepared and drawn the first frame (the rest: its far version)'
   );
   let n = 0;
   do r = S.tick({ ...at, st: 1 });
-  while (log.show[log.show.length - 1] !== full && ++n < 50);
-  assert(
-    log.show.length >= 2 && log.show[0] !== full && !r.hold,
-    'the rest prepared over the next frames and topped up; the walk never held'
-  );
-  assert(log.prep.length <= (n + 2) * STREAM.per * 4, 'a few blocks a frame');
+  while (log.show[log.show.length - 1] !== full && ++n < 80);
+  assert(log.show.length >= 2 && log.show[0] !== full && !r.wait, 'the rest prepared over the next frames, topped up as it grows');
+  assert(log.prep.length <= (n + 2) * STREAM.per, 'walking: a few blocks a frame (the small budget)');
   eq(log.show[log.show.length - 1], full, 'then shown = the blocks within r, once all are ready');
   assert(S.near(450, 250) && !S.near(10, 590), 'your block drawn; a far one not');
   // walking within the near set: nothing re-shown; a jump far away draws your block at once, the rest as it gets ready
@@ -709,15 +706,21 @@ test('map3d streaming: the block grid, and the manager prepares the near blocks 
   S.tick({ ...at, cam: [460, 250], you: [460, 250], st: 1 });
   eq(log.show.length, s0, 'no re-show while the near set is the same');
   r = S.tick({ ...at, cam: [3500, 2700], you: [3500, 2700], st: 1, dt: 0.2 });
-  assert(!r.hold && S.near(3500, 2700) && log.show.length === s0 + 1, 'a jump: your block drawn the same frame, no hold');
+  assert(!r.wait && S.near(3500, 2700) && log.show.length === s0 + 1, 'a jump: your block drawn the same frame, never a wait');
   n = 0;
-  while (S.info().queue && ++n < 50) r = S.tick({ ...at, cam: [3500, 2700], you: [3500, 2700], st: 1, dt: 0.2 });
-  assert(!r.hold && log.show.length === s0 + 2 && !S.info().holds, 'topped up once the rest is ready; never held');
-  // a rebuilt layer prepares again (your block first: still no hold); going up shows everything
-  const p0 = log.prep.length;
+  while (S.info().queue && ++n < 200) r = S.tick({ ...at, cam: [3500, 2700], you: [3500, 2700], st: 1, dt: 0.2 });
+  assert(
+    !r.wait && !r.busy && log.show[log.show.length - 1].split(',').length === G.within(3500, 2700, STREAM.r).length,
+    'topped up to the full near set; never a wait'
+  );
+  // behind an automated action ('act'): the blocks within pre prepared with the larger budget; "Loading…" only after STREAM.wait s
+  const s1 = log.show.length;
   ver = 2;
-  for (let i = 0; i < 20; i++) r = S.tick({ ...at, cam: [3500, 2700], you: [3500, 2700], st: 1 });
-  assert(log.prep.length > p0 && log.show.length === s0 + 3 && !r.hold, 'a new layer build: prepared and shown again');
+  r = S.tick({ ...at, cam: [3500, 2700], you: [3500, 2700], st: 1, dt: 0.1, boost: 'act' });
+  assert(!r.busy && !r.wait && log.show.length === s1 + 1, 'an action: every block within pre prepared at once (no Loading)');
+  ver = 3;
+  r = S.tick({ ...at, cam: [3500, 2700], you: [3500, 2700], st: 1, dt: 0.1 });
+  assert(r.busy && !r.wait, 'a walk with blocks left: busy, never a wait');
   S.tick({ ...at, st: 0.2 });
   eq(log.show[log.show.length - 1], null, 'back on the map: everything (show(null))');
   assert(!S.info().on && S.near(10, 590), 'not streaming');

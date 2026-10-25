@@ -908,11 +908,14 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   layers)`; map3d's `streamStep` ticks it after the camera with the camera / your point and `st`. At st ≥ `STREAM.show` (0.6): the
   near set = blocks within `STREAM.r` 250 m of you (Fast 190; not the camera: the week-1 fence can hold it back), re-picked after
   `step` m; blocks within `pre` (420 / 320) are prepared nearest first — your block first, at once — ≤ `per` blocks and `budget` ms a
-  frame (× 4 while the set is partly drawn); once every near block is ready each layer `show(set)` (only when the set changes); when
-  your block isn't drawn the ready part is shown at once (`shownKey` null: topped up when the rest is ready). Below show: `show(null)` =
-  the map look, untouched. `hold` = your block isn't shown after that (a fallback: never while walking) →
-  map3d ticks your avatar with dt 0 and mapcam's WASD waits (`S().hold`); after `wait` 0.25 s `on.loading(true)` → MapView.streamWait
-  (a `.mapload` pill, css/map.css), false when it goes on. Haze while streaming: `STREAM.haze` [150, 640] (Fast [120, 480]).
+  frame; each layer `show(set)` gets the ready part of the near set (when it changes: all ready at once, a growing part every `topUp`
+  0.2 s, at once when your block just got ready); a block not ready draws its far version. Walking never waits (no hold). `tick({ boost })`:
+  'act' (map3d `prepare(true)`, from career-map lockFF; false at ffEnd / lockEnd) or 'arrive' (3 s after `avatar.busy()` ends) use
+  `STREAM.boost` (40 ms, 64 blocks a frame) → `{ busy }`; an 'act' busy past `wait` 0.25 s → `wait` → `on.loading(true)` →
+  MapView.streamWait (a `.mapload` pill, css/map.css), false when done. A WASD stop (`MapView.walk(p)`, not a click) → career-map
+  `mapRoam`: City.travelTo without a walk lock (an encounter: the old path), `MapView.saveSoon`, `clockRefresh`, and `roamRender` —
+  one `renderCareer` ROAM_IDLE 0.9 s after WASD rests (idle callback); within 1.5 m of the rules' point it does nothing (no walk
+  back). map3d `update`: a new you.at within `STAY_M` 1.6 m of the idle avatar (no inside / exit / ride) moves nothing. Below show: `show(null)` = the map look, untouched. Haze while streaming: `STREAM.haze` [150, 640] (Fast [120, 480]).
   Layers (`{ id, ver(), prep?(k), show(keys | null) }`): **terrain** (map3d) — a chunk outside the set draws `terrain.coarse[k]`
   (terrain3d `coarseIndex`: 4 × 4-cell fans round their middle vertex, the chunk's edges keeping every grid vertex — no cracks
   against a full chunk; ~7× fewer triangles; same attributes); **town** (town3d `layer`) — prep: the block's detailed items' vertex

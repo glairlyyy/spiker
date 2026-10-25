@@ -329,6 +329,7 @@ function lockFF(L) {
     return lockEnd();
   }
   if (MapView.m3 && MapView.m3.act) MapView.m3.act(F.act);
+  if (MapView.m3 && MapView.m3.prepare) MapView.m3.prepare(true); // (street level: the blocks round you load behind it)
   lockPhase('ff');
 }
 /** h more game hours of the fast-forward (MapView.tick): the badge, then the end. */
@@ -352,6 +353,7 @@ function ffEnd(L, done) {
     r = F.run(done);
   L.ff = null;
   if (MapView.m3 && MapView.m3.act) MapView.m3.act(null);
+  if (MapView.m3 && MapView.m3.prepare) MapView.m3.prepare(false);
   if (!r.line) return (F.walk && (Run.log(RUN, F.walk.trim()), Run.save(RUN)), lockEnd());
   Run.log(RUN, F.walk + r.line);
   Run.save(RUN);
@@ -475,6 +477,7 @@ function lockEnd() {
   const L = CW.lock;
   CW.lock = null;
   roadClear();
+  if (MapView.m3 && MapView.m3.prepare) MapView.m3.prepare(false); // (an action's loading ends with it)
   if (L && L.phase === 'res') return renderCareer(); // the hub catches up (and the match's scene, if any, may play)
   const el = $('#actlock');
   if (el) el.remove();
@@ -589,6 +592,35 @@ function mapTravel(x, y, how = 'walk') {
   actLock(null, null, null, enc);
   if (TRANSPORT[how]) CW.lock.by = TRANSPORT[how].name; // the pill: "By bus" (spec §4.42)
   renderCareer();
+}
+/**
+ * A WASD stop at map point p (owner, 2026-10-25: no snap, no stutter): the rules' travel as mapTravel, but you already stand there —
+ * no walk lock, the save and the hub's full redraw (MapModel.build, the map's model) wait until you have stood still (roamRender);
+ * only the week strip is refreshed now. A road encounter plays as before.
+ */
+function mapRoam(x, y) {
+  if (CW.lock) return;
+  const via = roadStart([x, y]),
+    line = City.travelTo(RUN, [x, y], 'walk');
+  if (!line) return;
+  Run.log(RUN, line);
+  if (CW.spot && CW.spot.startsWith('pt:')) CW.spot = null;
+  const enc = roadAfter(RUN, via);
+  if (enc) return (Run.save(RUN), actLock(null, null, null, enc), renderCareer());
+  MapView.saveSoon();
+  if (typeof clockRefresh === 'function') clockRefresh();
+  roamRender();
+}
+/** The hub catches up once WASD has rested ROAM_IDLE ms (and the page is idle): one redraw for a run of stops. */
+const ROAM_IDLE = 900;
+function roamRender() {
+  clearTimeout(roamRender.t);
+  roamRender.t = setTimeout(() => {
+    if (MapView.m3 && MapView.m3.driving && MapView.m3.driving()) return roamRender(); // (still walking: later)
+    const go = () => !CW.lock && document.querySelector('.career.hub') && renderCareer();
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 1000 });
+    else go();
+  }, ROAM_IDLE);
 }
 function mapEndWeek() {
   if (!Run.canEndWeek(RUN)) return;

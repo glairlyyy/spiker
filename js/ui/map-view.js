@@ -68,10 +68,12 @@ const MapView = {
       same = pos && Math.hypot(p[0] - pos[0], p[1] - pos[1]) < 3;
     if (!pos || same || !MapView.canWalk()) {
       MapView.roamDone(false);
+      if (!click && same && pos) return; // (a WASD stop within a step of the rules' point: you stay where you stopped)
       return click ? !same && MapView.on0 && MapView.on0.point(p) : MapView.home();
     }
     if (!click) MapView.free = p.slice();
-    mapTravel(p[0], p[1]);
+    if (click) mapTravel(p[0], p[1]);
+    else mapRoam(p[0], p[1]); // (WASD: no walk to play, the hub redraws once you rest)
     const now = City.pos(RUN),
       moved = now[0] !== pos[0] || now[1] !== pos[1];
     MapView.roamDone(moved); // (spec §4.43: the walk you made counts once — the travel's hours, or idle when refused)
@@ -82,8 +84,8 @@ const MapView = {
     }
   },
   /**
-   * Street level's streaming (spec §4.37 6, T-364): the block you stand in isn't drawn yet, your walk waits — a small "Loading…"
-   * over the map (on = false: gone).
+   * Street level's streaming (spec §4.37 6, T-364): an automated action (a session, a sleep) is still preparing the blocks round
+   * you after STREAM.wait s — a small "Loading…" over the map (on = false: gone). Walking never waits.
    */
   streamWait(on) {
     const el = MapView.el;

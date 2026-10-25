@@ -7,8 +7,8 @@
 // size, the people near the camera become VRMs (life3d), the town's detail ring builds round the camera (town3d ring), the sky shows
 // and a haze hides the map look far off. Streaming (stream3d.mjs, T-364): from STREAM.show down only the blocks near you are
 // drawn in full (terrain chunks, the town's detailed lots, nature, the story figures), beyond them coarse terrain, the Fast boxes and
-// flat trees under a closer haze; your own block is prepared and drawn the frame you reach it (the hold — your walk waits,
-// on.loading(true) asks for a "Loading…", false when it goes on — is a fallback only). The fog's lantern lags FOG_LAG m there (fogM). The interiors layer (js/map3d/interior3d.mjs, T-336b — imported once at build):
+// flat trees under a closer haze; walking never waits (a block not ready yet draws its far version); the heavy preparing runs
+// behind an automated action (prepare(true): on.loading(true) asks for a "Loading…" if it takes > STREAM.wait s, false when done) and on arrival. The fog's lantern lags FOG_LAG m there (fogM). The interiors layer (js/map3d/interior3d.mjs, T-336b — imported once at build):
 // createInteriors(scene, heightAt, { cut }) (cut = town.cut) → see interior3d.mjs; today's people for a place inside stand at its
 // stations (lifeM), the station you stand at goes to on.station(st | null), a street-level click on one to on.station(st, true).
 // on = { pick(id), point([x, y]), hover?(id | null, clientX, clientY, going), person?(id), station?(st | null, click?) }: hover / person are the named figures
@@ -49,6 +49,7 @@ export { inside, edgeDist, sideDist }; // (the polygon maths live in geo3d.mjs; 
 const CLASH_R = 12;
 /** Where your figure stands for model m: inside the place (you.inside's last point, spec §4.40), else you.at. */
 export const standAt = m => (m.you.inside && m.you.inside.length ? m.you.inside[m.you.inside.length - 1] : m.you.at);
+const STAY_M = 1.6; // m: at street level a new you.at this close to where your avatar stands (a WASD stop, rounded) doesn’t move it
 const STOP_WAIT = 2; // s: WASD's stop resolves within this of the last step (mapcam3d STREET.stop + a margin)
 const IDLE_S = 3; // canvas detached this long → release the renderer
 const SHADOW_LAYER = 1; // the terrain's coarse shadow casters: seen by the sun's shadow camera only
@@ -128,7 +129,9 @@ export function create(onIdle) {
     crect = null, // the canvas's client rect for the station prompt ({ b, t }: re-read each second and on a resize)
     stV = new THREE.Vector3(),
     stream = null, // street level's near blocks (stream3d.mjs, T-364)
-    hold = false, // … the block you stand in isn't drawn yet: your walk waits
+    actK = false, // an automated action passes time (prepare): the stream prepares with the larger budget
+    wasBusy = false, // your avatar walked / rode last frame
+    arriveT = 0, // s left of the arrival's larger budget
     waitShown = false, // on.loading(true) was told
     fogDrawn = null, // the fog the dimmed layers (terrain, town, nature, night lights) draw now (fogM)
     figRoot = new Map(), // the story figures' own groups (hidden beyond the near blocks at street level)
@@ -176,8 +179,7 @@ export function create(onIdle) {
     cw,
     ch,
     walkK,
-    consume,
-    hold // (WASD waits too)
+    consume
   }));
   const build = m => {
     terrain = buildTerrain(m);
@@ -381,10 +383,15 @@ export function create(onIdle) {
     cam.aspect = cw / ch;
     cam.updateProjectionMatrix();
   };
-  /** Street level's near blocks (T-364): prepare / show them, hold the walk while yours isn't drawn, hide far story figures. */
+  /** Street level's near blocks (T-364): prepare / show them (the larger budget behind an action / on arrival), hide far story figures. */
   const streamStep = dt => {
-    const r = stream.tick({ cam: [cam.position.x, cam.position.z], you: avatar.pos(), st, low, dt });
-    hold = r.hold;
+    const busy = avatar.busy();
+    if (wasBusy && !busy) arriveT = 3;
+    wasBusy = busy;
+    arriveT = Math.max(0, arriveT - dt);
+    const boost = actK ? 'act' : arriveT > 0 && !busy ? 'arrive' : 0,
+      r = stream.tick({ cam: [cam.position.x, cam.position.z], you: avatar.pos(), st, low, dt, boost });
+    if (!r.busy) arriveT = 0;
     for (const [id, g] of figRoot) {
       const f = figs.get(id);
       g.visible = !r.on || (f && stream.near(...f.pos()));
@@ -439,7 +446,7 @@ export function create(onIdle) {
       frustum.setFromProjectionMatrix(projM.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)); // (last frame's camera)
       lodView.px = (ch || 1) / (2 * Math.tan((cam.fov * Math.PI) / 360));
       avatar.setLife(st);
-      avatar.tick(hold ? 0 : dt * walkK, terrain.heightAt, lodView); // your walk at the chosen speed (setWalk; the others keep theirs); held while loading
+      avatar.tick(dt * walkK, terrain.heightAt, lodView); // your walk at the chosen speed (setWalk; the others keep theirs)
       for (const f of figs.values()) (f.setLife(st), f.tick(dt, terrain.heightAt, lodView)); // (the guide, the rival, the aces: life size too)
       clock += dt;
       clockStep(dt);
@@ -553,7 +560,17 @@ export function create(onIdle) {
         head = m.you.exit || []; // …and out of the one you leave
       if (m.time && m.time.walk[0] !== lastWalk) ((walkPts = null), (prog = 1)); // a new action (no walk unless one starts below)
       lastWalk = m.time ? m.time.walk[0] : null;
+      const [ax, az] = avatar.pos(),
+        here =
+          st > 0.5 && // (street level, where WASD walks; the map view walks as before)
+          !avatar.busy() &&
+          !tail.length &&
+          !head.length &&
+          !(m.you.ride && m.you.ride.legs) &&
+          Math.hypot(at[0] * MAP_M - ax, at[1] * MAP_M - az) < STAY_M;
       if (seen === null) avatar.snap(standAt(m));
+      else if (key !== seen && here)
+        seen = key; // (a WASD stop: the rules' point is where you stand, rounded — you stay put)
       else if (key !== seen) {
         const [x0, z0] = avatar.pos();
         const T = m.time,
@@ -588,6 +605,10 @@ export function create(onIdle) {
     },
     /** WASD is moving you (or did within the stop's wait): the UI's clock lets the rules wait (spec §4.43). */
     driving: () => !!(avatar && avatar.driving && avatar.driving(STOP_WAIT)),
+    /** An automated action passes time (a fast-forward, on = true; false: over): street level prepares the blocks round you meanwhile. */
+    prepare(on) {
+      actK = !!on;
+    },
     /** While a session / a sleep fast-forwards (spec §4.43): your figure drills ('drill') or sleeps ('sleep'); null = stands. */
     act(k) {
       if (avatar) avatar.act(k);

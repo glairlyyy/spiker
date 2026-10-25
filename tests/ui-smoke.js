@@ -484,12 +484,12 @@ const step = async (name, fn) => {
           `not at street level: ${JSON.stringify(await ev(() => ({ s: MapView.m3.street(), view: MapView.m3.info().view, ring: MapView.m3.info().ring })))}`
         );
       });
-    // streaming (T-364): only the near blocks drawn in full once they are ready; the "Loading…" pill comes and goes
+    // streaming (T-364): only the near blocks drawn in full once they are ready; walking never waits; the "Loading…" pill (behind an action) comes and goes
     await pg
       .waitForFunction(
         () => {
           const s = MapView.m3.info().stream;
-          return s && s.on && s.near > 0 && !s.hold;
+          return s && s.on && s.near > 0;
         },
         null,
         { timeout: 120000 }
@@ -526,6 +526,22 @@ const step = async (name, fn) => {
     await ev(() => MapView.m3.jump()); // (the walk itself shows in QA; here only its end)
     await pg.waitForFunction(() => !MapView.busy() && !CW.lock, null, { timeout: 120000 });
     const days = await ev(() => City.hour(RUN) - DAY.wake);
+    // a WASD stop (owner, 2026-10-25): the rules move you there with no walk lock and no redraw in the frame; you stay put
+    const roam = await ev(() => {
+      const p0 = City.pos(RUN).slice(),
+        p = [p0[0] + 8, p0[1]],
+        n = MapView.model,
+        t = performance.now();
+      MapView.walk(p);
+      return {
+        moved: City.pos(RUN).join() !== p0.join(),
+        lock: !!CW.lock,
+        same: MapView.model === n,
+        ms: +(performance.now() - t).toFixed(1)
+      };
+    });
+    if (!roam.moved || roam.lock || !roam.same) throw new Error(`the WASD stop: ${JSON.stringify(roam)}`);
+    await pg.waitForFunction(() => !MapView.busy() && !CW.lock, null, { timeout: 120000 });
     await ev(() => MapView.m3.setView({ d: 110 })); // (back out to the map, as the walk camera leaves it)
     await ev(p => {
       City.moveTo(RUN, p);
@@ -535,7 +551,7 @@ const step = async (name, fn) => {
     await pg.waitForFunction(() => MapView.m3.street() === 0 && !MapView.m3.info().ring.on && !MapView.m3.info().stream.on, null, {
       timeout: 120000
     });
-    return `${st.ms} ms a frame at street level (ring ${st.ring.lots} lots, ${Math.round(st.ring.tris / 1000)}k tris, built in ${st.ring.ms} ms; ${st.vrm} VRMs; ${st.stream.near} near blocks); the walk took ${days} h`;
+    return `${st.ms} ms a frame at street level (ring ${st.ring.lots} lots, ${Math.round(st.ring.tris / 1000)}k tris, built in ${st.ring.ms} ms; ${st.vrm} VRMs; ${st.stream.near} near blocks); the walk took ${days} h; a WASD stop ${roam.ms} ms`;
   });
   // the living island, Agent E (spec §4.37 3–5): a stop on the road, the short cut, the island's sound
   await step('the road (T-333): a stop on the way — the card over the map, Space walks on', async () => {
