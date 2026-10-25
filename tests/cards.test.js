@@ -82,7 +82,7 @@ test('cards: one play a side a point; costs hit the payer’s bar; the hand refi
   const m = g.newMatch(T[0], T[1], false, { cards: [{ by: 'you' }, { by: 'you' }] }),
     D = m.deck[0];
   give(m, 0, 'killer');
-  D.hand[1] = 'hunt';
+  D.hand[1] = 'short';
   const H = g.Cards.holders(m, 0, 'killer'),
     st0 = H.map(p => m.sta[p.id] ?? 1),
     cap = m.t[0].cap,
@@ -96,15 +96,15 @@ test('cards: one play a side a point; costs hit the payer’s bar; the hand refi
   eq(g.Cards.active(m, 0)[0].left, g.CARDS.killer.dur, 'active for its serves');
   g.playRally(m);
   const mor1 = g.morOf(m, cap);
-  assert(g.Cards.play(m, 0, 1), 'next point: Hunt the Passer');
+  assert(g.Cards.play(m, 0, 1), 'next point: Short Serve');
   let sv = 0;
-  const hunting = () => g.Cards.active(m, 0).some(x => x.id === 'hunt'),
+  const shorting = () => g.Cards.active(m, 0).some(x => x.id === 'short'),
     rally = () => {
-      const on = hunting() && m.serve === 0;
+      const on = shorting() && m.serve === 0;
       g.playRally(m);
       if (on) sv++;
     };
-  assert(Math.abs(g.morOf(m, cap) - (mor1 - g.CARDS.hunt.cost.amt)) < 1e-9 && mor0 !== undefined, 'the captain pays morale');
+  assert(Math.abs(g.morOf(m, cap) - (mor1 - g.CARDS.short.cost.amt)) < 1e-9 && mor0 !== undefined, 'the captain pays morale');
   // discard: to the discard pile, the gap stays
   const id2 = D.hand[2];
   assert(g.Cards.discard(m, 0, 2) && D.hand[2] === null && D.disc.some(e => e.id === id2), 'discarded');
@@ -115,11 +115,11 @@ test('cards: one play a side a point; costs hit the payer’s bar; the hand refi
   }
   if (!m.over) assert(D.hand[0] && D.hand[2], 'refilled at the turn');
   // a serve card counts its own side's serves; it ends into the discard pile cooling
-  while (hunting() && !m.over) rally();
+  while (shorting() && !m.over) rally();
   if (!m.over)
     assert(
-      sv === g.CARDS.hunt.dur && D.disc.some(e => e.id === 'hunt' && e.cd > 0),
-      `Hunt the Passer ended after its serves (${sv}), cooling`
+      sv === g.CARDS.short.dur && D.disc.some(e => e.id === 'short' && e.cd > 0),
+      `Short Serve ended after its serves (${sv}), cooling`
     );
 });
 
@@ -132,12 +132,12 @@ test('cards: an empty deck takes back only cooled cards; an OP card is once a ma
   D.draw = [];
   D.hand = [null, null, null, 'iatk', 'iblk'];
   D.disc = [
-    { id: 'hunt', cd: 0 },
+    { id: 'short', cd: 0 },
     { id: 'power', cd: 3 },
     { id: 'idig', cd: 0 }
   ];
   g.Cards.refill(m, 0);
-  eq([...D.hand].sort().join(), ['iblk', 'hunt', 'idig', 'iatk', null].sort().join(), 'the cooled two back, one gap');
+  eq([...D.hand].sort().join(), ['iblk', 'short', 'idig', 'iatk', null].sort().join(), 'the cooled two back, one gap');
   eq(D.disc.map(e => e.id).join(), 'power', 'the cooling one stays');
   // OP: played, ends, used up — never back
   const w = m.t[0].P.find(p => p.role === 'WS');
@@ -241,10 +241,10 @@ test('cards: a trap catches the card it names; one-shots act at once; INZONE!! h
     m = g.newMatch(T[0], T[1], false, { cards: [{ by: 'you' }, { by: 'you' }] });
   give(m, 1, 'strap');
   assert(g.Cards.play(m, 1, 0), 'Serve Trap armed');
-  give(m, 0, 'hunt');
+  give(m, 0, 'float');
   const a = g.Cards.play(m, 0, 0);
   eq(a.caught, 'strap', 'caught');
-  assert(!g.Cards.active(m, 0).length && m.deck[0].disc.some(e => e.id === 'hunt'), 'Hunt wasted, cooling');
+  assert(!g.Cards.active(m, 0).length && m.deck[0].disc.some(e => e.id === 'float'), 'Float Barrage wasted, cooling');
   assert(!g.Cards.active(m, 1).length && m.deck[1].disc.some(e => e.id === 'strap'), 'the trap used');
   assert(
     m.cardQ.some(x => x.k === 'cardend' && x.why === 'sprung'),
@@ -374,7 +374,7 @@ function myMatch(g, seed, ids, o = {}) {
 test('cards: every card has a type — team plays (the playbook, God Resolve, INZONE!!), debuffs (traps, Float, Short), individual (spec §2.37, T-349)', () => {
   const g = load(91);
   for (const [id, c] of Object.entries(g.CARDS)) assert(['team', 'solo', 'debuff'].includes(c.type), `${id} typed`);
-  for (const id of ['hunt', 'quick', 'commit', 'feedhot', 'wall', 'god', 'inzone']) eq(g.CARDS[id].type, 'team', id);
+  for (const id of ['power', 'quick', 'commit', 'feedhot', 'wall', 'god', 'inzone']) eq(g.CARDS[id].type, 'team', id);
   for (const id of ['strap', 'qtrap', 'bait', 'float', 'short']) eq(g.CARDS[id].type, 'debuff', id);
   for (const id of ['killer', 'delay', 'readblk', 'take', 'titan', 'iatk', 'duo_quick']) eq(g.CARDS[id].type, 'solo', id);
   eq(g.DECK.mine, 6, 'your deck of 6');
@@ -387,23 +387,23 @@ test('cards: one team play active a side — a new one replaces it; the captain 
   const T = g.mkTeams(),
     m = g.newMatch(T[0], T[1], false, { cards: [{ by: 'you' }, { by: 'ai' }] }),
     D = m.deck[0];
-  D.hand[0] = 'hunt';
+  D.hand[0] = 'power';
   D.hand[1] = 'deep';
-  assert(g.Cards.play(m, 0, 0), 'Hunt the Passer');
+  assert(g.Cards.play(m, 0, 0), 'Power Through');
   g.playRally(m);
   assert(g.Cards.play(m, 0, 1), 'Dig Deep (another group) is not a clash for a team play');
   const team = D.act.filter(a => g.CARDS[a.id].type === 'team');
   eq(team.length, 1, 'one team play active');
   eq(team[0].id, 'deep', 'the new one');
   assert(
-    D.log.some(e => e.k === 'end' && e.id === 'hunt' && e.why === 'replaced'),
-    'Hunt replaced, to the discard pile'
+    D.log.some(e => e.k === 'end' && e.id === 'power' && e.why === 'replaced'),
+    'Power Through replaced, to the discard pile'
   );
   assert(
-    D.disc.some(e => e.id === 'hunt'),
+    D.disc.some(e => e.id === 'power'),
     'cooling'
   );
-  const end = m.cardQ.find(a => a.k === 'cardend' && a.id === 'hunt');
+  const end = m.cardQ.find(a => a.k === 'cardend' && a.id === 'power');
   eq(end && end.why, 'replaced', 'a cardend act');
   // the captain (side 1) over a whole match: never two team plays at once
   let n = 0;
@@ -460,7 +460,7 @@ test('cards: your own deck of 6 and hand of 3 beside the captain — Basics fill
 test('cards: requests — odds from bond, trust and the read; a yes moves the card, a no changes nothing; a countered grant cools the next (spec §2.37, T-349)', () => {
   const g = load(94);
   const { m, D, Y } = myMatch(g, 6, ['killer'], { bond: 20 });
-  D.hand[0] = 'hunt';
+  D.hand[0] = 'power';
   D.hand[1] = 'iatk';
   eq(g.Cards.canAsk(m, 0, 1), 'type', 'only team plays');
   eq(g.Cards.canAsk(m, 0, 0), null, 'at the match start: a turn');
@@ -470,7 +470,7 @@ test('cards: requests — odds from bond, trust and the read; a yes moves the ca
   Y.req.trusted = true;
   const pT = g.Cards.askOdds(m, 0, 0).p;
   assert(p80 > p20 && pT > p80, `bond and trust raise the odds (${p20} < ${p80} < ${pT})`);
-  const fit = g.Cards.fits(m, 0, 'hunt');
+  const fit = g.Cards.fits(m, 0, 'power');
   assert(Math.abs(pT - (g.REQ.base + g.REQ.bond * 0.8 + g.REQ.trust + (fit ? g.REQ.fit : g.REQ.mis))) < 1e-9, 'the read counts');
   eq(g.Cards.askOdds(m, 0, 0).word, pT >= g.REQ.likely ? 'likely' : pT >= g.REQ.maybe ? 'maybe' : 'unlikely', 'the word');
   // a no: nothing moves, one request a turn
@@ -482,14 +482,14 @@ test('cards: requests — odds from bond, trust and the read; a yes moves the ca
     bond0 = Y.req.bond;
   const no = g.Cards.ask(m, 0, 0);
   assert(no && !no.ok, 'no');
-  eq(D.hand[0], 'hunt', 'still the captain’s');
+  eq(D.hand[0], 'power', 'still the captain’s');
   eq(JSON.stringify(Y.hand), JSON.stringify(hand0), 'your hand unchanged');
   eq(Y.req.bond, bond0, 'no bond loss');
   eq(g.Cards.canAsk(m, 0, 0), 'asked', 'once a turn');
   // next turn: a yes (odds forced to 1) moves it into your hand
   while (m.turnN === 0 && !m.over) g.playRally(m);
-  D.hand[0] = 'hunt';
-  D.act = D.act.filter(a => a.id !== 'hunt'); // (the captain may have played one of its own)
+  D.hand[0] = 'power';
+  D.act = D.act.filter(a => a.id !== 'power'); // (the captain may have played one of its own)
   g.REQ.min = 1;
   g.REQ.max = 1;
   Y.hand[2] = null;
@@ -497,9 +497,9 @@ test('cards: requests — odds from bond, trust and the read; a yes moves the ca
   g.REQ.min = mn;
   g.REQ.max = mx;
   assert(yes && yes.ok && yes.into === 2, 'yes → your empty place');
-  eq(Y.hand[2], 'hunt', 'in your hand');
+  eq(Y.hand[2], 'power', 'in your hand');
   eq(D.hand[0], null, 'a gap in the captain’s');
-  assert(Y.got.includes('hunt'), 'granted');
+  assert(Y.got.includes('power'), 'granted');
   // played into its counter → the cooldown (turns), odds lower; no bond change
   D.hand[1] = 'beat';
   const before = g.Cards.askOdds(m, 0, 1).p;
@@ -628,17 +628,17 @@ test('cards: every recipe fuses in the hand into one card; the second place stay
     D = m.deck[0];
   for (const id of F) {
     const [a, b] = g.CARDS[id].parts;
-    D.hand = [a, 'hunt', b, null, null];
+    D.hand = [a, 'power', b, null, null];
     const L = g.Cards.fusable(m, 0, 0);
     assert(
       L.some(x => x.h === 2 && x.id === id),
       `${id}: the partner lights up`
     );
     eq(g.Cards.fuse(m, 0, 0, 2), id, `${id} fused`);
-    eq(D.hand.join(), [id, 'hunt', null, null, null].join(), `${id}: one card, a gap`);
+    eq(D.hand.join(), [id, 'power', null, null, null].join(), `${id}: one card, a gap`);
     for (const k of ['dur', 'cd', 'type', 'per']) assert(g.CARDS[id][k] != null, `${id}.${k}`);
   }
-  D.hand = ['iatk', 'hunt', null, null, null];
+  D.hand = ['iatk', 'power', null, null, null];
   eq(g.Cards.fuse(m, 0, 0, 1), null, 'no recipe: nothing');
 });
 

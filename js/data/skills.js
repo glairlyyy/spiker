@@ -65,7 +65,7 @@ Object.assign(SKILLS, {
     role: 'any',
     req: { wit: 1.4 },
     cost: 120,
-    desc: 'Serve straight at the weakest receiver'
+    desc: 'Aimed serves land exactly where you aim'
   },
   // defense
   readblk: {
@@ -129,7 +129,7 @@ Object.assign(SKILLS, {
     sync: { up: 'block has to split' },
     drive: { up: 'passes fall apart' },
     killer: { up: '+10% pace', down: '+3% faults' },
-    target: { up: 'serves the weakest passer' },
+    target: { up: 'aimed serves land exact' },
     readblk: { up: 'shuts down quicks' },
     softblk: { up: 'touches pop up' },
     roll: { up: 'far balls cost less' },
@@ -187,8 +187,8 @@ const SKILL_HOW = {
   sync: 'On a perfect pass, 25%. All hitters jump — no double block can form and coverage drops 20%.',
   drive: 'Float and jump-float serves, 50%. Receivers lose a big chunk of passing quality.',
   killer: 'Jump serves, 50%. +10% pace but +3% error chance.',
-  target: '30% of serves go just beside the weakest passer on the other side.',
-  readblk: 'The front middle reads quicks: +0.3 block coverage, and Freak Quicks are much less effective.',
+  target: 'Any aimed serve (a passer or the seam) lands exactly there, with no extra error.',
+  readblk: 'A reading blocker (not committed) is in time on quicks: +0.3 block coverage, and Freak Quicks are much less effective.',
   softblk: 'When the block gets a touch, the ball slows more and the dig is far easier.',
   roll: 'On balls far out of reach (serve receive and digs), most of the distance penalty disappears.',
   save: 'When a spike would score, 18% the defender keeps it alive with a one-arm lunge (bad pass follows).',

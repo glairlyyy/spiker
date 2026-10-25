@@ -596,17 +596,20 @@ test('engine: knockdowns — the fallen player sits out until the get-up; a loos
 });
 
 test('engine: the captain subs off the passer the other side hunts — a passer as good comes on, the target stays off (SUB.hunt)', () => {
-  const g = load(47);
+  const g = load(47),
+    step0 = g.RULES.settle.step;
+  g.RULES.settle.step = 0; // (a hunt that never settles: every serve ordered at their weakest passer — spec §2.39)
   let n = 0;
   for (let i = 0; i < 60; i++) {
     g.RNG.seed(9000 + i);
     const T = g.mkTeams(),
-      m = g.simMatch(T[i % 8], T[(i + 3) % 8], {
-        plan: [
-          { atk: 'hunt', def: 'read' },
-          { atk: 'hunt', def: 'read' }
-        ]
-      });
+      m = g.newMatch(T[i % 8], T[(i + 3) % 8], false);
+    while (!m.over) {
+      const s = m.serve,
+        p = g.rotOrder(m.t[s], m.rot[s])[0];
+      g.ordSet(m, p, 'tgt', g.weakPasser(m.t[1 - s]).id);
+      g.playRally(m);
+    }
     for (const e of m.subLog.filter(x => x.why === 'targeted')) {
       n++;
       const r = m.recv[e.out];
@@ -615,10 +618,11 @@ test('engine: the captain subs off the passer the other side hunts — a passer 
     }
   }
   g.RNG.unseed();
+  g.RULES.settle.step = step0;
   assert(n >= 5, `targeted subs happen (${n})`);
 });
 
-test('engine: team plans — given plans hold, the captain picks from its style, Hunt serves at the weak passer, the captain answers at its timeout (spec §2.26)', () => {
+test('engine: team plans — given plans hold, the captain picks from its style, a target order serves at its passer, the captain answers at its timeout (spec §2.26, §2.39)', () => {
   const g = load(41),
     T = g.mkTeams();
   // the captain's own pick: its playstyle's default (a sharp captain may answer the other side's ace / weak passer)
@@ -627,8 +631,8 @@ test('engine: team plans — given plans hold, the captain picks from its style,
     assert(g.PLANS.atk[p.atk] && g.PLANS.def[p.def], `pick for ${t.name}`);
     if (g.capIQ(t) < g.PLAN_AI.iq) eq(`${p.atk}/${p.def}`, g.PLAN_STYLE[t.sk].join('/'), `${t.name} plays its style`);
   }
-  // given plans are played; Hunt the passer sends most serves at their weakest passer (their captain's targeted sub, SUB.hunt,
-  // would move the target: off here, it has its own test)
+  // given plans are played; a target order at their weakest passer sends most serves there (their captain's targeted sub,
+  // SUB.hunt, would move the target: off here, it has its own test)
   const share0 = g.SUB.hunt.share,
     max0 = g.SUB.max;
   g.SUB.hunt.share = 9;
@@ -639,7 +643,11 @@ test('engine: team plans — given plans hold, the captain picks from its style,
   for (let i = 0; i < 60; i++) {
     const a = T[i % 8],
       b = T[(i * 3 + 1) % 8],
-      m = g.simMatch(a, b, { plan: [{ atk: 'hunt', def: 'read' }, null] });
+      m = g.newMatch(a, b, false, { plan: [{ atk: 'power', def: 'read' }, null] });
+    while (!m.over) {
+      if (m.serve === 0) g.ordSet(m, g.rotOrder(m.t[0], m.rot[0])[0], 'tgt', g.weakPasser(m.t[1]).id);
+      g.playRally(m);
+    }
     eq(m.planBy[0], 'you');
     eq(m.planLog.filter(e => e.side === 0).length, 1, 'your plan only changes when you change it');
     const wp = g.weakPasser(m.t[1]);
@@ -651,7 +659,7 @@ test('engine: team plans — given plans hold, the captain picks from its style,
     }
     if (m.planLog.some(e => e.side === 1 && (e.at[0] || e.at[1]))) changed++;
   }
-  assert(at / all > 0.6, `Hunt: ${((100 * at) / all).toFixed(0)} % of serves at the weakest passer`);
+  assert(at / all > 0.6, `a target order: ${((100 * at) / all).toFixed(0)} % of serves at the weakest passer`);
   g.SUB.hunt.share = share0;
   g.SUB.max = max0;
   assert(changed > 3, `the AI captain changed plan at its timeout in ${changed} of 60 matches`);
@@ -861,6 +869,69 @@ test.slow('engine: middle orders — Commit stuffs more quicks and leaves the pi
   // (T-299: with common collapses the old order's pin cost evened out — Commit now pays or costs through its card's edge, §2.33)
   eq(back.blk, 0, 'Stay back: the middle never blocks');
   assert(back.dig > read.dig * 1.3, `Stay back digs more: ${back.dig} vs ${read.dig}`);
+});
+
+test('engine: the three duels — free targets, settling, the server / hitter / blocker reads, no draws (spec §2.39, T-366)', () => {
+  const g = load(66),
+    T = g.mkTeams(),
+    m = g.newMatch(T[0], T[1], false, { cards: false }),
+    p = g.rotOrder(m.t[0], m.rot[0])[0],
+    RT = m.t[1];
+  p.skills = [];
+  // free targets: every option open without Target Serve
+  const opts = g.tgtOpts(p, RT);
+  for (const v of ['seam', 'deep', 'safe'])
+    assert(
+      opts.some(o => o.v === v && !o.lock),
+      `${v} needs no technique`
+    );
+  assert(!g.CARDS.hunt && !g.PLANS.atk.hunt, 'Hunt the Passer is gone (card and plan)');
+  // settling: +step a serve in a row, capped; a serve at a teammate fades it
+  const [a, b] = g.passersOf(RT),
+    S = g.RULES.settle;
+  for (let i = 0; i < 3; i++) g.settleLog(m, RT, a);
+  assert(Math.abs(g.settled(m, a, 50) - 50 * (1 + 3 * S.step)) < 1e-9, 'three in a row: settled in');
+  for (let i = 0; i < 9; i++) g.settleLog(m, RT, a);
+  assert(Math.abs(g.settled(m, a, 50) - 50 * (1 + S.cap)) < 1e-9, 'capped');
+  g.settleLog(m, RT, b);
+  eq(m.settle[a.id], 12 - S.fade, 'a serve elsewhere fades it');
+  // the server's own read: scored, deterministic, no draws; a settled weak passer stops being the pick
+  m.settle = {};
+  const seed = 4242;
+  g.RNG.seed(seed);
+  const v0 = g.tgtAI(m, p, 0),
+    S0 = g.tgtScores(m, p, 0),
+    r1 = g.RNG.next();
+  g.RNG.seed(seed);
+  eq(g.RNG.next(), r1, 'tgtAI draws nothing');
+  eq(S0.reduce((x, o) => (o.score > x.score ? o : x)).v, v0, 'the best score is the pick');
+  const wk = g.seamOf(RT)[0];
+  m.settle = { [wk.id]: 9 };
+  m.tgtAIc = null;
+  const sc = id => g.tgtScores(m, p, 0).find(o => o.v === id).score;
+  const settledS = sc(wk.id);
+  m.settle = {};
+  assert(settledS < sc(wk.id), `a settled passer is a worse target (${settledS.toFixed(1)} < ${sc(wk.id).toFixed(1)})`);
+  // the hitter: fight a small block, avoid a big one, plain on a bad set
+  const h = m.t[0].P.find(q => q.role === 'WS');
+  eq(g.atkPick(m, h, RT, { cov: 0.1, blockers: [] }).v, 'fight', 'a small block: fight');
+  eq(g.atkPick(m, h, RT, { cov: 1, blockers: [] }).v, 'avoid', 'a big block: avoid');
+  eq(g.atkPick(m, h, RT, { cov: 0.1, bad: true, blockers: [] }).v, 'plain', 'a bad set: no choice');
+  // the blocker: Read / Commit on each hitter; their own read commits on a hitter fed most of the attacks
+  const bl = RT.P.find(q => q.role !== 'S'),
+    bo = g.blkOpts(bl, m.t[0]);
+  assert(bo.some(o => o.v === 'read') && bo.some(o => o.v === h.id), 'Read and Commit on a hitter');
+  m.hit = { [h.id]: { n: 20 } };
+  eq(g.blkPick(m, 1, bl).v, h.id, 'one hitter takes every ball: commit on them');
+  m.hit = {};
+  for (const q of m.t[0].P) m.hit[q.id] = { n: 5 };
+  eq(g.blkPick(m, 1, bl).v, null, 'spread: read (the team setting)');
+  g.ordSet(m, bl, 'blk', 'read');
+  m.hit = { [h.id]: { n: 20 } };
+  eq(g.blkCommit(m, 1, bl), null, 'an order to Read stands');
+  g.ordSet(m, bl, 'blk', h.id);
+  eq(g.blkCommit(m, 1, bl), h, 'Commit on a hitter');
+  g.RNG.unseed();
 });
 
 test('engine: stamina and the bench — a Rest order subs at the dead ball; the bench recovers faster (spec §2.30)', () => {
@@ -1437,11 +1508,14 @@ test('engine: technique switches — a held-back technique never fires; techUse 
       p.power = Math.max(p.power, 95); // everyone can jump-serve the Killer
       if (off) p.techOff = ['killer'];
     }
-    const m = g.simMatch(a, b);
     let n = 0,
       won = 0,
-      err = 0;
-    for (const u of Object.values(m.techUse)) if (u.killer) ((n += u.killer.n), (won += u.killer.won), (err += u.killer.err));
+      err = 0,
+      m;
+    for (let k = 0; k < 4; k++) {
+      m = g.simMatch(a, b); // (a few matches: the Killer is a jump serve, and every serve now has a target — spec §2.39)
+      for (const u of Object.values(m.techUse)) if (u.killer) ((n += u.killer.n), (won += u.killer.won), (err += u.killer.err));
+    }
     assert(won <= n && err <= n, 'won and faults never exceed uses');
     return { n, m, g };
   };

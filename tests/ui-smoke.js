@@ -1210,7 +1210,7 @@ const step = async (name, fn) => {
     // one request: a team play in the captain's hand, the list, Ask
     await ev(() => {
       const D = A.m.deck[0];
-      if (!D.hand.some(id => id && CARDS[id].type === 'team')) D.hand[0] = 'hunt';
+      if (!D.hand.some(id => id && CARDS[id].type === 'team')) D.hand[0] = 'power';
       A.sceneOn = false;
       handTick(true);
     });

@@ -64,10 +64,20 @@ function blockApproach(c, x) {
   const tAv = (quick ? 0.3 : bad ? 1.05 : 0.8) + (back ? 0.15 : 0) + (longB ? 0.1 : 0),
     reach = b => (((b.speed * stageBuff(b, 'spd')) / 100) * tAv * 0.6) / courtScale();
   // defence setting (see DEFSETS): Bunch starts both front-row defenders near the middle (they drift there while the ball is set, as far as their speed allows)
-  // a front-row middle's own block order (spec §2.29) replaces the team's setting for this attack (Stay back: they don't block)
+  // a front-row middle's own block order (spec §2.29) replaces Bunch for this attack (Stay back: they don't block)
   const mo = c.defT.P.map(p => p.role === 'MB' && c.front(ds, p) && ordOf(m, p, 'blk')).find(o => o && o !== 'back'),
-    dset = mo || m.dset[ds] || 'read',
-    commit = dset === 'commit',
+    dset = mo ? (mo === 'read' ? 'read' : 'commit') : m.dset[ds] || 'read',
+    // the block duel (spec §2.39): each front-row blocker reads or commits (blkCommit) — on a hitter, or ('quick', the team's
+    // Commit) on whoever goes quick; right: up early, on the ball; wrong: an open net (a 'quick' committer: the middle only)
+    teamC = mo ? mo === 'commit' : m.dset[ds] === 'commit',
+    cm = new Map(
+      c.defT.P.filter(p => c.front(ds, p) && !stayBack(m, p))
+        .map(p => [p, blkCommit(m, ds, p, teamC)])
+        .filter(([, h]) => h)
+    ),
+    right = b => !!b && cm.has(b) && (cm.get(b) === 'quick' ? quick : cm.get(b) === spiker),
+    wrong = b => !!b && cm.has(b) && !right(b) && (cm.get(b) !== 'quick' || b.role === 'MB'),
+    commit = cm.size > 0,
     bunch = dset === 'bunch',
     midAtk = quick || pipe || lane === 'M',
     startZ = p => {
@@ -77,13 +87,13 @@ function blockApproach(c, x) {
       return z + clamp(t - z, -reach(p), reach(p));
     },
     byLane = (list, z) => list.reduce((a, p) => (Math.abs(startZ(p) - z) < Math.abs(startZ(a) - z) ? p : a), list[0]);
-  return { back, longB, spZ, lane, pipe, appX, tAv, reach, dset, commit, bunch, midAtk, startZ, byLane };
+  return { back, longB, spZ, lane, pipe, appX, tAv, reach, dset, commit, cm, right, wrong, bunch, midAtk, startZ, byLane };
 }
 /** Who blocks: b0 (the middle when they can get there, the pin-side defender, the swinging far blocker) and maybe b1. */
 function blockPick(c, x, f) {
   const { defT } = c,
     { quick, sync, DF, B0, bitten } = x,
-    { spZ, reach, commit, bunch, midAtk, startZ, byLane } = f;
+    { spZ, reach, right, bunch, midAtk, startZ, byLane } = f;
   // who blocks: the pin-side defender sets the edge on a wing attack; the middle takes a quick / pipe / middle ball;
   // a middle who bit on the fake is gone — the far defender swings across late
   const others = DF.filter(p => p !== B0),
@@ -94,7 +104,7 @@ function blockPick(c, x, f) {
     mbCan = mb && Math.abs(startZ(mb) - spZ) <= reach(mb) * 1.3;
   let b0 = swing ? byLane(others, spZ) : !DF.length ? B0 : midAtk ? mb || byLane(DF, spZ) : mbCan ? mb : byLane(DF, spZ);
   const p0z = startZ(b0),
-    r0 = reach(b0) * (swing ? BLOCK.swingReach : bitten ? 0.3 : commit && quick ? BLOCK.commitReach : 1), // Commit: the blocker on a quick is already up
+    r0 = reach(b0) * (swing ? BLOCK.swingReach : bitten ? 0.3 : right(b0) ? BLOCK.commitReach : 1), // committed on this hitter: already up
     bz0 = clamp(p0z + clamp(spZ - p0z, -r0, r0), 0.05, 0.95),
     late0 = Math.abs(spZ - p0z) > r0;
   let b1 = null,
@@ -103,15 +113,12 @@ function blockPick(c, x, f) {
   // the second blocker closes in beside the first on the court-inside side — if the roll passes and they can get there.
   // Sync attacks leave no time for a double; quicks only get one when the defence is set for them (Commit / Bunch).
   const cand = DF.find(p => p !== b0);
-  if (cand && !sync && !swing && (!quick || commit || bunch)) {
+  if (cand && !sync && !swing && (!quick || right(b0) || right(cand) || bunch)) {
     const roll = R() < defT.S.dbl * (0.6 + 0.8 * readQ(cand)),
       p1z = startZ(cand),
       inward = bz0 < 0.5 ? 1 : -1,
       t1 = clamp(bz0 + inward * BLOCK_GAP, 0.05, 0.95);
-    if (
-      (roll || (bunch && midAtk) || (commit && quick)) &&
-      Math.abs(t1 - p1z) <= reach(cand) * (commit && quick ? BLOCK.commitReach : 1.3)
-    ) {
+    if ((roll || (bunch && midAtk) || right(cand)) && Math.abs(t1 - p1z) <= reach(cand) * (right(cand) ? BLOCK.commitReach : 1.3)) {
       b1 = cand;
       bz1 = t1;
       // two bodies can't take off from one spot
@@ -160,11 +167,11 @@ function blockMoves(c, x, f) {
 function blockCoverage(c, x, f) {
   const { m, n } = c,
     { setter, quick, slide, sync, freak, readBonus } = x,
-    { back, longB, spZ, lane, pipe, appX, b0, bz0, late0, b1, bz1, late1, blockers, lateB, lateA, a1, commit } = f;
+    { back, longB, spZ, lane, pipe, appX, b0, bz0, late0, b1, bz1, late1, blockers, lateB, lateA, a1, commit, cm } = f;
   const { pj, hS, c0, c1 } = blockHands(c, x, f);
   let cov = Math.max(c0.c, c1.c) + (c0.c > 0.4 && c1.c > 0.4 ? 0.25 : 0) + readBonus;
   // techniques that beat (or read) the block
-  const readB = quick && hasTech(b0, 'readblk') && W(b0) >= 1.1,
+  const readB = quick && !cm.has(b0) && hasTech(b0, 'readblk') && W(b0) >= 1.1, // Read Block: a reading blocker in time on the quick
     pipeCombo = back && hasTech(setter, 'pipecombo') && (cardForce(setter, 'pipecombo') || (m.pts[0] + m.pts[1] + n) % 2 === 0); // planned play, not every time
   if (readB) techFire(m, b0, 'readblk');
   if (pipeCombo) techFire(m, setter, 'pipecombo');
@@ -214,13 +221,14 @@ function blockCoverage(c, x, f) {
     seam,
     over,
     commit,
+    cm,
     ntU
   };
 }
 /** Each blocker's hands: lane × height coverage, scaled by reading and the defence setting. */
 function blockHands(c, x, f) {
-  const { quick, spiker, bitten } = x,
-    { commit, bunch, midAtk, swing, b0, bz0, late0, b1, bz1, late1, spZ } = f;
+  const { spiker, bitten } = x,
+    { right, wrong, bunch, midAtk, swing, b0, bz0, late0, b1, bz1, late1, spZ } = f;
   const pj = jumpPx(spiker),
     hS = REACH_H + pj; // the hitter's contact height
   // one blocker's coverage: lane (distance along the net) × height (hands against the contact point)
@@ -234,13 +242,13 @@ function blockHands(c, x, f) {
   const c0 = cvf(b0, bz0),
     c1 = b1 ? cvf(b1, bz1) : { c: 0, raw: 0, hB: 0 };
   // reading and the defence setting scale each blocker's coverage: arriving late, split hands, a bitten or swinging
-  // middle, Commit's middle (up early on a quick, lost on anything else), Bunch (strong in the middle, pins open)
+  // middle, a committed blocker (spec §2.39: up early on their hitter, lost on anyone else), Bunch (strong in the middle, pins open)
   const scale = (cv, b, late) => {
     if (!cv.c) return;
     if (late) cv.c *= BLOCK.lateCov;
     if (readQ(b) < 0.35) cv.c *= BLOCK.splitCov;
-    if (commit && quick && (b.role === 'MB' || b === b0)) cv.c *= BLOCK.commitQuick;
-    else if (commit && b.role === 'MB') cv.c *= BLOCK.commitMiss;
+    if (right(b)) cv.c *= BLOCK.commitQuick;
+    else if (wrong(b)) cv.c *= BLOCK.commitMiss;
     if (bunch) cv.c *= midAtk ? BLOCK.bunchMid : BLOCK.bunchPin;
     cv.c = Math.min(cv.c, 1.2); // the height factor's own ceiling: a setting can't turn a wall into a block break
   };
@@ -251,25 +259,25 @@ function blockHands(c, x, f) {
   return { pj, hS, c0, c1 };
 }
 
+/** A blocker committed to h (blkCommit) is up early (spec §2.39): on a hitter, or a middle on the team's Commit ('quick'). */
+const upEarly = (b, h) => !!h && (h !== 'quick' || b.role === 'MB');
+/** A committed blocker lunges at the net (netTouch). */
+const lunges = (x, b) => !!x.cm && upEarly(b, x.cm.get(b));
 /** Engine-only fault tally (spec §4.38; no draws): m.flt = { net, foot, dbl } — net touches, foot faults, double contacts. */
 const fltAdd = (m, k) => (m.flt || (m.flt = { net: 0, foot: 0, dbl: 0 }))[k]++;
 /**
  * 9b. Net touch (spec §4.38): called after the block when the block did not end the attack (a stuffed ball is dead at once),
  * before the dig (rally.js attackPhases). Its one draw (`x.ntU`) is made in blockCoverage on every attack — a hitting error or
  * a hang that ends it first leaves it unread. The bodies at the tape are a front-row hitter (a back-row attack takes off
- * behind the line) and each blocker (a middle on Commit lunges: 'commit'), each with its own chance (Formula.netTouchP); the
+ * behind the line) and each blocker (a committed blocker lunges: 'commit'), each with its own chance (Formula.netTouchP); the
  * draw picks at most one of them. A blocker's touch gives the attack the point, the hitter's the defence. { point } or nothing.
  */
 function netTouch(c, x) {
   const { m, B, V, atk, ds } = c,
-    { spiker, tip, back, blockers, commit, hit, bdown, spZ, lx, lz, hdur, pow, elS, ntU } = x,
+    { spiker, tip, back, blockers, hit, bdown, spZ, lx, lz, hdur, pow, elS, ntU } = x,
     at = [
       ...(back ? [] : [[spiker, Formula.netTouchP(spiker, tip ? 'tip' : 'hit', 1 - staOf(spiker)), spZ]]),
-      ...blockers.map(b => [
-        b,
-        Formula.netTouchP(b, commit && b.role === 'MB' ? 'commit' : 'read', 1 - staOf(b)),
-        b === x.b1 ? x.bz1 : x.bz0
-      ])
+      ...blockers.map(b => [b, Formula.netTouchP(b, lunges(x, b) ? 'commit' : 'read', 1 - staOf(b)), b === x.b1 ? x.bz1 : x.bz0])
     ];
   let u = ntU;
   const t = at.find(([, p]) => (u -= p) < 0);

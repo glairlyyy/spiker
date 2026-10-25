@@ -89,12 +89,14 @@ function serveWalk(c) {
       dur: 1100, // the server's routine (bounce it / spin and aim, see preServe): a beat before the serve
       acts: []
     });
-  Object.assign(c, { oS, oR, server, sq, sType, errK, jumpSrv, runM, endX, startX });
+  // the target (spec §2.39): the server's order, else their own read (tgtAI: the odds, settling counted — no draws)
+  const tgtV = tgtOf(m, server, s);
+  Object.assign(c, { oS, oR, server, sq, sType, errK, jumpSrv, runM, endX, startX, tgtV });
   m.srvP0 = server;
 }
 /** Run-up pace and serve techniques; the toss (and run-up) beat. */
 function serveToss(c) {
-  const { m, V, B, s, server, jumpSrv, runM, endX, startX, sType } = c;
+  const { m, V, B, s, server, jumpSrv, runM, endX, startX, sType, tgtV } = c;
   let { sq } = c;
   if (jumpSrv) sq *= 1 + (runM - 3.2) * 0.05; // longer run-up = a bit more pace (±5%)
   // serve techniques
@@ -103,7 +105,7 @@ function serveToss(c) {
     tech = (id, r) => (r ? !o || o === id : o === id),
     killer = jumpSrv && hasTech(server, 'killer') && tech('killer', R() < 0.5),
     drive = !jumpSrv && hasTech(server, 'drive') && tech('drive', R() < 0.5),
-    targeted = hasTech(server, 'target') && (R() < 0.3 || !!ordOf(m, server, 'tgt'));
+    targeted = hasTech(server, 'target') && (R() < 0.3 || (!!tgtV && tgtV !== 'deep' && tgtV !== 'safe')); // aimed: Target Serve lands it exact
   if (killer) sq *= 1.1;
   if (killer || drive || targeted) techFire(m, server, killer ? 'killer' : drive ? 'drive' : 'target');
   dr(m, server, jumpSrv ? 0.03 : 0.015);
@@ -141,16 +143,13 @@ function serveToss(c) {
 }
 /** The contact: the error chance, the hit effects; the serving side goes to base. */
 function serveContact(c) {
-  const { m, V, s, ST, RT, server, sq, sType, errK, killer, drive, targeted } = c;
-  const tg = tgtResolve(m, server, RT), // the ordered target (spec §2.29): exact with Target Serve, else a lean
+  const { m, V, s, ST, RT, server, sType, errK, killer, drive, targeted, tgtV } = c;
+  const tg = tgtResolve(m, server, RT, tgtV), // the target (spec §2.39): exact with Target Serve, else a lean
+    sq = c.sq * (tg && tg.zone === 'safe' ? ORDERS.srv.safe.pace : 1), // a safe serve: softer, in play
     sp = m.pos[server.id],
     sArc = sType === 'jump' ? 85 : sType === 'jumpfloat' ? 110 : 130,
     wob = sType !== 'jump';
-  const serr =
-    (Formula.serveErrorP(server, ST, sq) + (killer ? 0.03 : 0)) *
-    (atkPlan(m, s).serveErr ?? 1) * // Hunt the passer: riskier serves (spec §2.26)
-    errK *
-    (tg && !tg.exact ? ORDERS.srv.aimErr : 1);
+  const serr = (Formula.serveErrorP(server, ST, sq) + (killer ? 0.03 : 0)) * errK * tgtErrK(tg); // an aimed serve errs a little more
   const techName = killer ? 'Killer Jump Serve' : drive ? 'Drive Serve' : targeted ? 'Target Serve' : null;
   const hitFx = [
     { k: 'jump', p: server.id, mode: 'down' },
@@ -166,7 +165,7 @@ function serveContact(c) {
     const h = playHome(m, p, s);
     mv(m, p, h[0], h[1], sw, V);
   });
-  Object.assign(c, { tg, sp, sArc, wob, serr, hitFx, sw });
+  Object.assign(c, { tg, sq, sp, sArc, wob, serr, hitFx, sw });
 }
 /** Service error: into the net or long. */
 function serveFault(c) {
@@ -209,8 +208,9 @@ function footFault(c) {
 }
 /** Where the serve goes and who takes it (target serve, rolling receive); the receive score and flight time. */
 function serveAim(c) {
-  const { m, V, r, RT, sq, drive, targeted, tg, sw, sp } = c;
-  let tx = sx(r, rnd(150, 420)),
+  const { m, V, r, RT, sq, drive, tg, sw, sp } = c;
+  const u0 = rnd(150, 420); // (deep: the spot pulled toward their end line — the same draw)
+  let tx = sx(r, tg && tg.zone === 'deep' ? 150 + (u0 - 150) * ORDERS.srv.deep.k : u0),
     tz = rnd(0.12, 0.88);
   let rc = nearest(
     m,
@@ -218,8 +218,8 @@ function serveAim(c) {
     tx,
     tz
   );
-  if (tg) {
-    // an ordered target (spec §2.29): beside them (exact with Target Serve, else a lean); the seam: between the two weakest
+  if (tg && tg.rc) {
+    // a target (spec §2.39): beside them (exact with Target Serve, else a lean); the seam: between the two weakest
     if (tg.exact || R() < ORDERS.srv.lean) {
       rc = tg.rc;
       const q = m.pos[rc.id],
@@ -227,13 +227,6 @@ function serveAim(c) {
       tx = clamp(q2 ? lerp(q.x, q2.x, 0.4) : q.x, Math.min(sx(r, 150), sx(r, 420)), Math.max(sx(r, 150), sx(r, 420)));
       tz = clamp(q2 ? lerp(q.z, q2.z, 0.4) : q.z + (q.z > 0.5 ? -0.16 : 0.16), 0.1, 0.9);
     }
-  } else if (targeted || atkPlan(m, c.s).huntK) {
-    // (Hunt the passer, spec §2.26: every serve goes at their weakest passer)
-    // aim just beside the weakest passer so they have to move for it
-    rc = RT.P.filter(p => p !== RT.s).reduce((a, p) => (effD(p) + p.speed * 0.3 < effD(a) + a.speed * 0.3 ? p : a));
-    const q = m.pos[rc.id];
-    tx = clamp(q.x, Math.min(sx(r, 150), sx(r, 420)), Math.max(sx(r, 150), sx(r, 420)));
-    tz = clamp(q.z + (q.z > 0.5 ? -0.16 : 0.16), 0.1, 0.9);
   }
   const d0 = dist(m.pos[rc.id], tx, tz);
   // Rolling Receive: dive-and-roll takes most of the sting out of a long run
@@ -242,10 +235,12 @@ function serveAim(c) {
   let rs = Formula.receiveScore(rc, RT, d0) - (drive ? 14 : 0);
   const cp = defPlan(m, r); // Cover the weak link (spec §2.26): the weakest passer is helped, the rest a little more open
   if (cp.weakRs) rs += rc === weakPasser(RT) ? cp.weakRs : cp.otherRs;
-  if (atkPlan(m, c.s).press && rc === weakPasser(RT)) rs -= atkPlan(m, c.s).press; // Hunt the passer: the pressure tells on them
   if (tg && tg.seam && rc === tg.rc) rs -= ORDERS.srv.seam;
+  if (tg && tg.zone === 'deep') rs -= ORDERS.srv.deep.rs;
   if (rollR) rs += Math.max(0, d0 - 0.1) * 45 * (1.3 - rc.speed / 100) * 0.5;
   if (m.wind && GROUNDS.wind[c.sType]) rs -= m.wind * GROUNDS.wind[c.sType] * rnd(0.5, 1.5); // a float wanders in the wind (spec §4.38: one draw, only with wind)
+  rs = settled(m, rc, rs); // settling (spec §2.39): served at again and again, they settle in
+  settleLog(m, RT, rc);
   // a hard serve gets there sooner (SERVE_FAST: up to ×1.45 from serve 55 to 110)
   const vq = powVis(c.server, sq, 'serve'), // (the serve's real speed: the card edge wins the receive, not km/h)
     sfast = 1 + clamp((vq - 55) / 55, 0, 1) * (SERVE_FAST - 1),

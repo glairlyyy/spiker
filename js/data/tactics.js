@@ -110,16 +110,6 @@ const PLANS = {
       desc: 'Every hitter plays their own game.',
       cost: 'Nothing to read, nothing extra.'
     },
-    hunt: {
-      name: 'Hunt the passer',
-      short: 'Hunt',
-      desc: 'Serves and spikes go at their weakest passer, wherever they stand.',
-      cost: 'Predictable: their block reads you faster. A few more serve errors.',
-      readK: 1.5,
-      serveErr: 1.1,
-      huntK: 0.45,
-      press: 8
-    },
     beat: {
       name: 'Beat the block',
       short: 'Beat',
@@ -181,7 +171,7 @@ const PLAN_STYLE = {
   tempo: ['beat', 'read'],
   counter: ['straight', 'deep'],
   sky: ['power', 'read'],
-  bombers: ['hunt', 'read'],
+  bombers: ['straight', 'read'],
   mind: ['beat', 'cover'],
   balanced: ['straight', 'read']
 };
@@ -218,21 +208,36 @@ const KNOCK = {
 
 /**
  * Role orders (spec §2.29, js/engine/orders.js). srv: a softer serve than the natural one, by steps down (1: jump → jump
- * float, 2: jump → float): pace × `pace`, errors × `err`; aiming at a passer without Target Serve is a lean (`lean` of the
- * serves, errors × `aimErr`); the seam's receive −`seam`. odds: the fixed grid of the serve roll and the receiver's run
+ * float, 2: jump → float): pace × `pace`, errors × `err`; targets are free (spec §2.39): aiming at a passer or the seam
+ * without Target Serve is a lean (`lean` of the serves, errors × `aimErr`; with it: exact, no aim error); the seam's receive
+ * −`seam`; deep: the spot `deep.k` of the way to their end line, receive −`deep.rs`, errors × `deep.err`; safe: pace ×
+ * `safe.pace`, errors × `safe.err`; the AI server's score per target = hit × `ai` − err (tgtAI). odds: the fixed grid of the serve roll and the receiver's run
  * (aimed beside them / a random spot / the seam) the Plan board's numbers use. atk (T-278): a channel order holds
  * `force` of the time and their block reads it × `readK` faster; at a player: a `lean` toward their channel, the ball `atK`
  * of the way to them, errors × `aimErr`; the open court (Wit `openWit`+): `openK` of the way to the biggest gap, errors ×
  * `openErr`; Power: pace × `pow`, errors × `powErr`, no cut shot; Cut: the cut chance + `cut` (to 90 %); Tip: always tips, its kill
- * chance × `tip0` − `tipSeen` per ordered tip seen this match (to `tipMin`).
+ * chance × `tip0` − `tipSeen` per ordered tip seen this match (to `tipMin`). The spike duel (spec §2.39): avoiding the block (at a
+ * player, the open court) — its coverage × `avoidCov`, pace × `avoidPow`; Tool — off a block covering `tool.cov`, tooled out at
+ * `tool.p` (errors × `tool.err`, no cut); with no aim / shot order the hitter's own read (atkPick) scores fight / avoid / plain
+ * from the coverage they face (`ai`: plain's bonus, slope `k` per coverage point from `mid`).
  * set (T-279): their block reads a fed hitter × `readK` faster. blk (T-280): a middle on Stay back drops to `backX` (court
- * units from their end line) and digs at dig distance × `backDd`.
+ * units from their end line) and digs at dig distance × `backDd`; a blocker's own read (blkPick, spec §2.39) commits on the
+ * hitter fed most once `seen` attacks are in and their share beats `commitAt`.
  * odds.atkN possessions per attack-odds probe (an isolated stream, `seed`).
  */
 const ORDERS = {
-  srv: { pace: [1, 0.93, 0.85], err: [1, 0.8, 0.6], lean: 0.6, aimErr: 1.1, seam: 6 },
+  srv: {
+    pace: [1, 0.93, 0.85],
+    err: [1, 0.8, 0.6],
+    lean: 0.6,
+    aimErr: 1.1,
+    seam: 6,
+    deep: { k: 0.4, rs: 4, err: 1.08 },
+    safe: { pace: 0.92, err: 0.7 },
+    ai: 0.5
+  },
   set: { readK: 1.5 },
-  blk: { backX: 330, backDd: 0.8 },
+  blk: { backX: 330, backDd: 0.8, seen: 8, commitAt: 0.5 },
   atk: {
     force: 0.95,
     readK: 1.5,
@@ -247,7 +252,19 @@ const ORDERS = {
     cut: 0.35,
     tip0: 0.5,
     tipSeen: 0.06,
-    tipMin: 0.3
+    tipMin: 0.3,
+    avoidCov: 0.8,
+    avoidPow: 0.92,
+    tool: { cov: [0.2, 0.8], p: 0.3, err: 1.08 },
+    ai: { plain: 8, k: 60, mid: 0.5 }
   },
-  odds: { roll: [0.82, 0.86, 0.9, 0.94, 0.98, 1.02, 1.06, 1.1, 1.14, 1.18], dAim: 0.22, dRand: 0.36, dSeam: 0.4, atkN: 160, seed: 9173 }
+  odds: {
+    roll: [0.82, 0.86, 0.9, 0.94, 0.98, 1.02, 1.06, 1.1, 1.14, 1.18],
+    aiRoll: [0.86, 0.98, 1.1],
+    dAim: 0.22,
+    dRand: 0.36,
+    dSeam: 0.3,
+    atkN: 160,
+    seed: 9173
+  }
 };

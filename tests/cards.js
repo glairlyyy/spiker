@@ -4,14 +4,14 @@
 // shares and morale by trait; then the spam test (a deck of one good card + Basics: played on every draw vs by the captain), the
 // OP-timing test (God Resolve, Titan and INZONE!! played at once vs saved for a key moment), the fusing test (two cards fused
 // and played into their read vs the same two played apart at the same moments) and the request odds (spec §2.37 Must hold, T-348).
-// npm run cards -- [pairs=100] [teams=league|tour|both] [modes=captain,random,basics] [spam=power,hunt] [fuse=wall+commit,…|x] [op|x] [req|x]
+// npm run cards -- [pairs=100] [teams=league|tour|both] [modes=captain,random,basics] [spam=power,wall] [fuse=wall+commit,…|x] [op|x] [req|x]
 const { load } = require('./harness');
 const g = load(17);
 const [
   N = 100,
   TEAMS = 'both',
   MODES = 'captain,random,basics',
-  SPAM = 'power,hunt',
+  SPAM = 'power,wall',
   FUSE = 'wall+commit,iblk+idig,iset+iatk,ifake+iatk,sdig+idig',
   OP = 'op',
   REQS = 'req'

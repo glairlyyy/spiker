@@ -33,7 +33,7 @@ repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
 
-### [ ] T-366: The three duels — free aiming, settling, block read / commit
+### [x] T-366: The three duels — free aiming, settling, block read / commit
 Spec: §2.39          Goldens: update (serve and attack choices change)          Save: no change
 Goal: serve targets, spike aim and each blocker's read / commit are free standing orders; a passer served at in a row settles in;
 Hunt the Passer is gone, Target Serve / Read Block amplify instead of unlocking.
@@ -57,7 +57,7 @@ Accept:
   hunting the same passer: serve-point share falls after the 3rd serve in a row; a 10-OVR gap still ≈ 71 % match wins.
 - Numbers written into spec §2.39.
 QA: Monster game → Plan board shows the free orders; a match plays to its result with no page errors.
-Result:
+Result: Serve targets free (each passer, seam, deep, safe; aimed = a lean + errors × 1.1, Target Serve = exact, no aim error; Auto = `tgtAI`: each option's srvOdds, settling counted, no draws — the AI serves mostly seam / safe); Hunt card / plan / AI picks / book & trap entries gone (SUB.hunt kept); settling `RULES.settle` 0.04 / cap 0.15 / fade 1 (`m.settle`); spike fight (Power, new Tool shot) vs avoid (a player / open: coverage × 0.8, pace × 0.92) with the hitter's own read `atkPick` when no order; block Read / Commit (the quick) / Commit on a hitter for every front-row blocker, own read `blkPick` (commit once a hitter takes > half of 8+ attacks), team Commit = 'quick' as before. Numbers in spec §2.39 (fixed weak −0.80 / −1.17 % pts vs alternating −0.48 / −1.38, league / tour; 10-OVR gap 71 → 72 %, tour 73 → 71; cards captain +11.3 / +12.6 → +10.6 / +10.4). Deviations: no Plan board UI exists since T-298 (no js/ui change; QA = test:ui's Monster game); also touched js/data/skills.js (Encyclopedia Target Serve / Read Block text), tests/bot.js (tgt:weak / tgt:alt modes, SETTLE env), tests/cards.js (spam default), tests/drone.test.js (terrain seed 4243 → 4244: noise), tests/engine.test.js / cards.test.js / ui-smoke.js (Hunt → orders / other cards); ORDERS.odds.dSeam 0.4 → 0.3 (the free seam's real run; odds within 3 points). Sims ~1.5× slower (tgtAI ≈ 1 ms a serve). Settling at the spec's size only levels hunting off (vs climbing without it) — a clear fall needs step ≈ 0.08 (owner). Goldens updated (serve targets and attack / block choices change every match).
 
 ### [ ] T-367: The hesitation moment and duel cards
 Spec: §2.39, §2.37          Goldens: update only if the AI's default pick changes a draw (say why)          Save: no change

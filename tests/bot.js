@@ -2,11 +2,14 @@
 // The smart bot (spec §2.30, T-285): plays the Plan board for side 0 with the board's own odds and measures what that is
 // worth against the same match played on Auto (paired seeds). Serve orders every serve (srvOdds); every `every` points each
 // player's aim / shot / feed / fake / block by the point it wins (atkOdds full: the rally played out).
-// npm run bot -- [pairs=60] [teams=league|tour] [mode=full|serve|blanket:<kind>=<value>] [every=4]
+// npm run bot -- [pairs=60] [teams=league|tour] [mode=full|serve|blanket:<kind>=<value>|tgt:weak|tgt:alt] [every=4]
+// tgt:weak — side 0 orders every serve at their weakest passer; tgt:alt — alternating between their two weakest (spec §2.39).
+// Every mode also prints side 0's serve-point share by the serves in a row at the receiver before that serve (settling).
 const { load } = require('./harness');
 const g = load(11);
 const [N = 60, TEAMS = 'league', MODE = 'full', EVERY = 4] = process.argv.slice(2).map((v, i) => (i === 0 || i === 3 ? +v : v));
 g.ORDERS.odds.atkN = +process.env.ATKN || 40; // the probe's possessions per option (the board uses ORDERS.odds.atkN)
+if (process.env.SETTLE) [g.RULES.settle.step, g.RULES.settle.cap] = process.env.SETTLE.split(',').map(Number); // (tuning: step,cap)
 
 const srvEV = o => 0.5 * o.hit - o.err;
 function smartServe(m, side) {
@@ -51,12 +54,12 @@ function smartRest(m, side) {
       pickBest(m, p, 'aim', g.aimOpts(p, O), v => g.atkOdds(m, side, p, [[p, 'aim', v]], true), win);
       pickBest(m, p, 'shot', g.shotOpts(), v => g.atkOdds(m, side, p, [[p, 'shot', v]], true), win);
     }
-    if (p.role === 'MB')
+    if (p.role !== 'S')
       pickBest(
         m,
         p,
         'blk',
-        g.blkOpts(),
+        g.blkOpts(p, O),
         v => g.atkOdds(m, 1 - side, null, [[p, 'blk', v]], true),
         o => -o.win
       );
@@ -74,8 +77,15 @@ function botSubs(m, side) {
 }
 function blanket(m, side, kind, v) {
   for (const p of g.squadOf(m.t[side])) {
-    const opts = { srv: g.srvOpts(p), shot: g.shotOpts(), aim: g.aimOpts(p, m.t[1 - side]), blk: g.blkOpts(), fake: g.fakeOpts() }[kind];
-    if (kind === 'blk' && p.role !== 'MB') continue;
+    const opts = {
+      srv: g.srvOpts(p),
+      shot: g.shotOpts(),
+      aim: g.aimOpts(p, m.t[1 - side]),
+      blk: g.blkOpts(p, m.t[1 - side]),
+      fake: g.fakeOpts(),
+      tgt: g.tgtOpts(p, m.t[1 - side])
+    }[kind];
+    if (kind === 'blk' && p.role === 'S') continue;
     if ((kind === 'shot' || kind === 'aim') && p.role === 'S') continue;
     const o = opts && opts.find(x => x.v === v);
     if (o && !o.lock) g.ordSet(m, p, kind, v);
@@ -87,17 +97,43 @@ const share = m => {
   for (const sc of m.setScores) ((a += sc[0]), (b += sc[1]));
   return a / (a + b);
 };
+/** Fixed target orders for side 0 (tgt:weak / tgt:alt): every serve at the weakest passer, or alternating the two weakest. */
+let altN = 0;
+function fixedTgt(m, side, how) {
+  if (m.serve !== side) return;
+  const p = g.rotOrder(m.t[side], m.rot[side])[0],
+    two = g.seamOf(m.t[1 - side]); // (the two weakest passers, by stats)
+  g.ordSet(m, p, 'tgt', how === 'weak' ? two[0].id : two[altN++ % two.length].id);
+}
+/** Side 0's serve points by the serves in a row at the receiver before that serve (settling, spec §2.39): n → [won, all]. */
+const inRow = {};
 function play(seed, smart) {
   g.RNG.seed(seed);
   const L = TEAMS === 'tour' ? g.mkTeams() : g.mkLeagueTeams(),
     m = g.newMatch(L[seed % L.length], L[(seed * 3 + 1) % L.length], false);
   if (smart && MODE.startsWith('blanket:')) blanket(m, 0, ...MODE.slice(8).split('='));
   for (let k = 0; !m.over; k++) {
-    if (smart && !MODE.startsWith('blanket:')) {
+    if (smart && MODE.startsWith('tgt:')) fixedTgt(m, 0, MODE.slice(4));
+    else if (smart && !MODE.startsWith('blanket:')) {
       smartServe(m, 0);
       if (MODE === 'full' && k % EVERY === 0) smartRest(m, 0);
     }
-    g.playRally(m);
+    const s0 = { ...(m.settle || {}) },
+      srv = m.serve,
+      sl = () => Object.values(m.srvLog || {}).reduce((a, r) => a + r.ace + r.bad, 0),
+      h0 = sl(),
+      w = g.playRally(m).w;
+    if (smart && srv === 0) {
+      const id = Object.keys(m.settle || {}).find(q => (m.settle[q] || 0) > (s0[q] || 0));
+      if (id) {
+        const n = Math.min(5, s0[id] || 0),
+          won = w === 0,
+          r = inRow[n] || (inRow[n] = [0, 0, 0]);
+        r[0] += won;
+        r[1]++;
+        r[2] += sl() > h0; // an ace or a broken pass
+      }
+    }
   }
   return m;
 }
@@ -127,3 +163,9 @@ console.log(
   `BOT ${TEAMS} ${MODE}: points ${((100 * d) / N).toFixed(2)} %, match wins ${((100 * (w1 - w0)) / N).toFixed(1)} % (Auto wins ${((100 * w0) / N).toFixed(0)} %)`
 );
 console.log('orders at the end of the matches:', JSON.stringify(pick));
+console.log(
+  'side 0 serves by serves in a row at the receiver before it (n: points won · aces + broken passes, % of serves):',
+  Object.entries(inRow)
+    .map(([n, [w, a, h]]) => `${n}${n === '5' ? '+' : ''}: ${((100 * w) / a).toFixed(1)} · ${((100 * h) / a).toFixed(1)} % (${a})`)
+    .join(' · ')
+);

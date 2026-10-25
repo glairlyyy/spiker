@@ -19,7 +19,7 @@ function aceOf(T) {
 }
 /**
  * The AI captain's plans before the match (no draws): the playstyle's default; a sharp captain (read ≥ PLAN_AI.iq) looks at
- * the other side — a standout ace → Wall their ace; a clearly weak passer → Hunt the passer.
+ * the other side — a standout ace → Wall their ace. (Hunting a weak passer is every server's own read now: tgtAI, spec §2.39.)
  */
 function planPick(T, O) {
   const [atk, def] = PLAN_STYLE[T.sk] || ['straight', 'read'],
@@ -29,10 +29,6 @@ function planPick(T, O) {
     ace = Math.max(...hit),
     rest = hit.length > 1 ? (hit.reduce((s, v) => s + v, 0) - ace) / (hit.length - 1) : ace;
   if (ace - rest >= PLAN_AI.aceGap) p.def = 'wall';
-  const pas = O.P.filter(q => q !== O.s).map(q => effD(q) + q.speed * 0.3),
-    lo = Math.min(...pas),
-    avg = pas.reduce((s, v) => s + v, 0) / pas.length;
-  if (avg - lo >= PLAN_AI.passGap) p.atk = 'hunt';
   return p;
 }
 /** Set side i's plans (who: 'ai' | 'you'); logged for the result card and the Reads tab. */
@@ -52,7 +48,7 @@ const noticeAt = T => Math.round(lerp(8, 4, clamp((capIQ(T) - 0.4) / 0.6, 0, 1))
 /**
  * The AI captain's answer at its timeout (spec §2.26): the tags it has noticed (Reads.tags, n ≥ noticeAt) → a counter plan.
  * Their hitter keeps going one way / their ace scores → Wall their ace; they serve at our weak passer → Cover the weak link;
- * our block keeps getting fooled → Dig deep; their block reads us → Power through; our serves find their weak passer → Hunt.
+ * our block keeps getting fooled → Dig deep; their block reads us → Power through.
  * Returns the new plan (or null: nothing noticed).
  */
 function planCounter(m, i) {
@@ -69,6 +65,5 @@ function planCounter(m, i) {
   if (ours.some(g => g.kind === 'fooled')) p.def = 'deep';
   // their block reads our hitters right (their tag 'read'): stop giving them a channel
   if (theirs.some(g => g.kind === 'read')) p.atk = 'power';
-  else if (ours.some(g => g.kind === 'serve')) p.atk = 'hunt';
   return p.atk !== cur.atk || p.def !== cur.def ? p : null;
 }

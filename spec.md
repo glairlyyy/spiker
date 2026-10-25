@@ -978,7 +978,8 @@ the AI coach fills every slot you leave with the same function. Built and measur
     the parts apart +6.1 / +7.6. `npm run career -- 40 both`: good Cup match wins Y1 46 → 59 %, Y2 53 → 56 %, odds vs her squad
     40 / 51 → 46 / 55 %; casual 46 / 44 → 49 / 51 %, odds 37 / 42 → 38 / 43; ratings unchanged (77.8 / 94.7 → 77.6 / 95.0).
 - §2.39 The three duels and the hesitation moment (owner, 2026-10-25: "target the weak passer is the go-to strat … make those our
-  main feature"; "add a hesitation moment where the player can intervene") **[draft — T-366, T-367]**:
+  main feature"; "add a hesitation moment where the player can intervene") **[the duels, free aiming and settling built
+  2026-10-25 — T-366; the hesitation moment and duel cards draft — T-367]**:
   - **The three duels** are the match's core: the **server** aims at a passer, the seam, deep or safe ↔ the receiving side hides
     or covers its weak passer; the **spiker** fights the block (power through, tool off the hands) or avoids it (their weak
     digger, the open court) ↔ the **blocker** reads (waits for the set: solid, late on fast sets) or commits (guesses the hitter
@@ -996,6 +997,38 @@ the AI coach fills every slot you leave with the same function. Built and measur
     most; late points hesitate more easily. Simmed matches: the AI always picks.
   - **Card kinds**: duel cards (Target Serve, Read Block, Disguise, Commit, Tempo, Pressure — the target doesn't settle for
     3 serves, Hide — the weak passer screened for 3 serves) play only in a hesitation; power-up and team-play cards any time.
+  - **Built** (T-366, 2026-10-25 **[built]**; numbers in `ORDERS` js/data/tactics.js, `RULES.settle` js/data/rules.js):
+    - Serve targets (every one free): each passer, the **seam** (between the two weakest), **deep** (a spot by their end line,
+      receive −4, errors × 1.08) and **safe** (pace × 0.92, errors × 0.7). Aiming at a passer or the seam without Target Serve
+      is a lean (60 %) with errors × 1.1; Target Serve makes any aimed serve exact with no aim error (the card no longer forces
+      a target). Auto = the server's own read: every option scored by its serve odds, settling counted (hit × 0.5 − error), the
+      best wins — no draws. The AI now serves mostly the seam or safe (league ≈ 45 / 52 %, deep 3 %); league serve errors 16.1 →
+      14.1 %, aces 10.4 → 8.9, broken passes 13.6 → 16.8 (tournament 14.0 → 11.0 / 26.4 → 24.9 / 15.6 → 22.1).
+    - Hunt the Passer (card and team plan, its AI picks, the books — bombers now float / short / beat, balanced power / cover /
+      tip — and the Serve Trap's list) is gone; the captain's targeted sub (SUB.hunt) stays.
+    - Settling: each serve taken × (1 + 0.04 × the serves in a row at that passer so far, at most + 15 %); a serve at a teammate
+      takes 1 off. Counted in the serve odds, so AI servers move on.
+    - Spike: fight = Power (pace × 1.08, errors × 1.15) or the new **Tool** shot (off a block covering 0.2–0.8: tooled out 30 %
+      of the time, errors × 1.08); avoid = at a player / the open court (now also coverage × 0.8, pace × 0.92). A hitter with no
+      aim / shot order reads the block: fight under ≈ 0.37 coverage, avoid over ≈ 0.63 (× their wit), plain between and always
+      on a bad set or a quick.
+    - Block: every front-row blocker has Read / Commit (the quick) / Commit on each hitter (middles also Stay back). Committed on
+      the hitter who attacks: up early (reach × 3.5, coverage × 1.6, a double forms); on anyone else: coverage × 0.6, bitten by
+      any fake, the commit net-touch rate. A blocker with no order commits on a hitter once 8+ attacks are in and that hitter
+      takes over half of their side's; else the team's setting. Read Block = a reading blocker in time on the quick.
+    - Not built: the Plan board's UI (removed in T-298 — the orders and their odds are engine API; the bot and tests use them).
+  - **Measured** (T-366, 2026-10-25): fixed target orders vs the servers' own read (`npm run bot -- 300 league tgt:weak|tgt:alt`,
+    tour 1000 pairs): always the weakest passer −0.80 / −1.17 % points (wins −5.3 / −4.0), alternating the two weakest −0.48 /
+    −1.38 (−1.7 / −5.0) — the fixed weak order is no longer best (league: alternating better; tour: level within noise). Hunting
+    one passer (500 matches; serves they took, by the serves in a row at them before it; aces + broken passes): league 27.2 ·
+    28.4 · 28.8 · 29.4 · 31.6 · 19.6 % at 0 · 1 · 2 · 3 · 4 · 5+ (without settling 27.0 · 30.2 · 31.7 · 38.2 · 34.4 · 35.2 — tiring
+    and shaken targets break more), tour 47.7 · 54.7 · 52.5 · 52.9 · 46.2 · 54.0 (without 47.4 · 55.7 · 55.9 · 53.6 · 55.3 · 54.5);
+    the serving side's point share by the same count rises with it (52 → 55 %: long runs at one passer come in serving streaks).
+    A 10-OVR gap (`npm run rng -- 300`): match wins 71 → 72 % (tour 73 → 71). Deck (`npm run cards -- 250`, league / tour):
+    captain +11.3 / +12.6 → +10.6 / +10.4 % points (wins +40 / +35 → +33 / +35), random +7.6 / +9.1 → +8.9 / +8.3, amplifiers only
+    +3.7 / +3.8 → +4.1 / +3.1 — the order holds; spam Power +1.6 vs +3.3 / +5.2 vs +6.2 → +2.1 vs +3.6 / +4.0 vs +5.9. Career
+    (`npm run career -- 20 both`): ratings unchanged (casual 67.0 / 83.8 → 66.9 / 83.0, good 80.3 / 96.8 → 80.3 / 96.8), Cup match
+    wins and odds vs her squad within the 20-run noise.
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two

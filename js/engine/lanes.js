@@ -31,7 +31,7 @@ function laneRead(c, x) {
     ao = ordOf(m, spiker, 'aim'),
     k =
       LANE.readK *
-      (atkPlan(m, atk).readK ?? 1) * // Hunt is predictable; Wall reads the ace; a forced channel (spec §2.29) too
+      (atkPlan(m, atk).readK ?? 1) * // Wall reads the ace; a forced channel (spec §2.29) too
       (dp.aceRead && spiker === aceOf(atkT) ? dp.aceRead : 1) *
       (ao === 'line' || ao === 'cross' ? ORDERS.atk.readK : 1) *
       (x.feedOrd ? ORDERS.set.readK : 1), // a fed hitter is expected
@@ -49,23 +49,19 @@ function laneRead(c, x) {
  */
 function laneAim(c, x) {
   const { m, V, atk, ds, atkT, defT } = c,
-    { spiker, b0, b1, bch, spZ, appX, blockers } = x,
+    { spiker, b0, b1, bch, spZ, appX } = x,
     ap = atkPlan(m, atk),
     dp = defPlan(m, ds);
   let p = habitLine(spiker);
-  // Hunt the passer (spec §2.26): lean toward the channel their weakest passer stands in (unless they are up at the net)
-  const wp = ap.huntK ? weakPasser(defT) : null;
-  if (wp && !blockers.includes(wp)) {
-    const wz = m.pos[wp.id].z;
-    p += (Math.abs(laneZ(spZ, 'line') - wz) <= Math.abs(laneZ(spZ, 'cross') - wz) ? 1 : -1) * ap.huntK;
-  }
   if (bch) {
     // Beat the block watches it harder; Power through ignores it
     const see = clamp(clamp(LANE.see0 + LANE.seeK * (W(spiker) - W(b0)), 0, LANE.seeMax) * (ap.see ?? 1), 0, 0.9);
     p = lerp(p, bch === 'line' ? LANE.away : 1 - LANE.away, see);
     if (b1) p += (blkStr(laneHand(x, 'cross')) - blkStr(laneHand(x, 'line'))) * LANE.weakK * see;
   }
-  const o = m.ord[spiker.id] ? atkApply(m, spiker, defT, spZ, p) : null; // role orders (spec §2.29): aim and shot
+  // the spike duel (spec §2.39): the hitter's aim / shot orders, else their own read of the block (fight / avoid / plain)
+  const ao = atkOrd(m, spiker, defT, x),
+    o = ao.aim || ao.shot ? atkApply(m, spiker, defT, spZ, p, ao) : null;
   if (o) p = o.p;
   const ch = R() < clamp(p, 0.05, 0.95) ? 'line' : 'cross';
   let cov = x.cov;
@@ -75,6 +71,7 @@ function laneAim(c, x) {
   }
   if (dp.aceCov) cov *= spiker === aceOf(atkT) ? dp.aceCov : dp.otherCov; // Wall their ace
   cov *= ap.cov ?? 1; // Beat the block: they find the holes
+  if (o) cov *= o.covK; // avoiding the block: placed round the hands
   if (V)
     x.a1.push({
       k: 'lane',
@@ -97,7 +94,10 @@ function laneAim(c, x) {
     cutK: (ap.cutK ?? 0) + (o ? o.cutK : 0),
     cutMax: o ? o.cutMax : 0.75,
     errK: (ap.err ?? 1) * (o ? o.errK : 1),
-    planStuff: dp.stuff ?? 1
+    planStuff: dp.stuff ?? 1,
+    aimO: ao.aim,
+    shotO: ao.shot,
+    atkPk: ao.pick || null
   };
 }
 
