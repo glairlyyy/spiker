@@ -28,6 +28,9 @@ const MapView = {
   on0: null, // the callbacks as the UI gave them (pick, point)
   last: null, // the you.at last passed on (the road a trip follows starts there)
   lastIn: null, // that model's you.inside (the walk in from its door, display: you walk back out of it on the next trip)
+  /** Street level's camera keys (spec §4.44 Tilt), printed wherever its controls are listed (the F3 overlay at street level). */
+  STREET_KEYS:
+    'Drag to turn / tilt · <kbd>Q</kbd> / <kbd>E</kbd> turn · <kbd>Z</kbd> / <kbd>X</kbd> (<kbd>PgUp</kbd> / <kbd>PgDn</kbd>) look up / down',
   free: null, // a WASD stop being resolved: the travel goes straight there (you already stand on it)
   /** Where street level opens: every district (spec §4.37 6 Phase 3, T-361) — all the land (mapcam3d zoneOf). */
   ZONE: Object.freeze({ all: true }),
@@ -634,7 +637,8 @@ const PerfHUD = {
         ],
         p.auto ? ['Auto', esc(String(p.auto))] : null,
         ['VRMs', `${p.vrm}${p.blocks !== null && p.blocks !== undefined ? ` · blocks ${p.blocks}` : ''}`],
-        ['spikes', `${H.spikes.length} · median ${f(H.med)} ms${H.lo === 'n/a' ? '' : ` · LoAF ${H.loafN}`}`]
+        ['spikes', `${H.spikes.length} · median ${f(H.med)} ms${H.lo === 'n/a' ? '' : ` · LoAF ${H.loafN}`}`],
+        kind === 'map' && MapView.street() > 0.5 ? ['camera', MapView.STREET_KEYS] : null // (street level's camera keys, spec §4.44 Tilt)
       ].filter(Boolean),
       shape = R.map(r => r[0]).join('|');
     // (the rows are built once per shape; each 4 Hz redraw only rewrites the values that changed: no layout of the rest)

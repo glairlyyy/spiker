@@ -2086,6 +2086,11 @@ the AI coach fills every slot you leave with the same function. Built and measur
     buffers); standing with the clock paused — shadow redraws 4.8 vs 81.6 skipped (each frame before). Walking or with the sun moving
     fast the shadow still redraws each frame (things move); at 60 fps a sun at ×1 redraws it ~1.5 × a second. GPU ms need the real
     GPU: re-check in F3 (the spike log should no longer list "render scale", "sky bake" or "shader compile" while walking).
+    **Follow-ups [built 2026-10-27]**: entering street level compiles its shaders in the background (no frame waits for it); a WASD
+    stop no longer redraws the whole hub when nothing is due — only the top bar, the rail, the open place card and the map refresh
+    (a story scene, lesson, event or card due still gets the full redraw); the shadow map redraws once after a map change; F3's
+    Measure item for the sky is now "sky dome + env bake" (hides the dome); at street level the F3 overlay lists the camera keys
+    (drag to turn / tilt · Q / E turn · Z / X or PgUp / PgDn look up / down).
 - §4.40 The island × 2 and real facilities **[built 2026-10-24 — T-350–T-351; not yet: the drone's field spots lit like places; zoomed out shows region names, not district names;  later (owner, 2026-10-24): more fillers for Wei, the Cup-win drop (63 → 42 %, 12 runs) re-measured]** (owner, 2026-10-23: "expand the island 2× so travel matters
   and there is room for proper facilities"; "remove pins entirely — a building or a piece of kit lights up on hover"):
   - **Scale** (T-350): `MAP_SCALE` 2.25 → 4.5 (~2.4 × 1.6 km). Towns and districts spread out with it (the same layout, twice the

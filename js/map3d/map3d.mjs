@@ -46,7 +46,7 @@ import {
   skyAt,
   SKY,
   LOOK,
-  PSKY,
+  SHADOW_GATE,
   GLOW,
   STREET_U,
   richLook,
@@ -671,19 +671,30 @@ export function create(onIdle) {
   const fxInfo = { ms: 0, sweeps: 0, sig: '', n: 0, patched: 0, pre: 0, gate: null };
   /**
    * Precompile (owner 2026-10-26: a shader compile landed mid-walk): the shown scene's programs for the buffer they draw into
-   * (look.target: the post's scene target), issued at once (three compile: the driver links them in parallel) — on entering
-   * street level and after a sweep patched new materials, not one by one in the draws that first use them.
+   * (look.target: the post's scene target), issued at once — on entering street level and after a sweep patched new materials,
+   * not one by one in the draws that first use them. compileAsync (pacing follow-up 2026-10-27): the links run in parallel and
+   * their status is polled between frames (KHR_parallel_shader_compile), so no frame waits; one in flight at a time; sync
+   * renderer.compile only where compileAsync is missing.
    */
+  let preBusy = false;
   const precompile = () => {
-    if (!renderer.compile || !look.on) return;
+    if (!look.on || preBusy || !(renderer.compileAsync || renderer.compile)) return;
     const rt = look.target(),
       prev = renderer.getRenderTarget();
     try {
-      if (rt) renderer.setRenderTarget(rt);
-      renderer.compile(scene, cam); // (three defers each program's status check to its first use: the links run in parallel)
+      if (rt) renderer.setRenderTarget(rt); // (the target is read when each program is made: bound for the call itself)
+      if (renderer.compileAsync) {
+        const p = renderer.compileAsync(scene, cam);
+        if (p && p.then)
+          ((preBusy = true),
+            p.then(
+              () => (preBusy = false),
+              () => (preBusy = false)
+            ));
+      } else renderer.compile(scene, cam);
       fxInfo.pre++;
     } catch (e) {
-      /* (a compile failure shows in the draw as before) */
+      preBusy = false; /* (a compile failure shows in the draw as before) */
     } finally {
       renderer.setRenderTarget(prev);
     }
@@ -759,16 +770,19 @@ export function create(onIdle) {
       },
       {
         id: 'sky',
-        label: 'sky bake + painted sky',
+        label: 'sky dome + env bake',
         group: 'layer',
-        can: () => on || 'Fast: no baked sky',
+        can: () => on || 'Fast: no sky dome',
         hold() {
-          const a = LOOK.sky.every,
-            b = PSKY.every;
-          LOOK.sky.every = PSKY.every = Infinity;
-          return () => ((LOOK.sky.every = a), (PSKY.every = b));
+          const a = LOOK.sky.every;
+          LOOK.sky.every = Infinity; // (no env cube bake while this item is measured)
+          return () => (LOOK.sky.every = a);
         },
-        mask: () => (scene.background && scene.background.isTexture ? swap(scene, 'background', skyCol) : null)
+        mask() {
+          const d = look.parts().dome, // (street level's painted sky: hidden for the draw — the clock's colour shows)
+            u = [d && swap(d, 'visible', false), scene.background && scene.background.isTexture ? swap(scene, 'background', skyCol) : null];
+          return u.some(Boolean) ? () => u.forEach(f => f && f()) : null;
+        }
       },
       {
         id: 'shadow',
@@ -883,6 +897,7 @@ export function create(onIdle) {
     stop() {
       pdrv = null;
       pPlain = false;
+      SHADOW_GATE.dirty = true; // (the probe's draws updated the shadow map each frame — render(false) — or swapped it off)
       const d = look.parts ? look.parts().dyn : null;
       if (d && pFrozen) {
         const r = d.res;
@@ -900,7 +915,8 @@ export function create(onIdle) {
           shadowAuto: renderer.shadowMap.autoUpdate,
           shadowMap: sun.shadow.mapSize.x,
           lookShadow: `${LOOK.shadow.map}/${LOOK.shadow.mapHi}`,
-          skyEvery: `${LOOK.sky.every}/${PSKY.every}`,
+          skyEvery: LOOK.sky.every,
+          dome: !!(P.dome && P.dome.visible),
           res: P.dyn ? P.dyn.res : null,
           pins: furn ? furn.layer.style.visibility : '',
           clockHeld: held
@@ -1059,6 +1075,7 @@ export function create(onIdle) {
       if (!furn) return;
       cur = m;
       fxDirty = true;
+      SHADOW_GATE.dirty = true; // (a model change: the shadow map redraws once — look3d SHADOW_GATE)
       updN++;
       const fall = m.borders && m.borders.fall ? m.borders.fall.key : null;
       if (fallSeen !== undefined && fall && fall !== fallSeen)
@@ -1194,9 +1211,15 @@ export function create(onIdle) {
     /** Dev / QA: put the camera over world point (x, z) at distance d (m); fields left out keep their value. */
     setView(v) {
       if (!C.view) return;
-      Object.assign(C.view, v);
+      const { tilt: t, ...rest } = v || {};
+      Object.assign(C.view, rest);
+      if (t !== undefined) C.setTilt(t);
       C.fit();
     },
+    /** Street level's tilt (rad; + = looking up — mapcam3d TILT). */
+    tilt: () => C.tilt(),
+    /** Dev / QA: set the street-level tilt (clamped). */
+    setTilt: v => C.setTilt(v),
     /** The ring under a named figure's feet (the figure menu's person), or none (null). */
     mark(id) {
       if (life) life.mark(id);

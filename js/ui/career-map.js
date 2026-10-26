@@ -639,7 +639,7 @@ function mapTravel(x, y, how = 'walk') {
 }
 /**
  * A WASD stop at map point p (owner, 2026-10-25: no snap, no stutter): the rules' travel as mapTravel, but you already stand there —
- * no walk lock, the save and the hub's full redraw (MapModel.build, the map's model) wait until you have stood still (roamRender);
+ * no walk lock, the save and the hub's catch-up (MapModel.build, the map's model) wait until you have stood still (roamRender);
  * only the week strip is refreshed now. A road encounter plays as before.
  */
 function mapRoam(x, y) {
@@ -655,16 +655,58 @@ function mapRoam(x, y) {
   if (typeof clockRefresh === 'function') clockRefresh();
   roamRender();
 }
-/** The hub catches up once WASD has rested ROAM_IDLE ms (and the page is idle): one redraw for a run of stops. */
+/**
+ * The hub catches up once WASD has rested ROAM_IDLE ms (and the page is idle): one catch-up for a run of stops — the full redraw
+ * (renderCareer) only when roamDue says something must show (pacing follow-up 2026-10-27), else roamLight's patches.
+ */
 const ROAM_IDLE = 900;
 function roamRender() {
   clearTimeout(roamRender.t);
   roamRender.t = setTimeout(() => {
     if (MapView.m3 && MapView.m3.driving && MapView.m3.driving()) return roamRender(); // (still walking: later)
-    const go = () => !CW.lock && document.querySelector('.career.hub') && renderCareer();
+    const go = () => {
+      if (CW.lock || !document.querySelector('.career.hub')) return;
+      const why = roamDue(RUN);
+      roamRender.why = why;
+      if (why) renderCareer();
+      else roamLight(RUN);
+    };
     if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 1000 });
     else go();
   }, ROAM_IDLE);
+}
+/**
+ * Why a WASD stop's catch-up needs renderCareer ('' = it doesn't; pure reads): an event, a story scene playing or due (the squad's
+ * introductions, the last match's scene, a presence beat, a lesson — what renderCareer's Story.hub would start), a card over the
+ * map (brief, recap, night, the cup / eval panel), a place that changed hands, the night falling, the place card opened / closed.
+ */
+function roamDue(run) {
+  const hub = document.querySelector('.career.hub'),
+    q = s => (hub && hub.querySelector ? hub.querySelector(s) : null);
+  if (!run || run.result || run.event) return 'event';
+  if (Story.step(run)) return 'story';
+  if (Story.on(run) && (run.story.meet != null || run.story.res || Story.presenceDue(run) || Story.due(run, 'hub'))) return 'lesson';
+  if (CW.recap || CW.briefWeek !== briefKey(run) || q('.hubmodal')) return 'card';
+  if (City.night(run) && Run.canEndWeek(run) && CW.nightAsk !== run.week) return 'card';
+  if (CW.ownOf === run && ownChanges(CW.own, run.own || {}).length) return 'own';
+  if (!!(hub && hub.classList && hub.classList.contains('eve')) !== !!City.night(run)) return 'night';
+  if (!!q('#spot.open') !== !!CW.spot) return 'spot';
+  return '';
+}
+/** Nothing due: only what a walk changes — the top bar, the rail, the open place card, the road and the map's model — patched. */
+function roamLight(run) {
+  const hub = document.querySelector('.career.hub'),
+    q = s => (hub && hub.querySelector ? hub.querySelector(s) : null),
+    armed = Date.now() - CW.endArm < 4000,
+    tb = q('.tbar'),
+    rl = q('.wrail'),
+    sp = q('#spot.open');
+  if (tb) patchOuter(tb, topBar(run));
+  if (rl) patchOuter(rl, CW.railMini ? railStrip(run, armed) : weekRail(run, armed));
+  if (sp && CW.spot && !sp.matches(':hover')) (patchHTML(sp, spotCard(run)), spotPlace(true));
+  roadSync(run);
+  MapView.update(MapModel.build(run, CW.spot));
+  figRender();
 }
 function mapEndWeek() {
   if (!Run.canEndWeek(RUN)) return;

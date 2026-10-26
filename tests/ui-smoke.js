@@ -559,6 +559,14 @@ const step = async (name, fn) => {
       return [t, !!document.querySelector('#mapwrap .mapload')];
     });
     if (pill[0] !== 'Loading…' || pill[1]) throw new Error(`the Loading pill: ${pill}`);
+    // the street camera's tilt through the api (spec §4.44 Tilt): setView({ tilt }) / setTilt / tilt
+    const tl = await ev(() => {
+      MapView.m3.setView({ tilt: 0.2 });
+      const a = MapView.m3.tilt();
+      MapView.m3.setTilt(0);
+      return [a, MapView.m3.tilt()];
+    });
+    if (!(tl[0] > 0.1) || tl[1] !== 0) throw new Error(`the tilt api: ${tl}`);
     const st = await ev(() => ({
       ms: MapView.m3.bench(3),
       ring: MapView.m3.info().ring,
@@ -587,6 +595,7 @@ const step = async (name, fn) => {
         p = [p0[0] + 8, p0[1]],
         n = MapView.model,
         t = performance.now();
+      roamRender.why = undefined;
       MapView.walk(p);
       return {
         moved: City.pos(RUN).join() !== p0.join(),
@@ -596,6 +605,8 @@ const step = async (name, fn) => {
       };
     });
     if (!roam.moved || roam.lock || !roam.same) throw new Error(`the WASD stop: ${JSON.stringify(roam)}`);
+    await pg.waitForFunction(() => roamRender.why !== undefined, null, { timeout: 30000 }); // (the catch-up: full or light)
+    roam.why = await ev(() => roamRender.why || 'light');
     await pg.waitForFunction(() => !MapView.busy() && !CW.lock, null, { timeout: 120000 });
     await ev(() => MapView.m3.setView({ d: 110 })); // (back out to the map, as the walk camera leaves it)
     await ev(p => {
@@ -606,7 +617,7 @@ const step = async (name, fn) => {
     await pg.waitForFunction(() => MapView.m3.street() === 0 && !MapView.m3.info().ring.on && !MapView.m3.info().stream.on, null, {
       timeout: 120000
     });
-    return `${st.ms} ms a frame at street level (ring ${st.ring.lots} lots, ${Math.round(st.ring.tris / 1000)}k tris, built in ${st.ring.ms} ms; ${st.vrm} VRMs; ${st.stream.near} near blocks); the walk took ${days} h; a WASD stop ${roam.ms} ms`;
+    return `${st.ms} ms a frame at street level (ring ${st.ring.lots} lots, ${Math.round(st.ring.tris / 1000)}k tris, built in ${st.ring.ms} ms; ${st.vrm} VRMs; ${st.stream.near} near blocks); the walk took ${days} h; a WASD stop ${roam.ms} ms (catch-up: ${roam.why})`;
   });
   // the living island, Agent E (spec §4.37 3–5): a stop on the road, the short cut, the island's sound
   await step('the road (T-333): a stop on the way — the card over the map, Space walks on', async () => {

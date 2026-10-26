@@ -183,3 +183,71 @@ test('clock pacing (owner 2026-10-27): 60 s on the map at ×4 — no renderCaree
   eq(env.renders, 0, 'walking: no renderCareer');
   eq(refresh, 0, 'walking: the walk counted its hours as it began — nothing to refresh');
 });
+
+/** js/ui/career-map.js's WASD catch-up (roamRender / roamDue / roamLight) with the hub's builders stubbed: env.renders / env.light count. */
+function roamHub(g, run) {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'js/ui/career-map.js'), 'utf8'),
+    body = src.slice(src.indexOf('const ROAM_IDLE'), src.indexOf('function mapEndWeek')),
+    env = {
+      renders: 0,
+      light: 0,
+      CW: { lock: null, sheet: null, fig: null, spot: null, briefWeek: 'k', endArm: 0 },
+      RUN: run,
+      document: { querySelector: s => (s === '.career.hub' ? {} : null) },
+      setTimeout: f => f(),
+      clearTimeout: () => {},
+      requestIdleCallback: undefined,
+      MapView: { m3: null, update: () => env.light++ },
+      MapModel: { build: () => ({}) },
+      briefKey: () => 'k',
+      ownChanges: () => [],
+      renderCareer: () => env.renders++,
+      topBar: () => '',
+      railStrip: () => '',
+      weekRail: () => '',
+      roadSync: () => {},
+      figRender: () => {}
+    };
+  const scope = new Proxy(env, {
+    has: () => true,
+    get: (o, k) => (k in o ? o[k] : k === Symbol.unscopables ? undefined : k in g ? g[k] : globalThis[k])
+  });
+  const roam = new Function('scope', `with (scope) { ${body}\n; return roamRender; }`)(scope);
+  return [roam, env];
+}
+
+test('WASD stop catch-up (pacing follow-up 2026-10-27): nothing due → no renderCareer (patches + MapView.update); a story scene due → renderCareer', () => {
+  const g = load(44),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Roam', mode: { story: true } });
+  run.event = null;
+  run.clock = g.City.freshClock();
+  const S = run.story;
+  for (const id of Object.keys(g.SCENES)) S.seen[id] = true;
+  for (const p of g.People.all(run)) S.seen[`presence:${p.id}`] = true;
+  delete S.meet;
+  delete S.res;
+  S.cur = null;
+  S.at = g.Story.clock(run);
+  const [roam, env] = roamHub(g, run);
+  eq(g.City.night(run), false, 'daytime');
+  roam();
+  eq(env.renders, 0, 'nothing due: no renderCareer');
+  eq(env.light, 1, 'nothing due: the light patch (the map model updated)');
+  eq(roam.why, '', 'why: none');
+  S.cur = { id: Object.keys(g.SCENES)[0], i: 0, mode: {}, log: [] };
+  roam();
+  eq(env.renders, 1, 'a story scene due: the full render');
+  eq(roam.why, 'story', 'why: the story');
+  S.cur = null;
+  run.event = { id: 'x' };
+  roam();
+  eq(env.renders, 2, 'an event: the full render');
+  run.event = null;
+  run.week = 2;
+  S.seen.explore = false; // (week 2's hub lesson)
+  assert(g.Story.due(run, 'hub') === 'explore', 'the lesson is due');
+  S.at = null;
+  roam();
+  eq(env.renders, 3, 'a lesson due: the full render');
+  eq(roam.why, 'lesson', 'why: the lesson');
+});

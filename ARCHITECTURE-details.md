@@ -897,7 +897,10 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   every configuration has `EXT_disjoint_timer_query_webgl2` samples, else the waited draw), `probeReport` = the text. A 3-s
   watchdog / Esc / toggle off / dispose / unbind → `abort()`. Layers: `tagAdds(scene, table)` wraps `scene.add` once — an object
   gets `userData.probe` from the adding module's file in the stack (map3d `PROBE_OF`, r3d `PROBE_OF`; map3d tags its own terrain,
-  figure groups, war and lights). look3d `parts()` = { bloom, grade, fxaa, gtao, dyn } (the probe's only hook there).
+  figure groups, war and lights). look3d `parts()` = { bloom, grade, fxaa, gtao, dyn, dome } (the probe's only hook there; `sky` = "sky dome + env bake":
+  the dome hidden + the env background swapped per draw, env bakes held). The probe's draws (`render(false)`) skip the shadow gate:
+  the shadow map redraws every measured frame (the `shadow` item swaps `autoUpdate` off); `stop()` and map3d `update()` set
+  `SHADOW_GATE.dirty`.
 - **Spike log**: `PerfHUD.spike` each frame while on: interval > `SPIKES.k` × the median (last 120) or > `abs` → a record of the
   frame before (`p.raw` JS split, `p.ev`: map3d `frameEvents` diffs the parts' counters — programs, textures, geometries, ring
   builds, stream / props preps and picks, sky bakes, render scale, street fx sweeps, updates, fog re-dims, people VRMs, slow `lap`
@@ -955,8 +958,9 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   the far material (the chunk nearest the camera always the full one: both programs exist from the first frame); High: all full.
   `info().terrain` { far, chunks, fogRows, fogBusy }. **Fog re-dim**: `applyFog` sets a job (the first one runs at once); `fogStep`
   (every frame) writes ≤ `FOG_MS` 2 ms of grid rows outward from the camera's row and uploads the two bands it wrote
-  (`addUpdateRange`). **Precompile**: map3d `precompile()` = `renderer.compile(scene, cam)` with `look.target()` (the scene's render
-  target) bound — on st crossing 0.3 and after a finish sweep patched new materials (`info().fx.pre`).
+  (`addUpdateRange`). **Precompile**: map3d `precompile()` = `renderer.compileAsync(scene, cam)` (one in flight; sync `compile` only where it
+  is missing) with `look.target()` (the scene's render target) bound for the call — on st crossing 0.3 and after a finish sweep
+  patched new materials (`info().fx.pre`).
 - **Frame pacing** (Pacing A, owner 2026-10-27: "60 fps but it stutters"): `jobs3d.mjs` `createJobs()` (map3d's `jobs`, `info().jobs`):
   generator jobs, each `yield` a slice; `run(budget)` (map3d each frame after fxStep, `lap('jobs')`: `JOBS.budget` 2.5 ms, `JOBS.boost`
   30 behind an action / on arrival) steps them lowest `pri` first, older first, until the budget is used (the first slice always);
@@ -986,7 +990,10 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   `STREAM.show` the fog-dimmed layers get the fog last drawn (`fogDrawn`) until a point moved `FOG_LAG` 64 m; below it the frame
   `fogSync(cur)`s the model's. town3d `ringCache` (lot → its `buildLot` mesher `raw()`s, dropped beyond `RING.r` + 2 `step` or on a new
   layout): a ring rebuild `reserve`s and `append`s them (kit3d mesher `raw` / `append` / `reserve`); `baseHide` uploads only the
-  changed spans (`addUpdateRange`).
+  changed spans (`addUpdateRange`). The hub's catch-up (career-map `roamRender`, ROAM_IDLE 900 ms after the stop, idle):
+  `roamDue(run)` (pure reads → '' or why: event, story playing, lesson / presence / squad intro / match scene due, a card over the
+  map, own changes, night flip, the place card opened / closed) → renderCareer; else `roamLight` patches `.tbar`, the rail and the
+  open `#spot` (patchOuter / patchHTML), `roadSync`, `MapView.update(MapModel.build)`, `figRender`. `roamRender.why` = the last one's.
 
 ### Street level (spec §4.37 6, T-336a)
 
@@ -998,7 +1005,8 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   (pure) → orbit = pitch − t·s (the camera's angle over your middle), near (looking up the distance × → `TILT.near` 0.6), lensK (the lens
   shift eases off looking up). The camera is kept `STREET.ground` 0.6 m over the terrain (`overGround`, pure); held there while looking
   up, it looks where the unheld camera would. Walking with no tilt input for `TILT.idle` 3 s it eases back (`back`); standing it stays.
-  s = 0 resets it. `tilt()` / `setTilt(v)` (QA).
+  s = 0 resets it. `tilt()` / `setTilt(v)` (QA); map3d passes them through (`api.tilt()` / `setTilt(v)`, `setView({ tilt })`).
+  The keys' text: `MapView.STREET_KEYS` (the F3 overlay's `camera` row at street level).
 - **Camera path** — mapcam3d `streetPose(d)` (pure, tested): above `DIST[0]` (25 m) today's view; below it s = smoothstep((25 − d) /
   (25 − `STREET.d1` 7.2)), pitch 55° → `STREET.pitch` 12°, the target rising to your middle (`STREET.head` 0.95 m) and pulled onto your
   avatar (k by s), so at d1 the camera is ~7 m behind, ~2.4 m above the ground (eye level). T-369: the lens widens 40° → 50°
