@@ -105,7 +105,7 @@ Accept:
 - npm test, lint, test:ui pass.
 QA: career run → street level in two districts
 Result: ring lots get district-coloured window / door / shop surrounds, lintels, a dark coping lip / eave fascia, blade signs and 1-px outlines (≤ 90 m); walls painted darker at the foot; far boxes = painted silhouettes (window grid in metres, inked edges, lit by hash at night); buildings lean to a darkened haze hue with distance (no pale white boxes). Gym junction, Auto: calls 158 → 159 (10:00), 173 → 174 (18:30), tris 0.992 → 1.004 M; city street ring 46k → 55k tris (total +2 %); bench and JS within swiftshader noise; Fast unchanged (141 / 144 calls, ~0.61 M tris). Atlas = the existing window atlas (its glow mask is the night variant); facility3d untouched.
-### [ ] T-372: Street view: street life
+### [x] T-372: Street view: street life
 Spec: §4.44          Goldens: unchanged          Save: no change
 Goal: benches, bins, vending machines, parked bikes, signs, utility poles and overhead wires, ground decals; grass and trees sway.
 Files: js/map3d/town3d.mjs or a new js/map3d/props3d.mjs (new — add to the file map), nature3d.mjs, stream3d.mjs (a layer), map3d.mjs (wire it); tests/map3d.test.js; spec.md §4.44; ARCHITECTURE.md, ARCHITECTURE-details.md
@@ -116,7 +116,7 @@ Accept:
 - Screenshots; F3 within budget.
 - npm test, lint, test:ui pass.
 QA: career run → street level on a main road
-Result:
+Result: New js/map3d/props3d.mjs (stream layer `props`, one InstancedMesh per kind: pole, wire, vending, sign, scooter, bin, bench, bollard, planter, hydrant, decal; hashed pavement slots via pure `roadSlots`, off roads / lots / doors via town3d `solid`, lamps and benches; poles + 6 sagging wires a span (shader-bent unit span) + some across the road; decals from a code-made atlas; lit faces on the T-373 emissive path); nature3d street sway (grass bend, crown flutter × STREET_U.st); the ring's old pavement props Fast only. Calls 148→158 / 127→138 / 171→181 (market / main / lane, 10:00, Auto), tris +~57k (~6 %), JS pick ≤ 0.7 ms per 6 m, block prep ≤ ~1 ms; Fast unchanged (110 / 136 / 113). Deviation: bikes = scooters (Bangkok); no stream3d change (the layer API sufficed).
 ### [x] T-373: Street view: dusk and night
 Spec: §4.44          Goldens: unchanged          Save: no change
 Goal: lamp and window glow (bloom on Auto / High), light pools under lamps, the sky's gradient and painted clouds by time of day.

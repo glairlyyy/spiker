@@ -662,7 +662,7 @@ const SIGN_GLOW = {
 };
 /** Window colours at night (the Fast setting's NIGHT.win.colors are the same). */
 export const GLOW = ['#ffd38a', '#ffe7b0', '#ffc070', '#d8e4ff'];
-const FACES = [
+export const FACES = [
   [1, 0],
   [-1, 0],
   [0, 1],

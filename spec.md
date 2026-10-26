@@ -2166,7 +2166,15 @@ the AI coach fills every slot you leave with the same function. Built and measur
     lit windows at night. Measured (headless, gym junction, Auto): draw calls 158 → 159 (10:00), 173 → 174 (18:30), triangles
     0.992 → 1.004 M (a city street: +2 %); Fast unchanged.
   - **Street life** (T-372): benches, bins, vending machines, parked bikes, signs, overhead wires and utility poles, ground
-    decals (cracks, puddles, leaves); grass and trees sway.
+    decals (cracks, puddles, leaves); grass and trees sway. **[built 2026-10-26]**: at street level (Auto / High) concrete utility poles
+    with a yellow-black band stand along one side of every main road and many streets, a cross-arm of power lines and a droop of
+    thicker cables sagging between them (now and then one strung across the road to a building), swaying a little; the pavements get
+    rows of parked scooters, glowing light-box signs and vending machines (against a wall) by shops, potted plants, bins and the odd
+    bench by homes, bollards and hydrants on the main roads — never on the road, in a doorway or a shop's entrance; roads and pavements
+    get cracks, tar patches, puddles at the edges and fallen leaves. The vending machines' displays and the signs glow and bloom at
+    night. Grass bends in the wind and tree crowns sway and flutter. Measured (headless, Auto, 10:00): draw calls 148 → 158 (a market
+    street), 127 → 138 (a main road), 171 → 181 (a residential lane), triangles +~57k (~+6 %), JavaScript ≤ 0.7 ms per 6 m walked
+    (re-picking what is near) and ≤ ~1 ms per block prepared; Fast unchanged (no street life, no sway; 110 / 136 / 113 calls).
   - **Dusk and night** (T-373): lamp and window glow (bloom on Auto / High), pools of light under lamps, the sky's gradient and
     clouds by time of day. **[built 2026-10-26]**: at street level on Auto / High the sky is painted — a deep anime blue overhead
     fading to the hour's haze at the skyline (the noon sky no longer washes near-white), soft-edged painted clouds lit toward the sun

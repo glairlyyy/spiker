@@ -10,6 +10,7 @@ import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP_M, fogFactor, lattice, hstr } from './geo3d.mjs';
 import { part, box, mergeParts as merge } from './kit3d.mjs';
 import { pack, repack } from './stream3d.mjs';
+import { STREET_U } from './look3d.mjs';
 
 /** Street level's far version (T-364): these shapes beyond the near blocks as their flat (Fast) shapes; the rest only near. */
 const FAR = ['pine', 'broad', 'blossom', 'palm', 'bamboo'];
@@ -350,19 +351,30 @@ const heronGeo = () =>
 const BEAST = { deer: { s: 1.5, c: '#9b6d45', v: 0.9 }, dog: { s: 0.75, c: '#c9b28d', v: 1.4 }, cat: { s: 0.45, c: '#4a4744', v: 0.7 } },
   BIRD = { bird: { s: 1.4, c: '#33363b', v: 7 }, gull: { s: 1.2, c: '#f2f2ee', v: 6 } };
 
-/** Wind (s → sway) and the leafy look for the detailed shapes: foliage sways by height and gets a soft 3D value-noise mottle. */
-const WIND = { speed: 1.3, amp: 0.035, gust: 0.35 };
-const richMat = (U, double) => {
+/**
+ * Wind (s → sway) and the leafy look for the detailed shapes: foliage sways by height and gets a soft 3D value-noise mottle.
+ * Street level (T-372, × STREET_U.st: Auto / High only) adds `street`: grass bends from its root (`grass` m at the tip of a 0.6 m
+ * blade, two gust waves), crowns sway more (`more`) and their leaves flutter (`leaf` m).
+ */
+const WIND = { speed: 1.3, amp: 0.035, gust: 0.35, street: { grass: 0.1, more: 0.8, leaf: 0.045 } };
+const GRASSY = new Set(['tuft', 'reed', 'fern']);
+const richMat = (U, double, shape) => {
   const m = new THREE.MeshStandardMaterial({
     vertexColors: true,
     roughness: 0.85,
     metalness: 0,
     side: double ? THREE.DoubleSide : THREE.FrontSide
   });
+  const W = WIND.street,
+    grassy = GRASSY.has(shape);
   m.onBeforeCompile = sh => {
     sh.uniforms.uT = U.t;
+    sh.uniforms.uSw = STREET_U.st;
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float leaf; uniform float uT; varying float vLeaf; varying vec3 vLp;')
+      .replace(
+        '#include <common>',
+        '#include <common>\nattribute float leaf; uniform float uT, uSw; varying float vLeaf; varying vec3 vLp;'
+      )
       .replace(
         '#include <begin_vertex>',
         `#include <begin_vertex>
@@ -374,6 +386,14 @@ const richMat = (U, double) => {
         #endif
         float ph = uT * ${WIND.speed.toFixed(2)} + ip.x * 0.13 + ip.z * 0.11;
         float sw = max(0.0, position.y) * ${WIND.amp.toFixed(3)} * (0.4 + leaf) * (1.0 + ${WIND.gust.toFixed(2)} * sin(ph * 0.37));
+        ${
+          grassy
+            ? `float gb = uSw * ${W.grass.toFixed(3)} * pow(clamp(position.y / 0.6, 0.0, 1.6), 2.0);
+        transformed.x += gb * (sin(ph * 1.7) + 0.5 * sin(ph * 3.1 + 1.3));
+        transformed.z += gb * 0.6 * cos(ph * 1.3 + 0.4);`
+            : `sw *= 1.0 + ${W.more.toFixed(2)} * uSw;
+        transformed += uSw * leaf * ${W.leaf.toFixed(3)} * vec3(sin(uT * 3.3 + position.y * 2.1 + ip.x), 0.4 * sin(uT * 2.7 + position.x * 2.3), cos(uT * 3.0 + position.z * 1.9 + ip.z));`
+        }
         transformed.x += sin(ph) * sw;
         transformed.z += cos(ph * 0.8) * sw * 0.6;`
       );
@@ -393,6 +413,7 @@ const richMat = (U, double) => {
         diffuseColor.rgb *= mix(1.0, 0.72 + 0.5 * lkN3(vLp * 3.1) * (0.6 + 0.4 * lkN3(vLp * 9.0)), vLeaf);`
       );
   };
+  m.customProgramCacheKey = () => (grassy ? 'nature-rich-grass' : 'nature-rich'); // (the same source text: the program by kind)
   return m;
 };
 
@@ -476,7 +497,7 @@ export function createNature(scene, heightAt, opts = {}) {
     if (md.at && Math.hypot(you[0] - md.at[0], you[1] - md.at[1]) < M.step) return;
     const t0 = performance.now();
     if (!md.mesh) {
-      md.mesh = new THREE.InstancedMesh(HI.tuft(), richMat(U, true), M.max);
+      md.mesh = new THREE.InstancedMesh(HI.tuft(), richMat(U, true, 'tuft'), M.max);
       md.mesh.setColorAt(0, col.setRGB(1, 1, 1));
       md.mesh.castShadow = false;
       md.mesh.receiveShadow = true;
@@ -669,7 +690,7 @@ export function createNature(scene, heightAt, opts = {}) {
         animals = L.wild || [],
         k = `${items.length}|${animals.length}|${items.length ? items[0].at.join(',') + items[items.length - 1].at.join(',') : ''}|${!!lo}`;
       low = !!lo;
-      mat = low ? flat : shape => richMat(U, shape === 'palm' || shape === 'tuft');
+      mat = low ? flat : shape => richMat(U, shape === 'palm' || shape === 'tuft', shape);
       if (k !== key) {
         key = k;
         fogKey = null;
