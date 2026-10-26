@@ -617,8 +617,9 @@ test('cards: owned techniques fire on their own at half rate; an amplifier raise
 test('cards: every recipe fuses in the hand into one card; the second place stays empty (spec §2.37, T-358)', () => {
   const g = load(96);
   const F = Object.keys(g.CARDS).filter(id => g.CARDS[id].parts);
-  for (const id of ['fortress', 'decoy', 'pwall', 'tempo', 'scramble', 'fbait', 'sniper', 'lockdown', 'full_delay', 'isrvp'])
+  for (const id of ['fortress', 'decoy', 'pwall', 'tempo', 'scramble', 'fbait', 'ifloor', 'ftempo', 'full_delay', 'isrvp'])
     assert(F.includes(id), `${id} is a recipe`);
+  for (const id of F) assert(!g.CARDS[id].parts.some(x => g.CARDS[x].kind === 'duel'), `${id}: no duel part (owner, 2026-10-26)`);
   eq(g.Cards.recipe('iblk', 'idig'), 'fortress', 'Block + Dig = Fortress');
   eq(g.Cards.recipe('idig', 'iblk'), 'fortress', 'either way round');
   eq(g.Cards.recipe('ifake', 'delay'), 'full_delay', 'Fake + Delayed Spike = its full form');

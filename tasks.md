@@ -1671,6 +1671,7 @@ Full text of every done task, newest first: **tasks-done.md** (read it only when
 ## Unplanned changes
 
 - Focus press removed (owner, 2026-10-21: "remove QTE in training"): career-map.js, city.js, encounter.js, data/encounter.js, menu.js, storage.js, tests, career bot.
+- Duel-part recipes dropped (owner, 2026-10-26: "drop recipe"): Sniper, Lockdown, Full Target Serve, Full Read Block — data/cards.js, data/skills.js, tests/cards.test.js, spec, ARCHITECTURE-details.
 
 (build chat: owner requests made directly in the build chat — one line each; the spec chat moves them into spec.md and then into tasks-done.md)
 - 2026-10-08 The crouch before a jump goes deeper the higher the player jumps (owner): × 1 at Jump ≤ 40 up to × 1.5 at Jump 99 (`squatK`, `deepen` in poses3d.mjs: hip drop × k, joints × 1 + 0.3 (k − 1)) on the spike's load and the block's prep. QA (qa_poses, head height): spike load drop 0.47 → 0.71 m at Jump 99 (+51 %), block prep +36 %. Files: js/render3d/poses3d.mjs, poses3d-attack.mjs.

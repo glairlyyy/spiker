@@ -155,7 +155,8 @@ Object.assign(SKILLS, {
   // the full forms: "Full Delayed Spike" = Improve Fake + Delayed Spike — always goes for it, its edges and buffs × DECK.amp.full
   // (a fake's full form: their block −4 % more, the faked block fails more)
   for (const [id, c] of Object.entries(CARDS)) {
-    if (c.src !== 'tech' || !SKILLS[c.need] || !SKILLS[c.need].grp) continue;
+    // (no full form for a duel card: it sits in the duel slot, never in the hand — owner, 2026-10-26)
+    if (c.src !== 'tech' || c.kind === 'duel' || !SKILLS[c.need] || !SKILLS[c.need].grp) continue;
     const g = SKILLS[c.need].grp,
       amp = Object.keys(CARDS).find(a => CARDS[a].amp === g);
     if (!amp) continue;

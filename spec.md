@@ -874,7 +874,8 @@ the AI coach fills every slot you leave with the same function. Built and measur
       Recipes: two different amplifiers → a **combo play** (Block + Dig = Fortress, Fake + Attack = Decoy, Serve + Block = Pressure
       Wall, Set + Attack = Tempo, Dig + Set = Scramble, Fake + Block = Bait); an amplifier + a technique of its group → the technique
       at **full form** ("Full Delayed Spike": a bigger edge, the faked block fails more); the same amplifier twice → **Improve X+**
-      (stronger, diminishing); the old pairs (Killer + Target Serve = Sniper, Wall Their Ace + Commit = Lockdown …) fuse too.
+      (stronger, diminishing); the old pairs (Killer + Target Serve = Sniper, Wall Their Ace + Commit = Lockdown …) fuse too — the
+      duel-part ones (Sniper, Lockdown, Full Target Serve / Read Block) dropped (owner, 2026-10-26, §2.39) **[built 2026-10-26]**.
     - The captain fuses by the same function (no draws). On screen: drag a card onto another — the cards it fuses with light up,
       each showing the result's name and cost → result; `F` then two keys does the same.
     - Built (tuned T-348, 2026-10-24; `DECK.tech`, `DECK.amp`, js/data/cards.js): an owned technique goes on a rally with chance 0.5
@@ -1006,6 +1007,8 @@ the AI coach fills every slot you leave with the same function. Built and measur
       margin × 0.6, at most 2 a set; Normal as before; Often = margin × 1.6, at most 5 — on your side only (a side you captain or
       your player's); simmed and AI-vs-AI matches play Normal. Recipes with a duel part (Sniper, Lockdown, Target / Read Block
       full forms) no longer form in a hand.
+    - **Duel-part recipes dropped** (owner, 2026-10-26: "drop recipe") **[built 2026-10-26]**: Sniper, Lockdown, Full Target Serve and
+      Full Read Block are gone (data, Encyclopedia, tests); every other recipe stays.
     - Measured (2026-10-26; 200 matches, a side yours, hesitations a side a set): league Rare / Normal / Often 1.46 / 2.28 / 3.90
       (your own player's 0.34 / 0.54 / 0.88; the other side 2.2 throughout), tour 1.13 / 1.78 / 2.87 (0.34 / 0.47 / 0.74; other
       1.75). `npm run cards -- 250` (league / tour): captain +10.6 / +10.4 → +10.5 / +9.7 % points (wins +33 / +35 → +35 / +34),

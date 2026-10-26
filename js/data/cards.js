@@ -244,28 +244,7 @@ const CARDS = {
     tally: 'defend',
     desc: 'Show a gap, close it: their power −12 %'
   },
-  // the old pairs (§2.33 combos)
-  sniper: {
-    name: 'Sniper',
-    zone: 'atk',
-    kind: 'play',
-    src: 'fuse',
-    parts: ['killer', 'target'],
-    need: 'killer',
-    buff: { serve: 12 },
-    tally: 'serve',
-    desc: 'Killer serves at their weakest passer: serve +12 % more'
-  },
-  lockdown: {
-    name: 'Lockdown',
-    zone: 'def',
-    kind: 'play',
-    src: 'fuse',
-    parts: ['wall', 'commit'],
-    buff: { jump: 12 },
-    tally: 'defend',
-    desc: 'Wall their ace, middles committed: jump +12 % more'
-  },
+  // the old pairs (§2.33 combos; Sniper and Lockdown dropped — duel parts never reach the hand: owner, 2026-10-26)
   ifloor: {
     name: 'Iron Floor',
     zone: 'def',

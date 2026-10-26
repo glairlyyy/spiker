@@ -1598,8 +1598,8 @@ tests / measurements) }. `npm run cards` (tests/cards.js) measures modes, the sp
   `grpOn`), `foe` (% on the other side's stat, pushed into its `ek` in `cardEdges`). A technique card's edges × `DECK.amp.with` while its
   group's amplifier is active.
 - **Fused cards** (`CARDS[id].parts`, src 'fuse', never in a deck): combos (fortress, decoy, pwall, tempo, scramble, fbait), the old
-  pairs (sniper, lockdown, ifloor = sdig + idig, ftempo, stempo), Improve X+ (`<amp>p`, built in data/cards.js: parts [a, a], `pk` DECK.amp.plus each),
-  full forms (`full_<tech card>`, built in data/skills.js: [amp, tech], `pk` [1, DECK.amp.full], force). `fuseDefaults`: dur ≥ 4, cd =
+  pairs (ifloor = sdig + idig, ftempo, stempo; none with a duel part — sniper, lockdown, full_target, full_readblk dropped, owner 2026-10-26), Improve X+ (`<amp>p`, built in data/cards.js: parts [a, a], `pk` DECK.amp.plus each),
+  full forms (`full_<tech card>`, built in data/skills.js, duel cards skipped: [amp, tech], `pk` [1, DECK.amp.full], force). `fuseDefaults`: dur ≥ 4, cd =
   the slowest part's (display / `strong`), type from the parts. Engine: `cardComps(id)` → [[part, ×], …, [id, 1]]; `cardApply` and
   `cardEdges` compile every part (× pk; holder level only on parts with `need`); `actIds` (active ids with parts) for counters, traps,
   'active' and 'clash'; `fuseLead` (the non-amplifier part) gives holders and level; `payers` / `afford` / `fits` / `cardState` read
