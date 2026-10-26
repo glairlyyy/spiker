@@ -2142,7 +2142,13 @@ the AI coach fills every slot you leave with the same function. Built and measur
     shaded smooth near the camera. Far off and on Fast it all fades to today's look. Measured (headless, gym junction, Auto): draw
     calls 156 → 158 (10:00), 171 → 173 (18:30), triangles 0.990 → 0.996 M; Fast unchanged.
   - **Buildings** (T-371): near facades with window frames, doors, awnings, shop signs and roof edges in the district palette;
-    the far skyline as painted silhouettes instead of white boxes.
+    the far skyline as painted silhouettes instead of white boxes. **[built 2026-10-26]**: near you (Auto / High) windows, doors, shop
+    fronts and signs get painted surrounds in the district's colour (slate in the city, red-brown in the old town, blue on the coast …),
+    lintels over the lower floors, a dark coping lip or eave board on every roof, blade signs hung out from some shops, and thin dark
+    outlines on the buildings within ~90 m; walls are a shade darker at the foot. Farther off the buildings lean to a darker tint of
+    the hour's haze (a blue-grey painted skyline, not pale boxes), and the far blocks' stand-ins show a window grid with inked edges,
+    lit windows at night. Measured (headless, gym junction, Auto): draw calls 158 → 159 (10:00), 173 → 174 (18:30), triangles
+    0.992 → 1.004 M (a city street: +2 %); Fast unchanged.
   - **Street life** (T-372): benches, bins, vending machines, parked bikes, signs, overhead wires and utility poles, ground
     decals (cracks, puddles, leaves); grass and trees sway.
   - **Dusk and night** (T-373): lamp and window glow (bloom on Auto / High), pools of light under lamps, the sky's gradient and

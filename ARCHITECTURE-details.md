@@ -932,6 +932,21 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   material) with the clumps within `r` 30 m, shrinking over the last `edge` m, rebuilt per `step` 3 m, ≤ `per` 6 new tiles a frame;
   tiles cached to r + `keep`. town3d `clear(x, z)` = not on a road (+ pavements), lot or landmark (a 32 m tile index per layout).
   `info().meadow` { on, n, tiles, ms }.
+- **Buildings (T-371, spec §4.44)** — kit3d `buildLot(…, all = true)` (the ring only; the map look's merged meshes unchanged): `FRAME`
+  by district style (trim colour, `blade` share) — a surround quad behind every pane / door / shop front / sign (W at 0.012 m out;
+  glass curtain walls stay plain), a lintel (face + underside) over windows / doors below 9 m, the flat roof's coping lip and the
+  pitched roofs' fascia (`pitched(…, edge)`; gable and hip) in an ink colour from the wall, and blade signs (`blade`: a board out from
+  the shop front's edge, the sign tile turned a quarter on both faces in G, lit by hash). The wall material paints a foot-to-top
+  gradient (0.84 → 1.04 over ~6 m, plaster / brick / wood). Outlines: `lotOutline(l, i, y0, wall, pos, col)` (body corners, the wall
+  top or the roof's eaves, verges, hips and ridge, pushed 5 cm out) for the ring's lots within `RING.ink` 90 m of its centre — one
+  `LineSegments` (`userData.ring = 'ink'`, `inkMat`, cached per lot in `ringCache` as `ink`). Far skyline: the streamed far boxes
+  (town3d `buildFill(lots, true)`) take kit3d `farFor(kind)` → `farMat(top, win)` (one per unit shape: box 1, gable 0.62, stepped
+  0.55, tanks no windows): a window grid in metres from the instance scale (1.7 × 2.9 m cells, a wider ground floor), corners and
+  the wall top inked, a darker foot, roofs × 0.86, lit windows by hash × NIGHT_U; the grid fades to its mean by `fwidth`. Fast's
+  boxes keep `KIT[kind].mat`. Painted distance: look3d `SIL` / `SIL_U` / `silPatch(sh)` (kit3d wall, glass, roof and far materials):
+  past `SIL.r` [80, 420] m a building leans (`SIL.k` 0.65) toward the hour's haze hue × `SIL.dark` 0.55 before the fog — blue-grey
+  silhouettes, not pale boxes washed white; bright (lit) pixels keep their glow. `uSilK` = smooth(0.3, 0.9, st) on Auto / High (look.step),
+  0 on Fast and the map.
 - **Look** — at s > 0.15 the background is the baked sky (`look.envTex()`; Fast: the clock's sky colour); a `THREE.Fog` haze in the
   grade's colour closes in with s (near 160 m at street level; 1e6 on the map); the war borders (`war.show`) and the route preview
   ribbons hide at s ≥ 0.5; the story figures (`model.figures`) shrink to life size with you.

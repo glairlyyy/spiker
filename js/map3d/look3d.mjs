@@ -178,6 +178,28 @@ export function groundBytes(n = GROUND.n) {
 }
 /** Shared uniforms: the texture (made on first use) and the weight (look.step: smooth(0.2, 0.8, st) on Auto / High, 0 on Fast). */
 export const GROUND_U = { tGround: { value: null }, uGr: { value: 0 } };
+/**
+ * Street level's painted distance on the buildings (T-371, spec §4.44): past `SIL.r` m a building leans toward the hour's haze hue
+ * darkened (`SIL.dark`) — a blue-grey painted skyline under the haze instead of pale boxes washed white. kit3d's building materials
+ * read these uniforms (`silPatch`); look.step sets them (Auto / High at street level; Fast and the map: off).
+ */
+export const SIL = { r: [80, 420], k: 0.65, dark: 0.55 };
+export const SIL_U = { uSil: { value: new THREE.Color() }, uSilK: { value: 0 }, uSilR: { value: new THREE.Vector2(...SIL.r) } };
+/** Patch a shader (in onBeforeCompile) with the painted distance: the colour leans to uSil by distance from the camera, before the fog. */
+export const silPatch = sh => {
+  Object.assign(sh.uniforms, SIL_U);
+  sh.vertexShader = sh.vertexShader
+    .replace('#include <common>', '#include <common>\nvarying float vSilD;')
+    .replace('#include <project_vertex>', '#include <project_vertex>\n  vSilD = length(mvPosition.xyz);');
+  sh.fragmentShader = sh.fragmentShader
+    .replace('#include <common>', '#include <common>\nvarying float vSilD; uniform vec3 uSil; uniform float uSilK; uniform vec2 uSilR;')
+    .replace(
+      '#include <fog_fragment>',
+      `if (uSilK > 0.0) gl_FragColor.rgb = mix(gl_FragColor.rgb, uSil, uSilK * ${SIL.k.toFixed(2)} * smoothstep(uSilR.x, uSilR.y, vSilD)
+    * (1.0 - 0.8 * smoothstep(0.6, 1.4, max(gl_FragColor.r, max(gl_FragColor.g, gl_FragColor.b))))); // (lit windows keep their glow)
+  #include <fog_fragment>`
+    );
+};
 const groundTex = () => GROUND_U.tGround.value || (GROUND_U.tGround.value = dataTex(groundBytes(), GROUND.n));
 const GLSL_GROUND = `
   float grFade(vec2 gp) { return uGr * (1.0 - smoothstep(${GROUND.fade[0].toFixed(3)}, ${GROUND.fade[1].toFixed(3)}, length(fwidth(gp)))); }
@@ -727,6 +749,8 @@ export function richLook(renderer, scene, cam, sun) {
       gradeAt(tod, GR);
       STREET_FX.uFdToon.value = on ? smooth(0.3, 0.9, st) : 0;
       GROUND_U.uGr.value = on ? smooth(0.2, 0.8, st) : 0; // (T-370: the painted ground; Fast: none)
+      SIL_U.uSilK.value = on ? smooth(0.3, 0.9, st) : 0; // (T-371: the painted distance on the buildings)
+      SIL_U.uSil.value.copy(GR.haze).multiplyScalar(SIL.dark);
       if (!on) return;
       const G = grade.material.uniforms;
       G.uK.value = smooth(0.15, 0.8, st);

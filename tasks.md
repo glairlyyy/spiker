@@ -93,7 +93,7 @@ Accept:
 - npm test, lint, test:ui pass.
 QA: career run → street level on a main road and a residential street
 Result: built — one generated RGBA texture (asphalt / slabs / grass strokes / paint wear) in world UVs on roads, the ring's pavements (own mesh S) and lawn; main-road edge lines in the road shader; smooth normals (nsm) near; the meadow (hashed, ≤ 6 tiles a frame, rebuilt per 3 m walked, 2–6 ms headless); kerbs / pavements stay in the ring (rebuilt per 30 m) rather than per block; map3d wires the meadow (2 lines). Gym junction, Auto: calls 156 → 158 (10:00), 171 → 173 (18:30), tris 0.990 → 0.996 M; Fast unchanged (141 / 144 calls, 612k / 615k tris).
-### [ ] T-371: Street view: buildings
+### [x] T-371: Street view: buildings
 Spec: §4.44          Goldens: unchanged          Save: no change
 Goal: near facades with window frames, doors, awnings, shop signs and roof edges in the district palette; the far skyline as painted silhouettes.
 Files: js/map3d/town3d.mjs, facility3d.mjs, kit3d.mjs, look3d.mjs; tests/map3d.test.js; spec.md §4.44; ARCHITECTURE-details.md
@@ -104,7 +104,7 @@ Accept:
 - Screenshots; F3 within budget.
 - npm test, lint, test:ui pass.
 QA: career run → street level in two districts
-Result:
+Result: ring lots get district-coloured window / door / shop surrounds, lintels, a dark coping lip / eave fascia, blade signs and 1-px outlines (≤ 90 m); walls painted darker at the foot; far boxes = painted silhouettes (window grid in metres, inked edges, lit by hash at night); buildings lean to a darkened haze hue with distance (no pale white boxes). Gym junction, Auto: calls 158 → 159 (10:00), 173 → 174 (18:30), tris 0.992 → 1.004 M; city street ring 46k → 55k tris (total +2 %); bench and JS within swiftshader noise; Fast unchanged (141 / 144 calls, ~0.61 M tris). Atlas = the existing window atlas (its glow mask is the night variant); facility3d untouched.
 ### [ ] T-372: Street view: street life
 Spec: §4.44          Goldens: unchanged          Save: no change
 Goal: benches, bins, vending machines, parked bikes, signs, utility poles and overhead wires, ground decals; grass and trees sway.

@@ -716,6 +716,80 @@ test('map3d: the detail ring — every face and rooms behind the ground-floor gl
   fast.dispose();
 });
 
+test('map3d: street view buildings (T-371) — trim, blade signs and roof edges in the ring only; outlines; the far skyline painted, Fast untouched', () => {
+  const THREE = require('three'),
+    kit = require('../js/map3d/kit3d.mjs'),
+    { createTown } = require('../js/map3d/town3d.mjs'),
+    m = townModel(),
+    lots = m.land.lots,
+    mk = () => ({ W: kit.mesher({ wmask: 3 }), G: kit.mesher({ glow: 3 }), R: kit.mesher() }),
+    grey = [0.5, 0.5, 0.5];
+  // the ring's build adds the trim (surrounds, lintels, coping / fascia, blade signs); the map look's build is unchanged by it
+  let more = 0,
+    n = 0;
+  lots.forEach((l, i) => {
+    if (!kit.facade(l, i) || n >= 60) return;
+    n++;
+    const a = mk(),
+      b = mk();
+    kit.buildLot(a, l, i, 0, grey);
+    kit.buildLot(b, l, i, 0, grey, true);
+    if (b.W.count() > a.W.count()) more++;
+  });
+  assert(more >= n * 0.8, `street-level trim on most lots (${more} / ${n})`);
+  // a city shop with a blade sign: its two lettered faces are in the glass mesher
+  const shop = lots.findIndex(l => l.kind === 'shop' && l.style === 'city' && kit.facade(l, lots.indexOf(l)).shop);
+  if (shop >= 0) {
+    const a = mk();
+    kit.buildLot(a, lots[shop], shop, 0, grey, true);
+    const panes = kit.facade(lots[shop], shop, true).faces.reduce((k, f) => k + f.wins.length, 0);
+    assert(a.G.count() >= panes * 6, 'every pane has its glass');
+  }
+  // outlines: whole segments near the lot, none for tanks / chimneys
+  const box = lots.findIndex(l => l.kind === 'block'),
+    gab = lots.findIndex(l => kit.facade(l, lots.indexOf(l)) && kit.facade(l, lots.indexOf(l)).L.roof === 'gable'),
+    tank = lots.findIndex(l => l.kind === 'tank');
+  for (const i of [box, gab].filter(k => k >= 0)) {
+    const p = [],
+      c = [],
+      f = kit.lotFrame(lots[i], i);
+    kit.lotOutline(lots[i], i, 2, [0.8, 0.6, 0.4], p, c);
+    assert(p.length > 0 && p.length % 6 === 0 && c.length === p.length, `${lots[i].kind}: line segments`);
+    const R = Math.hypot(f.w, f.d) / 2 + 1;
+    for (let v = 0; v < p.length; v += 3)
+      assert(Math.hypot(p[v] - f.x, p[v + 2] - f.z) < R && p[v + 1] >= 2 && p[v + 1] <= 2 + f.h + 0.2, 'on the lot');
+    assert(c[0] < 0.8 * 0.5, 'dark ink from the wall colour');
+  }
+  if (tank >= 0) {
+    const p = [];
+    kit.lotOutline(lots[tank], tank, 0, grey, p, []);
+    eq(p.length, 0, 'no outline on a tank');
+  }
+  // the ring draws the outlines as one line draw
+  const sc = new THREE.Scene(),
+    town = createTown(sc, () => 1, { fast: () => false });
+  town.sync(m);
+  const g0 = m.land.landmarks.find(l => l.id === 'weiPower').at;
+  town.ring(g0[0] * 0.5, g0[1] * 0.5, 1, true);
+  const ink = [];
+  sc.traverse(o => o.isLineSegments && o.userData.ring === 'ink' && ink.push(o));
+  eq(ink.length, 1, 'one outline draw in the ring');
+  // the far skyline: per-shape painted materials (window grid, inked edges, night windows); the Fast kit's own material untouched
+  const far = kit.farFor('block'),
+    sh = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
+  assert(
+    far !== kit.KIT.block.mat && far === kit.farFor('tower') && kit.farFor('house') !== far && kit.farFor('tank') !== far,
+    'one far material per shape'
+  );
+  far.onBeforeCompile(sh);
+  assert(/vFs = vec3\(length\(instanceMatrix\[0\]\.xyz\)/.test(sh.vertexShader), 'metres from the instance scale');
+  assert(
+    /fwidth\(c\)/.test(sh.fragmentShader) && /uNight/.test(sh.fragmentShader) && sh.uniforms.uNight === kit.NIGHT_U,
+    'grid fades by footprint; lit at night'
+  );
+  assert(!kit.KIT.block.mat.onBeforeCompile.toString().includes('vFs'), 'Fast keeps its plain boxes');
+  town.dispose();
+});
 test('map3d: facilities (spec §4.40, T-351) — every design inside its lot; a ray picks the facility; hover and rims light it; name boards', () => {
   const THREE = require('three'),
     { FAC, buildFacility } = require('../js/map3d/facility3d.mjs'),

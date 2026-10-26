@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP_M, clamp } from './geo3d.mjs';
+import { silPatch } from './look3d.mjs';
 
 /** Region accents (the REGIONS colours): the palettes below lean on them. */
 const ACC = { wei: '#d08a2e', wu: '#5b8def', shu: '#2fb8a0', outlaws: '#ff8c42', gloria: '#ff5da2', open: '#f5e6a8' };
@@ -637,6 +638,21 @@ const AWNING = {
   shacks: ['#8a6a3a', '#5f6f7a', '#7a4a3a'],
   compound: ['#c86a8a', '#efe0c8'],
   works: ['#5f6f7a']
+};
+/**
+ * Street level's facade trim by district style (T-371, spec §4.44): window and door surrounds, lintels, the roof's coping lip, the
+ * eaves' fascia and the blade signs' boards — the district's painted accent; `blade` = shop fronts there hang a sign out (share).
+ */
+const FRAME = {
+  city: { c: '#2c3440', blade: 0.7 },
+  works: { c: '#4d5a52', blade: 0 },
+  oldtown: { c: '#6e2a20', blade: 0.8 },
+  fishing: { c: '#2f5f8f', blade: 0.3 },
+  beach: { c: '#3f8fa6', blade: 0.5 },
+  terrace: { c: '#3e2c22', blade: 0.3 },
+  campus: { c: '#2f5444', blade: 0 },
+  shacks: { c: '#6a4a32', blade: 0.2 },
+  compound: { c: '#b06a7a', blade: 0 }
 };
 const SIGN_GLOW = {
   [TILE.signCity]: ['#ff6fb0', '#5fe0ff', '#ffd060', '#9fff8a'],
@@ -1322,6 +1338,7 @@ export const detailMats = () => {
     }),
     roof = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.05, map: dom ? roofTexture() : null });
   wall.onBeforeCompile = sh => {
+    silPatch(sh);
     sh.vertexShader =
       'attribute vec3 wmask;\nvarying vec3 vMask;\n' +
       sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vMask = wmask;');
@@ -1329,11 +1346,14 @@ export const detailMats = () => {
       'varying vec3 vMask;\n' +
       sh.fragmentShader.replace(
         '#include <map_fragment>',
-        '#ifdef USE_MAP\n  vec3 wt = texture2D(map, vMapUv).rgb;\n  diffuseColor.rgb *= 1.0 + 1.3 * dot(wt - 0.8, vMask);\n#endif'
+        '#ifdef USE_MAP\n  vec3 wt = texture2D(map, vMapUv).rgb;\n  diffuseColor.rgb *= 1.0 + 1.3 * dot(wt - 0.8, vMask);\n' +
+          // painted (T-371): a wall a shade darker at its foot, lighter up high (uv v = metres / 4; metal runs sideways: not it)
+          '  if (vMask.x + vMask.y > 0.0) diffuseColor.rgb *= mix(0.84, 1.04, smoothstep(-0.3, 1.6, vMapUv.y));\n#endif'
       );
   };
   wall.customProgramCacheKey = () => 'kit3d-wall';
   glass.onBeforeCompile = sh => {
+    silPatch(sh);
     sh.uniforms.uNight = NIGHT_U;
     sh.vertexShader =
       'attribute vec3 glow;\nvarying vec3 vGlow;\n' +
@@ -1346,9 +1366,157 @@ export const detailMats = () => {
       );
   };
   glass.customProgramCacheKey = () => 'kit3d-glass';
+  roof.onBeforeCompile = silPatch;
+  roof.customProgramCacheKey = () => 'kit3d-roof';
   for (const m of [wall, glass, roof]) m.userData.shared = true;
   MATS = { wall, glass, roof };
   return MATS;
+};
+
+/**
+ * Lot i's outline at street level (T-371: clean dark edges on near buildings, anime-style): its body's corners, the wall top or the
+ * roof's eaves, verges, hips and ridge, pushed a few cm out so the lines sit on the edges. Appends line segments to pos / col
+ * (plain arrays, metres; colour = the wall's, darkened). Tanks and chimneys: none.
+ */
+export function lotOutline(l, i, y0, wall, pos, col) {
+  const fr = lotFrame(l, i),
+    L = lookOf(l);
+  if (!fr || !L || L.roof === 'cyl') return;
+  const { w, d, h, x, z, cs, sn } = fr,
+    w2 = w / 2,
+    d2 = d / 2,
+    kx = (w2 + 0.05) / w2,
+    kz = (d2 + 0.05) / d2,
+    c = mul(wall, 0.3),
+    P = (lx, ly, lz) => {
+      const ax = lx * kx,
+        az = lz * kz;
+      return [x + ax * cs + az * sn, y0 + ly, z - ax * sn + az * cs];
+    },
+    seg = (a, b) => (pos.push(...a, ...b), col.push(...c, ...c)),
+    eave = L.roof === 'flat' ? h + 0.04 : L.roof === 'lean' ? h * 0.8 : L.roof === 'stepped' ? h * 0.5 : h * (L.eave || 0.65),
+    pitchedRoof = L.roof === 'gable' || L.roof === 'hip';
+  const C = [
+    [-w2, -d2],
+    [w2, -d2],
+    [w2, d2],
+    [-w2, d2]
+  ];
+  C.forEach(([a, b], k) => {
+    seg(P(a, 0.02, b), P(a, eave, b));
+    if (!pitchedRoof) seg(P(a, eave, b), P(C[(k + 1) % 4][0], eave, C[(k + 1) % 4][1]));
+  });
+  if (!pitchedRoof) return;
+  // the roof as pitched() draws it (canonical a along the ridge, b across)
+  const along = w >= d,
+    A = (along ? w : d) / 2,
+    Bh = (along ? d : w) / 2,
+    Q = (a, y, b) => (along ? P(a, y + 0.03, b) : P(b, y + 0.03, -a)),
+    ov = 0.28,
+    ey = eave - ov * ((h - eave) / Bh),
+    D = Bh + ov;
+  if (L.roof === 'hip') {
+    const r = Math.max(0, A - Bh),
+      E = A + ov;
+    for (const [a, b] of [
+      [-E, -D],
+      [E, -D],
+      [E, D],
+      [-E, D]
+    ])
+      seg(Q(a, ey, b), Q(Math.sign(a) * r, h, 0));
+    seg(Q(-E, ey, -D), Q(E, ey, -D));
+    seg(Q(-E, ey, D), Q(E, ey, D));
+    seg(Q(-E, ey, -D), Q(-E, ey, D));
+    seg(Q(E, ey, -D), Q(E, ey, D));
+    if (r > 0) seg(Q(-r, h, 0), Q(r, h, 0));
+    return;
+  }
+  const E = A + 0.22;
+  seg(Q(-E, h, 0), Q(E, h, 0));
+  for (const sb of [-1, 1]) {
+    seg(Q(-E, ey, sb * D), Q(E, ey, sb * D));
+    for (const sa of [-1, 1]) seg(Q(sa * E, ey, sb * D), Q(sa * E, h, 0));
+  }
+}
+
+/**
+ * The far skyline at street level (T-371, spec §4.44): the Fast boxes beyond the streamed blocks drawn as painted silhouettes — a
+ * window grid in metres (the instance's scale; walls up to `top` of the unit shape), corners and the wall top inked dark, a foot
+ * darker than the top, roofs a shade down; lit windows by hash at night (NIGHT_U); the pattern fades to its mean where a cell is
+ * under ~3 px. The scene's haze tints it. One material per (top, windows), made once, shared; Fast never uses it.
+ */
+const FAR = new Map();
+export const farMat = (top = 1, win = true) => {
+  const key = `${top}|${win}`;
+  if (FAR.has(key)) return FAR.get(key);
+  const m = new THREE.MeshStandardMaterial({ roughness: 0.9, metalness: 0, vertexColors: true });
+  m.onBeforeCompile = sh => {
+    silPatch(sh);
+    sh.uniforms.uNight = NIGHT_U;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vFl, vFn, vFs; varying float vFi;')
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        vFl = position; vFn = normal; vFi = 0.0; vFs = vec3(1.0);
+        #ifdef USE_INSTANCING
+        vFs = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+        vFi = float(gl_InstanceID);
+        #endif`
+      );
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vFl, vFn, vFs; varying float vFi; uniform float uNight;')
+      .replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        float fLit = 0.0;
+        {
+          vec3 n = normalize(vFn);
+          float hm = vFl.y * vFs.y, wallTop = ${top.toFixed(2)} * vFs.y;
+          diffuseColor.rgb *= mix(0.8, 1.05, smoothstep(${FOOT.toFixed(1)}, ${FOOT.toFixed(1)} + 12.0, hm));
+          if (${win ? 'true' : 'false'} && abs(n.y) < 0.5 && vFl.y < ${top.toFixed(2)} + 0.001) {
+            bool sx = abs(n.x) > 0.5;
+            float u = sx ? vFl.z * vFs.z : vFl.x * vFs.x, half_ = 0.5 * (sx ? vFs.z : vFs.x);
+            float ink = max(1.0 - smoothstep(0.06, 0.22, half_ - abs(u)), 1.0 - smoothstep(0.1, 0.3, wallTop - hm));
+            ${
+              win
+                ? `vec2 c = vec2(u / 1.7, (hm - ${FOOT.toFixed(1)}) / 2.9), f = fract(c), id = floor(c);
+            float g0 = id.y < 0.5 ? 1.0 : 0.0;
+            float wn = step(mix(0.24, 0.1, g0), f.x) * step(f.x, mix(0.76, 0.9, g0)) * step(mix(0.3, 0.02, g0), f.y) * step(f.y, mix(0.78, 0.72, g0));
+            wn *= step(hm, wallTop - 0.6) * step(abs(u), half_ - 0.35);
+            vec2 fw = fwidth(c);
+            wn = mix(0.3 * step(hm, wallTop - 0.6), wn, 1.0 - smoothstep(0.25, 0.6, max(fw.x, fw.y)));
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.13, 0.18, 0.25) + 0.12 * g0, 0.72 * wn);
+            fLit = wn * step(fract(sin(dot(id + vec2(vFi * 7.13, vFi * 3.71), vec2(12.9898, 78.233))) * 43758.5453), 0.4 - 0.25 * g0);`
+                : ''
+            }
+            diffuseColor.rgb *= 1.0 - 0.55 * ink;
+          } else if (n.y > 0.3 && vFl.y > 0.05) diffuseColor.rgb *= 0.86;
+        }`
+      )
+      .replace(
+        '#include <emissivemap_fragment>',
+        '#include <emissivemap_fragment>\n  totalEmissiveRadiance += vec3(1.0, 0.78, 0.48) * fLit * uNight;'
+      );
+  };
+  m.customProgramCacheKey = () => `kit3d-far|${key}`;
+  m.userData.shared = true;
+  FAR.set(key, m);
+  return m;
+};
+/** The far material for a filler kind's unit shape: walls up to the shape's eave (gable 0.62, stepped 0.55); tanks without windows. */
+export const farFor = kind => {
+  const k = KIT[kind],
+    sh = k && LOOK[kind] ? LOOK[kind].roof : 'flat';
+  if (!k) return null;
+  return sh === 'cyl'
+    ? farMat(1, false)
+    : k.geo() === shape('gable')
+      ? farMat(0.62)
+      : k.geo() === shape('stepped')
+        ? farMat(0.55)
+        : farMat(1);
 };
 
 // ---------- one lot in detail ----------
@@ -1382,6 +1550,10 @@ export function buildLot(B, l, i, y0, wall, all = false) {
     pick = (list, k) => rgb(list[Math.floor(hs(k) * list.length) % list.length]),
     trim = mix(wall, rgb(WHITE), 0.3),
     dark = mul(wall, 0.72),
+    // street level (all): the district's trim colour and the outline-dark roof edge (T-371)
+    FR = FRAME[l.style] || FRAME.city,
+    frameC = all ? rgb(FR.c) : null,
+    edgeC = all ? mix(mul(wall, 0.32), rgb(FR.c), 0.35) : null,
     roofC = L.rt
       ? mul(pick(L.wu && L.rt === 'metal' ? ROOFCOL.metal : L.rt === 'metal' ? ['#a8adb2', '#9aa0a6'] : ROOFCOL[L.rt], 1), 1)
       : null,
@@ -1444,11 +1616,12 @@ export function buildLot(B, l, i, y0, wall, all = false) {
       );
       if (L.cornice) lbox(W, P, -w2 - 0.12, w2 + 0.12, h - 0.75, h - 0.5, -d2 - 0.12, d2 + 0.12, trim, 'none', 'ny');
       if (L.crown) lbox(W, P, -w2 - 0.06, w2 + 0.06, h - 1.1, h - 0.45, -d2 - 0.06, d2 + 0.06, mul(wall, 0.55), 'none', 'nypy');
+      if (all) lbox(W, P, -w2 - 0.05, w2 + 0.05, h - 0.16, h + 0.03, -d2 - 0.05, d2 + 0.05, edgeC, 'none', 'nypy'); // the coping lip
       roofProps(W, P, L, l, i, w, d, deck, h);
     }
   } else if (L.roof === 'gable' || L.roof === 'hip' || L.roof === 'lean') {
     lbox(W, P, -w2, w2, -FOOT, eave, -d2, d2, wall, tex, 'nypy');
-    pitched(W, R, P, L, w, d, eave, h, wall, roofC, hs(3));
+    pitched(W, R, P, L, w, d, eave, h, wall, roofC, hs(3), 0, edgeC);
     if (L.wu && L.tank && hs(4) < L.tank) {
       // a water drum on stilts beside the house
       const tx = w2 + 0.5,
@@ -1470,7 +1643,7 @@ export function buildLot(B, l, i, y0, wall, all = false) {
       ud = 0.31 * d;
     lbox(W, P, -w2, w2, -FOOT, e1, -d2, d2, wall, tex, 'ny');
     lbox(W, (a, b, c2) => P(a, b, c2 + zc), -uw, uw, e1, e2, -ud, ud, wall, tex, 'nypy');
-    pitched(W, R, (a, b, c2) => P(a, b, c2 + zc), L, uw * 2, ud * 2, e2 - e1, h - e1, wall, roofC, hs(3), e1);
+    pitched(W, R, (a, b, c2) => P(a, b, c2 + zc), L, uw * 2, ud * 2, e2 - e1, h - e1, wall, roofC, hs(3), e1, edgeC);
     // a tiled lean-to over the lower floor's front
     const v = band(ROOFTEX.shu),
       zf = zc + ud;
@@ -1495,6 +1668,28 @@ export function buildLot(B, l, i, y0, wall, all = false) {
       if (B.I && (o.kind === 'win' || o.kind === 'shop') && o.half === undefined && o.y - o.h / 2 < 2.6)
         interiorPane(B.I, Fp, o, [nz * cs - nx * sn, -nz * sn - nx * cs], unit(i * 53 + Math.round(o.u * 10) + 3));
       else pane(G, Fp, o.u, o.y, o.w, o.h, tint, tileUV(o.tile), gl);
+      if (all && o.tile !== TILE.cdoor && !(L.curtain && o.kind === 'win')) {
+        // street level: a painted surround behind the pane (a frame, the district's trim) and a lintel (its face and underside) over
+        // the windows of the lower floors and the doors; glass curtain walls stay plain
+        const fw = o.kind === 'shop' ? 0.14 : o.kind === 'sign' ? 0.06 : 0.09;
+        pane(W, onFace(P, nx, nz, hf, 0.012), o.u, o.y, o.w + 2 * fw, o.h + 2 * fw, frameC, NOUV, MASK.none);
+        if ((o.kind === 'win' || o.kind === 'door' || o.kind === 'bal') && o.y < 9)
+          faceBox(
+            W,
+            P,
+            nx,
+            nz,
+            hf,
+            o.u - o.w / 2 - 0.14,
+            o.u + o.w / 2 + 0.14,
+            o.y + o.h / 2 + fw,
+            o.y + o.h / 2 + fw + 0.1,
+            0,
+            0.07,
+            frameC,
+            'nzpxnxpy'
+          );
+      }
       if (o.kind === 'win' && !L.curtain && o.tile !== TILE.shoji)
         faceBox(
           W,
@@ -1533,13 +1728,35 @@ export function buildLot(B, l, i, y0, wall, all = false) {
       else if (o.kind === 'door' && o.tile !== TILE.cdoor && o.tile !== TILE.roller)
         faceBox(W, P, nx, nz, hf, o.u - o.w / 2 - 0.15, o.u + o.w / 2 + 0.15, o.h + 0.05, o.h + 0.14, 0, 0.45, dark); // a canopy over the door
     }
-    if (F.shop && F.shop.f === fc.f) awning(W, P, nx, nz, half, F.shop, hs(7));
+    if (F.shop && F.shop.f === fc.f) {
+      awning(W, P, nx, nz, half, F.shop, hs(7));
+      if (all && hs(8) < FR.blade && eave >= F.shop.top + 1.6) blade(W, G, P, nx, nz, half, F.shop, eave, frameC, l.style, hs(9));
+    }
   }
   return true;
 }
+const NOUV = [0, 0, 0, 0, 0, 0, 0, 0];
+/** A blade sign hung out from the shop front's edge (street level, T-371): a board in the district's trim, the sign tile on both faces (vertical lettering), lit at night by hash. */
+function blade(W, G, P, nx, nz, half, S, eave, c, style, hh) {
+  const tile = SIGN[style] !== undefined ? SIGN[style] : TILE.signPlain,
+    glow = { glow: hh < 0.75 ? rgb(SIGN_GLOW[tile][Math.floor(hh * 97) % SIGN_GLOW[tile].length]) : [0, 0, 0] },
+    u = (hh < 0.5 ? -1 : 1) * (S.w / 2 - 0.15),
+    y0 = S.top + 0.55,
+    y1 = Math.min(eave - 0.3, y0 + 1.7),
+    o0 = 0.12,
+    o1 = 0.72,
+    t = 0.05,
+    Q = (a, y, o) => P(nx * (half + o) + nz * a, y, nz * (half + o) - nx * a),
+    [a0, b0, a1, , , b1] = tileUV(tile),
+    rot = [a0, b0, a0, b1, a1, b1, a1, b0]; // the tile turned a quarter: its lettering runs up the board
+  lbox(W, Q, u - t, u + t, y0 - 0.06, y1 + 0.06, o0 - 0.06, o1 + 0.06, c, 'none', '');
+  faceBox(W, P, nx, nz, half, u - 0.03, u + 0.03, y1 - 0.25, y1 - 0.15, 0, o0, c); // the bracket
+  G.quad(Q(u + t + 0.005, y0, o1), Q(u + t + 0.005, y0, o0), Q(u + t + 0.005, y1, o0), Q(u + t + 0.005, y1, o1), [1, 1, 1], rot, glow);
+  G.quad(Q(u - t - 0.005, y0, o0), Q(u - t - 0.005, y0, o1), Q(u - t - 0.005, y1, o1), Q(u - t - 0.005, y1, o0), [1, 1, 1], rot, glow);
+}
 
 /** A pitched roof over w × d (local), walls up to `eave`, ridge at `top` (y offset `base`): gable (ridge along the longer side), hip or lean-to. Gable ends in the wall mesher, slopes in the roof mesher. */
-function pitched(W, R, P, L, w, d, eave, top, wall, rc, hh, base = 0) {
+function pitched(W, R, P, L, w, d, eave, top, wall, rc, hh, base = 0, edge = null) {
   const along = w >= d,
     A = (along ? w : d) / 2,
     Bh = (along ? d : w) / 2,
@@ -1574,6 +1791,7 @@ function pitched(W, R, P, L, w, d, eave, top, wall, rc, hh, base = 0) {
     const r = Math.max(0, A - Bh),
       E = A + ov,
       D = Bh + ov;
+    if (edge) lbox(W, Q, -E, E, ey - 0.16, ey + 0.01, -D, D, edge, 'none', 'nypy');
     R.quad(Q(-E, ey, D), Q(E, ey, D), Q(r, top, 0), Q(-r, top, 0), rc, uv(-E, E));
     R.quad(Q(E, ey, -D), Q(-E, ey, -D), Q(-r, top, 0), Q(r, top, 0), rc, uv(-E, E));
     R.tri(Q(E, ey, D), Q(E, ey, -D), Q(r, top, 0), rc, [D / 4, v[0], -D / 4, v[0], 0, v[1]]);
@@ -1582,6 +1800,13 @@ function pitched(W, R, P, L, w, d, eave, top, wall, rc, hh, base = 0) {
   }
   const E = A + og,
     D = Bh + ov;
+  if (edge)
+    // street level: the fascia boards under both eaves (the roof's edge drawn dark, T-371)
+    for (const [b0, b1, sk] of [
+      [D - 0.05, D + 0.02, 'nzpy'],
+      [-D - 0.02, -D + 0.05, 'pzpy']
+    ])
+      lbox(W, Q, -E, E, ey - 0.16, ey + 0.01, b0, b1, edge, 'none', sk);
   R.quad(Q(-E, ey, D), Q(E, ey, D), Q(E, top, 0), Q(-E, top, 0), rc, uv(-E, E));
   R.quad(Q(E, ey, -D), Q(-E, ey, -D), Q(-E, top, 0), Q(E, top, 0), rc, uv(-E, E));
   W.tri(Q(A, eave, Bh), Q(A, eave, -Bh), Q(A, top, 0), wall, tuv(L.wall, [-Bh, eave], [Bh, eave], [0, top]), e);

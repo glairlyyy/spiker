@@ -29,6 +29,8 @@ import {
   RING_PROPS,
   rgb,
   lotFrame,
+  lotOutline,
+  farFor,
   landmarkYaw,
   mergeParts,
   LANDMARKS
@@ -89,8 +91,13 @@ export const RING = {
   gap: 1.4,
   line: 0.12,
   zebra: [3.4, 6],
-  prop: 9
+  prop: 9,
+  ink: 90 // T-371: lots within this many m of the ring's centre get their outline
 };
+/** The near buildings' outlines (T-371): one shared line material (vertex colour = the wall's, darkened; the haze applies). */
+let INK = null;
+const inkMat = () => INK || ((INK = new THREE.LineBasicMaterial({ vertexColors: true })), (INK.userData.shared = true), INK);
+const rgb0 = c => [c.r, c.g, c.b];
 const PAVE = '#b9b5ac',
   KERB = '#d6d2c8',
   PAINT = '#eeeae0';
@@ -328,13 +335,13 @@ export function createTown(scene, heightAt, opts = {}) {
   };
 
   /** Filler lots as one InstancedMesh per base shape (kinds share a shape; colour, size and height vary per instance). */
-  const buildFill = lots => {
+  const buildFill = (lots, far = false) => {
     const byShape = new Map();
     lots.forEach((l, i) => {
       const k = KIT[l.kind];
       if (!k) return;
       const g = k.geo();
-      if (!byShape.has(g)) byShape.set(g, { g, mat: k.mat, items: [] });
+      if (!byShape.has(g)) byShape.set(g, { g, mat: far ? farFor(l.kind) : k.mat, items: [] }); // (far: street level's painted skyline, T-371)
       byShape.get(g).items.push({ l, k, i });
     });
     const out = [],
@@ -643,6 +650,8 @@ export function createTown(scene, heightAt, opts = {}) {
       R2 = RING.r * RING.r,
       want = new Set(),
       M = { W: mesher({ wmask: 3 }), G: mesher({ glow: 3 }), R: mesher(), I: mesher({ room: 4, tan: 3 }), S: mesher({ gk: 4 }, 8192) },
+      O = { pos: [], col: [] }, // the near lots' outlines (T-371)
+      O2 = RING.ink * RING.ink,
       col = new THREE.Color(),
       frames = [],
       got = []; // the ring's lots' builds (cached), in lot order
@@ -665,6 +674,16 @@ export function createTown(scene, heightAt, opts = {}) {
       }
       got.push(c);
       if (c.ok) want.add(i);
+      if (c.ok && (x - cx) ** 2 + (z - cz) ** 2 <= O2) {
+        if (!c.ink) {
+          const p = [],
+            q = [];
+          lotOutline(l, i, heightAt(x, z), rgb0(lotColour(l, i, k, col)), p, q);
+          c.ink = { p, q };
+        }
+        O.pos.push(...c.ink.p);
+        O.col.push(...c.ink.q);
+      }
     });
     for (const p of ['W', 'G', 'R', 'I']) {
       M[p].reserve(got.reduce((n, c) => n + (c[p] ? c[p].n : 0), 0) + (p === 'W' ? 8000 : 0)); // (W: + the pavement props)
@@ -695,6 +714,15 @@ export function createTown(scene, heightAt, opts = {}) {
       g.computeBoundingSphere();
       tris += g.attributes.position.count / 3;
       ringG.add(mesh);
+    }
+    if (O.pos.length) {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(O.pos, 3));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(O.col, 3));
+      g.computeBoundingSphere();
+      const lines = new THREE.LineSegments(g, inkMat());
+      lines.userData.ring = 'ink';
+      ringG.add(lines);
     }
     baseHide(want);
     ringWant = want;
@@ -1156,7 +1184,7 @@ export function createTown(scene, heightAt, opts = {}) {
               blk.by.get(b).push(j);
             });
             if (!far && lastModel) {
-              far = { fill: buildFill(lastModel.land.lots || []), group: farG };
+              far = { fill: buildFill(lastModel.land.lots || [], true), group: farG };
               for (const f of far.fill) ((f.mesh.castShadow = false), farG.add(f.mesh)); // (far: under the haze, no shadow)
               boxColour(far.fill);
             }
