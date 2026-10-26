@@ -40,7 +40,7 @@ import { createNature } from './nature3d.mjs';
 import { createProps } from './props3d.mjs';
 import { createMapCam, STREET } from './mapcam3d.mjs';
 import { buildTerrain } from './terrain3d.mjs';
-import { lightScene, skyAt, SKY, LOOK, richLook, streetMat, STREET_FX } from './look3d.mjs';
+import { lightScene, skyAt, SKY, LOOK, GLOW, STREET_U, richLook, streetMat, STREET_FX } from './look3d.mjs';
 import { nightLayer, warLayer } from './layers3d.mjs';
 import { createStream, blockGrid, STREAM } from './stream3d.mjs';
 import { MAP_M, clamp, lerp, fogFactor, inside, edgeDist, sideDist } from './geo3d.mjs';
@@ -416,7 +416,7 @@ export function create(onIdle) {
     skyCol.copy(hemi.color).lerp(bgCol, 0.25);
     if (st > 0.15) scene.background = (look.on && look.envTex()) || skyCol;
     // (T-369: the grade's hue by time of day instead of the grey sky tint, at the sky colour's brightness — dusk stays dim)
-    const H = look.haze(),
+    const H = look.haze(tod), // (this frame's hour: the painted sky's low band bakes the same haze)
       lum = c => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
     haze.color.copy(H).multiplyScalar(Math.min(1.25, lum(skyCol) / Math.max(1e-3, lum(H))));
     haze.near = st > 0 ? 160 + (1 - st) * 4000 : 1e6;
@@ -509,7 +509,7 @@ export function create(onIdle) {
       clockStep(dt);
       scene.background = bgCol; // (skyAt mixes into the colour)
       lit = cur && cur.time ? skyAt(cur.time.keys, tod, sun, hemi, scene) : ((hemi.intensity = 0.9), 0);
-      if (look.on) hemi.intensity *= lerp(LOOK.hemi[0], LOOK.hemi[1], lit); // (by day the sky's environment light adds the rest)
+      if (look.on) hemi.intensity *= lerp(LOOK.hemi[0], lerp(LOOK.hemi[1], GLOW.hemi, STREET_U.st.value), lit); // (by day the sky's environment light adds the rest; street level's night darker)
       if (C.view) life.ringScale((14 * 2 * C.view.d * Math.tan((cam.fov * Math.PI) / 360)) / (ch || 1) / 0.7); // a ring ≥ ~14 px
       const gclock = wt === null ? clock : wt * 24 * ((cur && cur.time && cur.time.scale) || 90); // (the shown clock in ×1 seconds)
       life.tick(dt, gclock, tod, cam, st);

@@ -1395,3 +1395,109 @@ test('map3d: street life (T-372) — hashed pavement slots, poles off the lamps,
   P.dispose();
   town.dispose();
 });
+
+test('map3d: street view polish (2026-10-26) — a tight night glow, props dropped whole near the lens / line, signs read unmirrored', () => {
+  const THREE = require('three'),
+    { GLOW, LOOK, streetMat, FD, PSKY, GRADE } = require('../js/map3d/look3d.mjs'),
+    kit = require('../js/map3d/kit3d.mjs');
+  // the glow: crisp lit panes with a small halo — a modest lift, a weak tight bloom, a darker night exposure at street level
+  assert(GLOW.k <= 1.8 && GLOW.k > GLOW.thr, 'a modest emissive lift (still over the threshold)');
+  assert(GLOW.strength <= 0.5 && GLOW.radius <= 0.2, 'a weak, tight bloom');
+  assert(GLOW.mips.length === 5 && GLOW.mips[0] === 1 && GLOW.mips[3] + GLOW.mips[4] <= 0.1, 'the wide mips nearly off');
+  assert(GLOW.exposure < LOOK.exposure[1] && GLOW.exposure >= 1, 'the street-level night exposure is lower than the map’s');
+  assert(GLOW.hemi < LOOK.hemi[1], 'a darker night sky light at street level');
+  const night = GRADE[0];
+  assert(night.lift[2] <= 0.05 && night.con >= 1.1, 'night: deep darks (a small blue lift), more contrast — not milky');
+  // the painted sky never keeps an old hour: a jump re-bakes the whole cube at once, a moved haze re-bakes it
+  assert(PSKY.jump > PSKY.moved && PSKY.jump <= 0.05 && PSKY.hazed > 0 && PSKY.hazed < 0.1, 'sky re-bake triggers');
+  // props: never dithered; dropped whole at the lens or across the camera → you line (not its last metre)
+  const sh = () => ({
+      uniforms: {},
+      vertexShader: THREE.ShaderLib.standard.vertexShader,
+      fragmentShader: THREE.ShaderLib.standard.fragmentShader
+    }),
+    a = new THREE.MeshStandardMaterial(),
+    b = new THREE.MeshStandardMaterial(),
+    sa = sh(),
+    sb = sh();
+  b.userData.fdWhole = true;
+  streetMat(a);
+  streetMat(b);
+  a.onBeforeCompile(sa, null);
+  b.onBeforeCompile(sb, null);
+  assert(a.customProgramCacheKey() !== b.customProgramCacheKey(), 'its own program');
+  assert(
+    /fdB8\(gl_FragCoord\.xy \/ 2\.0\)/.test(sa.fragmentShader) && !/false && fd/.test(sa.fragmentShader),
+    'others still dissolve on the line'
+  );
+  assert(/false && fd/.test(sb.fragmentShader), 'a prop never dissolves');
+  assert(/length\(aw\) < [\d.]+ \* uFdK\) discard/.test(sb.fragmentShader), 'right at the lens: gone');
+  assert(
+    !/lab = lb - lc/.test(sa.vertexShader) && /lab = lb - lc[\s\S]*gl_Position = vec4\(0\.0, 0\.0, -2\.0, 1\.0\)/.test(sb.vertexShader),
+    'dropped whole across the line'
+  );
+  assert(FD.whole.r < FD.inst && FD.whole.end >= 1, 'only what truly stands across the line, short of your last metre');
+  {
+    const { createProps } = require('../js/map3d/props3d.mjs'),
+      sc = new THREE.Scene(),
+      P = createProps(sc, () => 0, { solid: () => false }),
+      m = townModel(),
+      { blockGrid } = require('../js/map3d/stream3d.mjs'),
+      G = blockGrid(4000, 4000, 192, 192),
+      Ly = P.layer(G),
+      mr = m.land.roads.filter(r => r.kind === 'main')[12],
+      you = [((mr.pts[0][0] + mr.pts[1][0]) / 2) * 0.5, ((mr.pts[0][1] + mr.pts[1][1]) / 2) * 0.5],
+      keys = new Set(G.within(you[0], you[1], 250));
+    P.sync(m);
+    for (const k of keys) Ly.prep(k);
+    Ly.show(keys);
+    P.tick(0.016, 1, you, 1, false);
+    const ms = [];
+    sc.traverse(o => o.isInstancedMesh && o.userData.prop && ms.push(o));
+    const solid = ms.filter(o => o.userData.prop !== 'wire' && o.userData.prop !== 'decal');
+    assert(solid.length >= 5 && solid.every(o => o.material.userData.fdWhole), 'every solid prop kind is dropped whole');
+    P.dispose();
+  }
+  // signs: every lettered quad (facade signs, both faces of the blade signs) maps the atlas unmirrored — the texture's u runs to
+  // the viewer's right and v up, as seen from the quad's front
+  for (const t of Object.keys(kit.SIGN_WORD).map(Number)) {
+    const w = kit.SIGN_WORD[t];
+    assert(/^[A-Z]+$/.test(w) && [...w].every(c => kit.FONT5[c] && kit.FONT5[c].length === 7), `${w}: drawn in the block font`);
+    const c0 = kit.signCell(t, 0),
+      cN = kit.signCell(t, w.length - 1);
+    assert(c0[0] < cN[0] && c0[1] < c0[3] && c0[0] >= (t % 4) / 4 && cN[2] <= ((t % 4) + 1) / 4, 'cells left to right inside the tile');
+  }
+  const lots = townModel().land.lots,
+    mk = () => ({ W: kit.mesher({ wmask: 3 }), G: kit.mesher({ glow: 3 }), R: kit.mesher() });
+  let quads = 0,
+    blades = 0;
+  lots.forEach((l, i) => {
+    if (l.kind !== 'shop' || quads > 400) return;
+    const B = mk();
+    if (!kit.buildLot(B, l, i, 0, [0.5, 0.5, 0.5], true)) return;
+    const g = B.G.geometry();
+    if (!g) return;
+    const p = g.attributes.position.array,
+      uv = g.attributes.uv.array,
+      nr = g.attributes.normal.array;
+    for (let v = 0; v < p.length / 3; v += 3) {
+      const U = [0, 1, 2].map(k => [uv[(v + k) * 2], uv[(v + k) * 2 + 1]]);
+      if (!U.every(q => q[1] < 0.25)) continue; // (the sign tiles: the atlas's bottom row)
+      const P3 = [0, 1, 2].map(k => new THREE.Vector3(p[(v + k) * 3], p[(v + k) * 3 + 1], p[(v + k) * 3 + 2])),
+        e1 = P3[1].clone().sub(P3[0]),
+        e2 = P3[2].clone().sub(P3[0]),
+        [du1, dv1, du2, dv2] = [U[1][0] - U[0][0], U[1][1] - U[0][1], U[2][0] - U[0][0], U[2][1] - U[0][1]],
+        det = du1 * dv2 - du2 * dv1;
+      if (Math.abs(det) < 1e-9) continue;
+      const T = e1.clone().multiplyScalar(dv2).sub(e2.clone().multiplyScalar(dv1)).divideScalar(det),
+        Bt = e2.clone().multiplyScalar(du1).sub(e1.clone().multiplyScalar(du2)).divideScalar(det),
+        N = new THREE.Vector3(nr[v * 3], nr[v * 3 + 1], nr[v * 3 + 2]);
+      assert(T.clone().cross(Bt).dot(N) > 0, `${l.style} shop ${i}: a sign quad mirrored`);
+      assert(Bt.y > 0 && Math.abs(T.y) < 1e-6, 'letters upright');
+      quads++;
+      const du = Math.max(...U.map(q => q[0])) - Math.min(...U.map(q => q[0]));
+      if (du > 0.005 && du < 0.05) blades++; // (one letter's cell: a blade sign's)
+    }
+  });
+  assert(quads > 40 && blades > 20, `sign quads checked ${quads} (blade letters ${blades})`);
+});
