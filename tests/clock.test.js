@@ -159,3 +159,27 @@ test('clock: a bus is caught only if you are at the stop at its time — a minut
     `missing it costs more than the minute (${g.City.hrs(on.raw)} vs ${g.City.hrs(late.raw + 1 / 60)})`
   );
 });
+
+test('clock pacing (owner 2026-10-27): 60 s on the map at ×4 — no renderCareer while you walk or stand; the rail refreshes every ½ game h, not per frame', () => {
+  const [g, run] = clockRun(),
+    [MV, env] = mapView(g, run);
+  let refresh = 0;
+  env.clockRefresh = () => refresh++;
+  MV.setWalk(4);
+  MV.tick();
+  const h0 = g.City.hour(run),
+    frames = 60 * 60;
+  for (let i = 0; i < frames; i++) ((env.t += 1000 / 60), MV.tick());
+  const hrs = g.City.hour(run) - h0;
+  assert(near(hrs, (60 * 4) / g.CLOCK.scale, 1e-6), `60 s at ×4 = ${(60 * 4) / g.CLOCK.scale} h (${hrs})`);
+  eq(env.renders, 0, 'standing: no renderCareer');
+  assert(
+    refresh >= Math.floor(hrs / g.CLOCK.save) && refresh <= Math.ceil(hrs / g.CLOCK.save) + 1,
+    `${refresh} rail refreshes in ${hrs.toFixed(2)} h`
+  );
+  env.CW.lock = { phase: 'walk' };
+  refresh = 0;
+  for (let i = 0; i < frames; i++) ((env.t += 1000 / 60), MV.tick());
+  eq(env.renders, 0, 'walking: no renderCareer');
+  eq(refresh, 0, 'walking: the walk counted its hours as it began — nothing to refresh');
+});

@@ -143,6 +143,9 @@ function mapRent(id) {
  * The place popup follows its place (spec §10.1c, §4.40): beside the selected building (its anchor over the roof) or the picked-point flag, right of it when it
  * fits, else left; vertically centred on it; kept inside the map area (right of the rail, under the top bar). No pin on
  * screen → the top-right corner. One rAF loop for the page; it only measures while a popup is open.
+ * Frame pacing (spec §4.39, owner 2026-10-27): no layout read in the frame — the anchor's point comes from pins3d (`_at`, canvas px),
+ * the hub / canvas boxes and the card's size are cached until a ResizeObserver says they changed; styles are written only when
+ * their value changed.
  */
 const SPOT_GAP = 24;
 function spotFollow() {
@@ -160,7 +163,7 @@ function spotFollow() {
 }
 /**
  * The map's clock (spec §4.41): the time the map shows — it runs with your walk and through the night (map3d's clock); without the 3D
- * map, the rules' hour. "Tue 14:20" in the map's top-right group, refreshed a few times a second.
+ * map, the rules' hour. "Tue 14:20" in the map's top-right group, refreshed a few times a second (5 Hz; the text only when it changed).
  */
 function mapClockTick() {
   const el = document.getElementById('mapclock');
@@ -172,40 +175,81 @@ function mapClockTick() {
     t = `${WEEKDAYS[clamp(d, 0, WEEK_DAYS - 1)]} ${City.hhmm(Math.round((w - d) * 24 * 6) / 6)}`;
   if (el.textContent !== t) el.textContent = t;
 }
-/** Place the open popup beside its pin now. */
-function spotPlace() {
+/**
+ * The hub's boxes the popups need (client px): the hub, its map area (rail / top bar insets) and the map canvas — read once, again
+ * only after a ResizeObserver saw the hub or the map change (or a new hub was rendered).
+ */
+const HUBGEO = { hub: null, ok: false, ro: null };
+function hubGeo(hub) {
+  const G = HUBGEO;
+  if (G.hub === hub && G.ok) return G;
+  if (G.hub !== hub) {
+    if (G.ro) G.ro.disconnect();
+    G.ro = null;
+    G.hub = hub;
+    if (typeof ResizeObserver === 'function') {
+      G.ro = new ResizeObserver(() => (G.ok = false));
+      G.ro.observe(hub);
+      const w = hub.querySelector('#mapwrap');
+      if (w) G.ro.observe(w);
+    }
+  }
+  const H = hub.getBoundingClientRect(),
+    cs = getComputedStyle(hub),
+    c = hub.querySelector('#mapwrap canvas'),
+    r = c && c.getBoundingClientRect();
+  G.H = { left: H.left, top: H.top, right: H.right, bottom: H.bottom };
+  G.rail = parseFloat(cs.getPropertyValue('--rail')) || 0;
+  G.tbar = parseFloat(cs.getPropertyValue('--tbar')) || 0;
+  G.cv = r && r.width ? { left: r.left, top: r.top, width: r.width, height: r.height } : null;
+  G.ok = !!(G.ro && G.cv); // (no observer, or the canvas not there yet: read again next time)
+  return G;
+}
+/** A floating card's size (px): cached on it until its ResizeObserver fires (fresh: read now — its content just changed). */
+function cardWH(card, fresh = false) {
+  if (!card._ro && typeof ResizeObserver === 'function') {
+    card._ro = new ResizeObserver(() => (card._wh = null));
+    card._ro.observe(card);
+  }
+  if (fresh || !card._wh || !card._ro) card._wh = [card.offsetWidth, card.offsetHeight];
+  return card._wh;
+}
+/** Place the open popup beside its pin now (fresh: its content just changed — measure it again). */
+function spotPlace(fresh = false) {
   const card = document.querySelector('.hub .spotcard.open'),
     hub = card && card.closest('.hub');
   if (card && hub) {
     const pin = hub.querySelector(CW.spot && CW.spot.startsWith('pt:') ? '.maplay .mflag' : '.maplay .manchor'),
-      p = pin && pin.style.display !== 'none' ? pin.getBoundingClientRect() : null;
-    if (p && p.width)
-      besideAt(card, hub, p.left + p.width / 2, p.top + p.height / 2, p.width / 2); // (clear of the building: its anchor spans it)
+      G = hubGeo(hub),
+      at = pin && pin.style.display !== 'none' && G.cv ? pin._at : null;
+    if (at)
+      besideAt(card, hub, G.cv.left + at[0], G.cv.top + at[1], at[2] || 13, fresh); // (clear of the building: its anchor spans it; the flag ~26 px)
     else if (card.classList.contains('pinned')) {
       card.style.left = card.style.top = card.style.right = '';
       card.classList.remove('pinned');
     }
   }
 }
+/** Set an inline style only when it differs (a write that changes nothing still invalidates style). */
+const styleSet = (el, k, v) => el.style.getPropertyValue(k) !== v && el.style.setProperty(k, v);
 /** Place a floating card beside client point (ax, ay) — hw px clear of it each side: right of it when it fits, else left; centred on it; kept inside the map area. */
-function besideAt(card, hub, ax, ay, hw = 0) {
-  const H = hub.getBoundingClientRect(),
-    cs = getComputedStyle(hub),
-    L = H.left + (parseFloat(cs.getPropertyValue('--rail')) || 0) + 16,
-    T = H.top + (parseFloat(cs.getPropertyValue('--tbar')) || 0) + 16,
+function besideAt(card, hub, ax, ay, hw = 0, fresh = false) {
+  const G = hubGeo(hub),
+    H = G.H,
+    L = H.left + G.rail + 16,
+    T = H.top + G.tbar + 16,
     R = H.right - 16,
     B = H.bottom - 16,
-    w = card.offsetWidth,
-    h = card.offsetHeight;
+    [w, h] = cardWH(card, fresh);
   let x = ax + hw + SPOT_GAP;
   if (x + w > R) x = ax - hw - SPOT_GAP - w; // flip to the left of the pin
   x = clamp(x, L, R - w);
   const y = clamp(ay - h / 2, T, B - h);
-  card.style.left = `${Math.round(x - H.left)}px`;
-  card.style.top = `${Math.round(y - H.top)}px`;
-  card.style.right = 'auto';
-  card.style.setProperty('--mv-origin', x < ax ? 'right center' : 'left center'); // it grows from its pin's side
-  card.classList.add('pinned');
+  styleSet(card, 'left', `${Math.round(x - H.left)}px`);
+  styleSet(card, 'top', `${Math.round(y - H.top)}px`);
+  styleSet(card, 'right', 'auto');
+  styleSet(card, '--mv-origin', x < ax ? 'right center' : 'left center'); // it grows from its pin's side
+  if (!card.classList.contains('pinned')) card.classList.add('pinned');
 }
 if (typeof requestAnimationFrame === 'function' && typeof document !== 'undefined') requestAnimationFrame(spotFollow);
 function mapPick(id) {
@@ -226,7 +270,7 @@ function mapPick(id) {
   el.innerHTML = id ? spotCard(RUN) : '';
   el.classList.toggle('open', !!id);
   MapView.select(id);
-  spotPlace();
+  spotPlace(true);
   if (id && !shown) Motion.play(el, 'in');
   else if (id && prev !== id) spotSwap(el);
   if (CW.mv) CW.mv.spot = id;
@@ -886,6 +930,7 @@ function figRender() {
   }
   el.setAttribute('aria-label', (People.find(RUN, CW.fig.id) || {}).name || 'Person');
   el.innerHTML = html;
+  el._wh = null; // (its size: measured again)
   figPlace();
 }
 function figStakeStep(ti, d) {
@@ -932,7 +977,7 @@ function figPlace() {
     el = open && CW.fig ? open : road,
     id = el ? (el === open ? CW.fig.id : E.id) : null,
     hub = el && el.closest('.hub'),
-    p = hub ? MapView.figureAt(id) : null;
+    p = hub ? MapView.figureAt(id, hubGeo(hub).cv) : null;
   if (p) besideAt(el, hub, p[0], p[1]);
   if (id !== figPlace.mark) MapView.mark((figPlace.mark = id)); // the ring under their feet while the menu is open
 }
@@ -1037,7 +1082,7 @@ function encLeave(L) {
 // ---- street level (spec §4.37 6, T-336b): the order at the kit -----------------------------------------------------------
 // The map (interior3d.mjs via map3d) reports the station you stand at, with its client point; the prompt over it is the place
 // card's own button for that order (ordBtn, the card's numbers under City.withInvite) — F (or a click on the station) runs it.
-const STP = { st: null, key: '', t: 0 };
+const STP = { st: null, key: '', t: 0, html: '' };
 /**
  * A station's action — the place card's own button (spec §4.37 6 Phase 3): a day order → mapGo(place, order); the bed → Sleep 8 h
  * (mapGo(place, null, 8); the prompt lists 8 / 6 / 4); a place's own Go (an outing, a secret place, the drone) → mapGo(place[, opt]);
@@ -1137,14 +1182,14 @@ function mapStation(st, click) {
     key = `${st.place}|${st.id}`;
   if (key !== STP.key || now - STP.t > 400) {
     const html = stationHTML(run, st);
-    if (el.innerHTML !== html) el.innerHTML = html;
+    if (STP.html !== html || key !== STP.key) el.innerHTML = STP.html = html; // (the last html, not el.innerHTML: no serialising the card)
     if (key !== STP.key) Motion.play(el, 'in');
     el.setAttribute('aria-label', st.name);
     STP.key = key;
     STP.t = now;
   }
-  el.style.left = `${Math.round(st.x)}px`;
-  el.style.top = `${Math.round(st.y)}px`;
+  styleSet(el, 'left', `${Math.round(st.x)}px`);
+  styleSet(el, 'top', `${Math.round(st.y)}px`);
 }
 /** The road's keys (before the hub's): the card's 1–n and Space / Esc, R for the route. */
 function roadKey(e) {
