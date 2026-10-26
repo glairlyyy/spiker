@@ -902,7 +902,7 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   floor, ceiling, sides; shop shelves / a sofa and a picture by `room` seed; lit warm at night by `NIGHT_U` when the pane is lit);
   those lots are collapsed out of the map-look meshes (`det.ids` → spans; restored when the ring hides). Ground: pavements (`RING.pave`
   1.6 m, kerb 0.14 m) both sides of main / street roads, trimmed `RING.trim` at junctions; main roads' centre dashes and zebra
-  crossings at junctions of 3+; pavement props (bollard, planter, hydrant — kit3d `RING_PROPS`) by hash, clear of lots. Fast: the ground
+  crossings at junctions of 3+; pavement props (bollard, planter, hydrant — kit3d `RING_PROPS`) by hash, clear of lots — Fast only since T-372 (Auto / High: props3d). Fast: the ground
   detail only (the boxes stay). `ringInfo()` → { on, lots, tris, builds, ms }.
 - **Finish (T-369, spec §4.44)** — look3d: the composer gets a grade pass (`GradeShader`: gain / lift (coloured darks) / saturation /
   contrast in display colours, weight `uK` = smooth(0.15, 0.8, st); off below) and FXAA (st > 0.3) after the OutputPass — Auto / High only
@@ -960,6 +960,24 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   attribute) × `NIGHT.street.lamp`, smaller; window points × (1 − `win`) (the panes glow themselves); the pools are a quad decal with a
   code-made painted texture (`poolBytes`: core + soft step + tail), opacity smooth(`street.on`, lit) × (1 + (pool − 1) sg) — on at dusk.
   No lights, no extra draws in the frame (the bake's face draws come before `info` resets); `info().sky` { bakes, tod, ms }, `bloom`.
+- **Street life (T-372, spec §4.44)** — `js/map3d/props3d.mjs` `createProps(scene, heightAt, { solid })` (solid = town3d `solid(x, z, m)`:
+  in a lot / landmark box m round it) → stream layer `props` (`layer(G)`: prep(k) = block k's instances per kind; show = the shown
+  blocks) + `tick(dt, t, you, st, low)` (map3d after the stream): each kind's InstancedMesh gets the shown blocks' instances within its
+  reach `K[kind].r` of you (≤ `cap`), re-picked every `PROPS.step` m; Fast / the map look (st < 0.5): none (town3d's ring keeps its old
+  bollard / planter / hydrant pavement props on Fast only). Placement (pure `roadSlots(road, deg0, deg1)`, tested): per main / street
+  road, `PROPS.slot` m slots on both pavements (trimmed at junctions), clear of kit3d `STREET` lamps on that side and the map look's
+  benches (`PROPS.bench`); poles one side per road (main always, streets by `pole.street`), ~`pole.every` m apart, nudged off lamps;
+  wires = per span the six `ATTACH` points (cross-arm + a sagging droop), sometimes one across the road to a building (`PROPS.cross`).
+  A slot's kind by hash from `MIX` by what fronts it (a shop front / a home within ~11 m, else the road kind); a slot in front of a
+  lot's door / shop entrance (kit3d `facade` front opening) stays empty; vending machines and benches need a wall at their back;
+  nothing on a carriageway (`onRoad`) or in a lot. Decals every `decal.every` m by hash (carriageway: cracks, tar patches, puddles at the
+  edge, leaves; pavements: cracks, leaves; dirt: puddles, leaves), tilted to the slope, one `decalAtlas` canvas (4 tiles, alpha-tested,
+  `dtile` per instance; the puddle tile low roughness). Materials: solid kinds `solidMat` (one per kind: streetMat's lens hide keeps one
+  box per material; `ptint` = where the instance colour applies, `glow` = lit faces → emissive × (0.22 + 1.1 NIGHT_U), lifted / bloomed
+  by T-373's uFdGlow); wires `wsp` (len, sag, rise, thickness) bend a unit span in the vertex shader and sway × STREET_U.st
+  (`noStreetFx`, not frustum-culled). Sway (nature3d `WIND.street`, × STREET_U.st: Auto / High street level): grass shapes bend from the
+  root, crowns sway more and flutter (`richMat(U, double, shape)`, program key by grass / not). `info().props` { on, n per kind, blocks,
+  preps, picks, ms, pickMs }; dev `propNear(kind)`.
 - **Look** — at s > 0.15 the background is the baked sky (`look.envTex()`: the painted one on Auto / High, T-373; Fast: the clock's sky colour); a `THREE.Fog` haze in the
   grade's colour closes in with s (near 160 m at street level; 1e6 on the map); the war borders (`war.show`) and the route preview
   ribbons hide at s ≥ 0.5; the story figures (`model.figures`) shrink to life size with you.

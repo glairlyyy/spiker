@@ -1314,3 +1314,84 @@ test('map3d: street level ground (T-370) — the painted texture tiles, the mead
     );
   for (let a = 0; a < road.length; a += 7) assert(road[a] > 3.5 * MEADOW.tile, 'none where the ground is not open');
 });
+
+test('map3d: street life (T-372) — hashed pavement slots, poles off the lamps, props off roads / lots / doors, drawn near you only', () => {
+  const THREE = require('three'),
+    { createTown } = require('../js/map3d/town3d.mjs'),
+    { createProps, roadSlots, PROPS } = require('../js/map3d/props3d.mjs'),
+    { blockGrid } = require('../js/map3d/stream3d.mjs'),
+    kit = require('../js/map3d/kit3d.mjs'),
+    m = townModel(),
+    flat = () => 1,
+    sc = new THREE.Scene(),
+    town = createTown(sc, flat, { fast: () => false });
+  town.sync(m);
+  // the slots: hashed (the same twice), poles every ~PROPS.pole.every m on one side, none at a lamp of that side
+  const road = { ri: 7, kind: 'main', a: [0, 0], b: [200, 0] },
+    A = roadSlots(road, 2, 2),
+    B2 = roadSlots(road, 2, 2);
+  eq(JSON.stringify(A), JSON.stringify(B2), 'hashed: the same road twice');
+  assert(A.poles.length >= 7 && A.poles.length <= 9, `poles ${A.poles.length}`);
+  assert(new Set(A.poles.map(p => p.s)).size === 1, 'the poles keep to one side');
+  for (const p of A.poles) {
+    const j = Math.round((p.d - kit.STREET.every / 2) / kit.STREET.every),
+      side = j % 2 ? 1 : -1;
+    assert(side !== p.s || Math.abs(p.d - (kit.STREET.every / 2 + j * kit.STREET.every)) >= 1.4, 'a pole is not at a lamp');
+  }
+  assert(A.slots.length > 80 && A.slots.every(s => s.d > A.s0 && s.d < A.s1), `slots ${A.slots.length} within the trimmed ends`);
+  // a whole layout: prepare the blocks round a main road, show them, draw near you
+  const P = createProps(sc, flat, { solid: (x, z, mm) => town.solid(x, z, mm) }),
+    G = blockGrid(4000, 4000, 192, 192),
+    Ly = P.layer(G),
+    mr = m.land.roads.filter(r => r.kind === 'main')[12],
+    you = [((mr.pts[0][0] + mr.pts[1][0]) / 2) * 0.5, ((mr.pts[0][1] + mr.pts[1][1]) / 2) * 0.5];
+  P.sync(m);
+  const keys = new Set(G.within(you[0], you[1], 250));
+  for (const k of keys) Ly.prep(k);
+  Ly.show(keys);
+  P.tick(0.016, 1, you, 1, false);
+  const I = P.info();
+  if (process.env.PROPS_LOG) console.log(JSON.stringify(I));
+  assert(I.on && I.n.pole > 2 && I.n.wire > I.n.pole && I.n.decal > 20, `poles ${I.n.pole}, wires ${I.n.wire}, decals ${I.n.decal}`);
+  const kinds = Object.keys(I.n).filter(k => I.n[k] > 0);
+  assert(kinds.length >= 7, `kinds drawn: ${kinds}`);
+  const ms = [];
+  sc.traverse(o => o.isInstancedMesh && o.userData.prop && ms.push(o));
+  // every solid prop: on a pavement (not a road's carriageway), not in a lot or a landmark, within its reach
+  const roads = m.land.roads.filter(r => r.kind !== 'overpass');
+  let checked = 0;
+  for (const o of ms) {
+    if (o.userData.prop === 'wire' || o.userData.prop === 'decal' || o.userData.prop === 'pole') continue;
+    const a = o.instanceMatrix.array;
+    for (let i = 0; i < o.count; i++) {
+      const x = a[i * 16 + 12],
+        z = a[i * 16 + 14];
+      assert(!town.solid(x, z, 0.1) || o.userData.prop === 'scooter', `${o.userData.prop} not in a lot`);
+      for (const r of roads) {
+        const hw = { main: 1.6, street: 1.2, dirt: 1.1, path: 0.45, boardwalk: 1.3 }[r.kind] || 1.2,
+          [ax, az] = r.pts[0].map(v => v * 0.5),
+          [bx, bz] = r.pts[r.pts.length - 1].map(v => v * 0.5),
+          dx = bx - ax,
+          dz = bz - az,
+          t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
+        assert(Math.hypot(ax + dx * t - x, az + dz * t - z) > hw, `${o.userData.prop} off the carriageway`);
+      }
+      assert(Math.hypot(x - you[0], z - you[1]) <= 111, 'within its reach');
+      checked++;
+    }
+  }
+  assert(checked > 20, `props checked ${checked}`);
+  // Fast / the map: none drawn
+  P.tick(0.016, 1, you, 1, true);
+  assert(!P.info().on && ms.every(o => !o.visible), 'Fast: no street life');
+  P.tick(0.016, 1, you, 1, false);
+  Ly.show(null);
+  P.tick(0.016, 1, you, 1, false);
+  assert(
+    ms.every(o => !o.visible),
+    'the map look: none'
+  );
+  assert(PROPS.step > 0, 'tunables');
+  P.dispose();
+  town.dispose();
+});

@@ -39,7 +39,7 @@ import { buildFacility } from './facility3d.mjs';
 import { pack, repack, ranges } from './stream3d.mjs';
 import { groundMat } from './look3d.mjs';
 
-const ROAD = {
+export const ROAD = {
     main: { w: 3.2, color: '#6d6e73' },
     street: { w: 2.4, color: '#85858a' },
     dirt: { w: 2.2, color: '#8f7a58' },
@@ -558,7 +558,7 @@ export function createTown(scene, heightAt, opts = {}) {
    * Kerbs, pavements, the main roads' centre dashes and zebra crossings (into mesher S: the painted ground, T-370; Fast: W), and
    * pavement props (W), within the ring.
    */
-  const ringGround = (W, S, roads, cx, cz, frames) => {
+  const ringGround = (W, S, roads, cx, cz, frames, fast) => {
     const inLot = (x, z) =>
       frames.some(f => {
         const dx = x - f.x,
@@ -629,17 +629,18 @@ export function createTown(scene, heightAt, opts = {}) {
           }
         }
       }
-      // pavement props: by hash, on the pavement's outer half, clear of the ends
-      for (let s = s0 + RING.prop / 2, j = 0; s < s1 - 1; s += RING.prop, j++) {
-        const h = unit(ri * 389 + j * 17 + 5);
-        if (h > 0.55) continue;
-        const side = unit(ri * 389 + j * 17 + 6) < 0.5 ? 1 : -1,
-          kind = RING_PROPS[Math.floor(h * 5.45) % RING_PROPS.length],
-          o = side * (hw + RING.pave * 0.72),
-          [x, y, z] = at(s, o, RING.kerb);
-        if ((x - cx) ** 2 + (z - cz) ** 2 > R2 || inLot(x, z)) continue;
-        streetProp(W, kind, x, y, z, uz * side, -ux * side);
-      }
+      // pavement props (Fast only: Auto / High draw props3d's street life, T-372): by hash, on the pavement's outer half, clear of the ends
+      if (fast)
+        for (let s = s0 + RING.prop / 2, j = 0; s < s1 - 1; s += RING.prop, j++) {
+          const h = unit(ri * 389 + j * 17 + 5);
+          if (h > 0.55) continue;
+          const side = unit(ri * 389 + j * 17 + 6) < 0.5 ? 1 : -1,
+            kind = RING_PROPS[Math.floor(h * 5.45) % RING_PROPS.length],
+            o = side * (hw + RING.pave * 0.72),
+            [x, y, z] = at(s, o, RING.kerb);
+          if ((x - cx) ** 2 + (z - cz) ** 2 > R2 || inLot(x, z)) continue;
+          streetProp(W, kind, x, y, z, uz * side, -ux * side);
+        }
     });
   };
   /** Build the ring round world (cx, cz): its lots in full (every face, rooms behind the ground-floor glass), the ground detail. */
@@ -694,7 +695,7 @@ export function createTown(scene, heightAt, opts = {}) {
       const l = L.lots[i];
       if (!l || (l.at[0] * MAP_M - cx) ** 2 + (l.at[1] * MAP_M - cz) ** 2 > keep) ringCache.delete(i);
     }
-    ringGround(M.W, fast ? M.W : M.S, L.roads || [], cx, cz, frames);
+    ringGround(M.W, fast ? M.W : M.S, L.roads || [], cx, cz, frames, fast);
     ringClear();
     const mats = detailMats();
     let tris = 0;
@@ -998,11 +999,20 @@ export function createTown(scene, heightAt, opts = {}) {
       const f = lotFrame(l, i);
       if (!f) return;
       const R = Math.hypot(f.w, f.d) / 2 + 0.6;
-      add(boxes, f.x - R, f.z - R, f.x + R, f.z + R, { x: f.x, z: f.z, w: f.w + 1.2, d: f.d + 1.2, cs: f.cs, sn: f.sn });
+      add(boxes, f.x - R, f.z - R, f.x + R, f.z + R, { x: f.x, z: f.z, w: f.w + 1.2, d: f.d + 1.2, cs: f.cs, sn: f.sn, pad: 0.6 });
     });
     for (const f of facs) {
       const R = Math.hypot(f.w, f.d) / 2 + 1;
-      add(boxes, f.x - R, f.z - R, f.x + R, f.z + R, { x: f.x, z: f.z, w: f.w + 2, d: f.d + 2, cs: Math.cos(f.yaw), sn: Math.sin(f.yaw) });
+      add(boxes, f.x - R, f.z - R, f.x + R, f.z + R, {
+        x: f.x,
+        z: f.z,
+        w: f.w + 2,
+        d: f.d + 2,
+        cs: Math.cos(f.yaw),
+        sn: Math.sin(f.yaw),
+        pad: 1,
+        fac: true
+      });
     }
     return (openIx = { key: layoutKey, segs, boxes });
   };
@@ -1024,6 +1034,16 @@ export function createTown(scene, heightAt, opts = {}) {
         if (Math.abs(dx * f.cs - dz * f.sn) < f.w / 2 && Math.abs(dx * f.sn + dz * f.cs) < f.d / 2) return false;
       }
       return true;
+    },
+    /** In a lot or a landmark at world (x, z), m metres round it (street life, T-372: props3d keeps off them; landmarks ≥ 0.5 m). */
+    solid(x, z, m = 0.3) {
+      for (const f of openIndex().boxes.get(`${Math.floor(x / OPEN)},${Math.floor(z / OPEN)}`) || []) {
+        const e = 2 * ((f.fac ? Math.max(m, 0.5) : m) - f.pad),
+          dx = x - f.x,
+          dz = z - f.z;
+        if (Math.abs(dx * f.cs - dz * f.sn) < (f.w + e) / 2 && Math.abs(dx * f.sn + dz * f.cs) < (f.d + e) / 2) return true;
+      }
+      return false;
     },
     /** Bring the layer up to date with a model (reads model.land roads / lots / landmarks / districts and model.fog only). */
     sync(model) {

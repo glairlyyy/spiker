@@ -37,6 +37,7 @@ import { createLife } from './life3d.mjs';
 import { createVehicles } from './vehicles3d.mjs';
 import { createTown } from './town3d.mjs';
 import { createNature } from './nature3d.mjs';
+import { createProps } from './props3d.mjs';
 import { createMapCam, STREET } from './mapcam3d.mjs';
 import { buildTerrain } from './terrain3d.mjs';
 import { lightScene, skyAt, SKY, LOOK, richLook, streetMat, STREET_FX } from './look3d.mjs';
@@ -95,6 +96,7 @@ export function create(onIdle) {
     life = null, // figures, battle crowd, frontier patrols (life3d.mjs)
     veh = null, // the buses, the ferry, stops and piers, your ride (vehicles3d.mjs, spec §4.42)
     nature = null, // trees, rocks, grass and the animals (nature3d.mjs, spec §4.19c)
+    props = null, // street life at street level (props3d.mjs, T-372)
     clock = 0,
     fogKey = null,
     badge = null,
@@ -213,6 +215,7 @@ export function create(onIdle) {
     life = createLife(scene, terrain.heightAt);
     veh = createVehicles(scene, terrain.heightAt);
     nature = createNature(scene, terrain.heightAt, { grass: terrain.grassAt, colour: terrain.colourAt, clear: (x, z) => town.clear(x, z) }); // (T-370: the meadow)
+    props = createProps(scene, terrain.heightAt, { solid: (x, z, m) => town.solid(x, z, m) }); // (T-372: street life)
     war = warLayer(scene, terrain.heightAt);
     night = nightLayer(scene, terrain.heightAt);
     // streaming (T-364): the blocks are the terrain's chunks; a far chunk draws its coarse index
@@ -224,7 +227,8 @@ export function create(onIdle) {
         show: keys => mesh.children.forEach((c, k) => (c.geometry = !keys || keys.has(k) ? terrain.chunks[k] : terrain.coarse[k]))
       },
       town.layer(G),
-      nature.layer(G)
+      nature.layer(G),
+      props.layer(G)
     ]);
     furn.layer.addEventListener('wheel', C.onWheel, { passive: false }); // wheel over a pin still zooms
     // the interiors (T-336b): imported here, not up front, so the map draws before it lands
@@ -358,6 +362,7 @@ export function create(onIdle) {
     const fm = fogM(m);
     town.sync(fm);
     nature.sync(fm, low);
+    props.sync(fm);
     night.sync(fm, low);
     applyFog(fm.fog);
   };
@@ -518,6 +523,7 @@ export function create(onIdle) {
       st = C.street();
       streamStep(dt);
       nature.near(avatar.pos(), st); // (T-370: street level's grass round you)
+      props.tick(dt, clock, avatar.pos(), st, low); // (T-372: street life near you)
       if (cur && st < STREAM.show && fogDrawn !== cur.fog) fogSync(cur); // (up from street level: the lantern catches up)
       streetLook();
       interStep(dt);
@@ -588,6 +594,7 @@ export function create(onIdle) {
       const fm = fogM(m); // (street level: the fog's lantern lags a short walk)
       town.sync(fm);
       nature.sync(fm, low);
+      props.sync(fm);
       if (interiors) interiors.sync(m); // (before life: lifeM reads where the stations are)
       furn.sync(m, on);
       town.rims(m.rims);
@@ -687,6 +694,8 @@ export function create(onIdle) {
       if (mesh && cur)
         (look.set(!low, water), mesh.children.forEach(c => (c.material = low ? flatMat : look.terrainMat)), nature.sync(fm, low)); // the look (T-343)
     },
+    /** Dev / QA (T-372): the drawn street prop of `kind` nearest you → [x, y, z, yaw] (world) | null. */
+    propNear: kind => (props && avatar ? props.find(kind, ...avatar.pos()) : null),
     /** The shown clock: { week (days), tod (0–1), lit (0–1) } — for QA and the UI. */
     clock: () => ({ week: wt, tod, lit }),
     /** Dev / QA: jump the shown clock to week time w (it then runs on toward the phase from there — forward only). */
@@ -812,6 +821,7 @@ export function create(onIdle) {
       ring: town && town.ringInfo ? town.ringInfo() : null,
       stream: stream && stream.info(),
       meadow: nature && nature.meadowInfo(),
+      props: props && props.info(),
       aspect: {
         canvas: +(cw / (ch || 1)).toFixed(3),
         cam: +cam.aspect.toFixed(3),
@@ -830,6 +840,7 @@ export function create(onIdle) {
       if (life) life.dispose();
       if (veh) veh.dispose();
       if (nature) nature.dispose();
+      if (props) props.dispose();
       if (interiors) interiors.dispose();
       interiors = null;
       if (war) war.dispose();
