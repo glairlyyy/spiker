@@ -11,7 +11,19 @@
 //     a block-jump drill, sitting or standing. Slots are built one at a time after the map has shown (never the first frame).
 //   nearestOnScreen(cands, cap, held, keep) — the LOD pick; insideCap(cands, n) — the station people's cap (pure, tested).
 import * as THREE from 'three';
-import { loadBase, makeVRM, applyPose, smoothBones, groundSnap, dress, wholeVRM, releaseVRM, MODEL_URL } from '../render3d/players3d.mjs';
+import {
+  loadBase,
+  makeVRM,
+  applyPose,
+  smoothBones,
+  groundSnap,
+  dress,
+  wholeVRM,
+  releaseVRM,
+  warmVRM,
+  MODEL_URL
+} from '../render3d/players3d.mjs';
+import { LOOK_CTX } from './look3d.mjs';
 import { STAND, READY, locoPose, mix } from '../render3d/poses3d.mjs';
 import { hstr, clamp, smooth } from './geo3d.mjs';
 import { mergeParts } from './kit3d.mjs';
@@ -314,7 +326,10 @@ export function createPeopleVRM(scene, opts = {}) {
         scene.add(pl.root);
         const meshes = [];
         pl.vrm.scene.traverse(o => o.isMesh && (shadowPart(o) ? meshes.push(o) : (o.castShadow = false)));
-        slots.push({
+        // (pacing 2026-10-27: dressed once now — the grey hair / iris textures are made here, not in the frame a person takes the
+        // slot — then warmed: textures uploaded, programs compiled for the map's buffer; the slot takes a person only after)
+        dress(pl.vrm, { shirt: '#ffffff', shorts: SHORTS, shoes: SHOES, hair: '#000000', skin: '#f6d7b8' });
+        const slot = {
           pl,
           meshes,
           sh: true,
@@ -327,8 +342,11 @@ export function createPeopleVRM(scene, opts = {}) {
           px: 0,
           pz: 0,
           t: hstr(`slot${slots.length}`) * 9,
+          warm: false,
           ready: wholeVRM(pl.vrm) // (T-368: a slot takes a person only once whole)
-        });
+        };
+        slots.push(slot);
+        warmVRM(pl.root, LOOK_CTX).then(() => (slot.warm = true));
       })
       .catch(e => {
         building = false;
@@ -425,11 +443,10 @@ export function createPeopleVRM(scene, opts = {}) {
         if (!keep && S.k <= 0) S.id = null;
       }
       gapT -= dt;
-      const shown = new Set(slots.map(S => S.id));
       for (const id of want) {
         const f = states.get(id);
-        if (shown.has(id) || !f) continue; // (!f: gone since the last LOD pick — a re-sync, e.g. Fast's fewer people)
-        const S = slots.find(q => q.id === null && (q.ready || (q.ready = wholeVRM(q.pl.vrm))));
+        if (!f || slots.some(S => S.id === id)) continue; // (!f: gone since the last LOD pick — a re-sync, e.g. Fast's fewer people)
+        const S = slots.find(q => q.id === null && q.warm && (q.ready || (q.ready = wholeVRM(q.pl.vrm))));
         if (S) {
           S.id = id;
           S.k = 0;

@@ -35,8 +35,45 @@ export const STREET = {
   near: [1, 0.2], // the camera's near plane (m): the map → street level
   far: [6000, 900], // … its far plane (the haze closes in before it: the low pitch would draw the whole island)
   rise: 9, // the most the camera rises over a building behind you (m; more → it comes in front of it)
-  behind: 1.4 // a click walk at street level: the camera swings behind you over ~this (s)
+  behind: 1.4, // a click walk at street level: the camera swings behind you over ~this (s)
+  ground: 0.6 // the camera never comes closer than this over the terrain (m)
 };
+/**
+ * Street level's tilt (owner 2026-10-27: "make it tiltable"): look up / down on top of the framing — a vertical right / middle drag
+ * (or any drag at street level), Z / PageUp up, X / PageDown down. min / max (rad: −10° down … +35° up), drag (rad/px), key
+ * (rad/s); looking up the camera comes in to `near` × its distance and the lens shift eases off (you sink to the bottom of the
+ * view, the sky and the façades fill it — a third-person camera's look-up). While you walk with no tilt input for `idle` s it
+ * eases back (`back` 1/s) to the framing; standing still it stays where you put it.
+ */
+export const TILT = { min: (-10 * Math.PI) / 180, max: (35 * Math.PI) / 180, drag: 0.005, key: 1.1, near: 0.6, idle: 3, back: 1.2 };
+/** The tilt kept inside its range (pure, tested). */
+export const clampTilt = t => clamp(t, TILT.min, TILT.max);
+/**
+ * The camera at street weight s with tilt t (pure, tested): orbit = the camera's angle over your middle (the framing's pitch − the
+ * tilt), aim = the view's elevation (rad; − = looking down), near (the distance factor), lensK (the lens shift's weight).
+ */
+export function tiltPose(pitch, t, s) {
+  const k = clampTilt(t) * s,
+    up = Math.max(0, k) / TILT.max;
+  return { orbit: pitch - k, aim: -pitch + k, near: 1 - (1 - TILT.near) * up, lensK: 1 - up };
+}
+/** The camera's height kept over the terrain (pure, tested): y at least ground + STREET.ground. */
+export const overGround = (y, ground) => Math.max(y, ground + STREET.ground);
+/**
+ * A smoothed frame time (pure, tested; pacing 2026-10-27): one long frame's time is paid out over the next frames, each at most
+ * 1.25 × the running mean (+1 ms), so a hitch slows the motion for a moment instead of a jump; the total time is kept (a backlog
+ * over 0.2 s is paid at once). S = { ema, debt } (made on first use).
+ */
+export function smoothDt(S, dt) {
+  dt = Math.max(0, dt || 0);
+  if (S.ema === undefined) ((S.ema = Math.min(dt, 1 / 30) || 1 / 60), (S.debt = 0));
+  S.debt += dt;
+  let out = Math.min(S.debt, S.ema * 1.25 + 0.001);
+  S.debt -= out;
+  if (S.debt > 0.2) ((out += S.debt - 0.2), (S.debt = 0.2));
+  S.ema += (Math.min(dt, 0.1) - S.ema) * 0.08;
+  return out;
+}
 /**
  * The zoom's one camera path (pure, tested): distance d (m) → { s (0 = the map, 1 = street level), pitch (rad), dist (m),
  * up (m, camera over the target), fov (°), lens [x, y] (the target's NDC place) }. Above DIST[0] it is today's view; below it
@@ -92,7 +129,8 @@ export const inZone = (Z, x, z, pad = 0) => !!Z && zoneDist(Z, x, z) <= pad;
 const FLY_S = 0.45, // a camera move to a selected place
   FENCE_D = 150, // the farthest the camera goes while the week-1 fence holds (m)
   CLICK_PX = 5,
-  KEYS = { KeyW: [0, 1], KeyS: [0, -1], KeyA: [-1, 0], KeyD: [1, 0] };
+  KEYS = { KeyW: [0, 1], KeyS: [0, -1], KeyA: [-1, 0], KeyD: [1, 0] },
+  TILT_KEYS = { KeyZ: 1, PageUp: 1, KeyX: -1, PageDown: -1 }; // (street level: look up / down)
 
 /**
  * S(): the map's live parts (they appear after the first mount): { terrain, mesh, avatar, cur (the model), on (the mount
@@ -110,6 +148,9 @@ export function createMapCam(cam, canvas, sun, S) {
     grab = null,
     down = null,
     yaw = 0, // street level: the orbit round you (0 = the map's fixed heading; scaled by s, reset when s reaches 0)
+    tilt = 0, // street level: look up (+) / down (−) on top of the framing (TILT; scaled by s, reset when s reaches 0)
+    tiltT = 99, // s since the last tilt input (the ease back while walking)
+    sdt = {}, // (smoothDt's state)
     st = 0, // the current street weight (streetPose(view.d).s)
     zone = null,
     zoneKey = null,
@@ -138,17 +179,21 @@ export function createMapCam(cam, canvas, sun, S) {
     return inZone(Z, ax, az) && inZone(Z, view.x, view.z, STREET.pad);
   };
   const heightAt = (x, z) => (S().terrain ? S().terrain.heightAt(x, z) : 0);
+  const _aim = new THREE.Vector3();
   const place = () => {
     const { x, z, d } = view,
       P = streetPose(d),
       s = P.s;
     st = s;
-    if (s <= 0) yaw = 0;
-    const yw = yaw * s,
+    if (s <= 0) ((yaw = 0), (tilt = 0));
+    const T = tiltPose(P.pitch, tilt, s), // (the framing's pitch at this zoom, tilted; s = 0: the map's view as it was)
+      yw = yaw * s,
       ty = s > 0 ? s * (heightAt(x, z) + STREET.head + (S().avatar && S().avatar.lift ? S().avatar.lift() : 0)) : 0, // (on the overpass deck: up with you)
-      c = d * Math.cos(P.pitch);
+      dd = d * T.near,
+      c = dd * Math.cos(T.orbit),
+      up0 = dd * Math.sin(T.orbit);
     let k = 1,
-      need = P.up;
+      need = up0;
     if (s > 0.3) {
       // a building between you and the camera: the camera rises over it (up to STREET.rise m more), else comes in front of it
       // (march back from your head; ones holding you — the gym or the arena, opened by cutaway in T-336b — don't count)
@@ -162,18 +207,26 @@ export function createMapCam(cam, canvas, sun, S) {
         const top = heightAt(px, pz) + L.h + 0.4;
         if (ty + need * f >= top) continue;
         const up = (top - ty) / f;
-        if (up <= P.up + STREET.rise * s) need = up;
+        if (up <= Math.max(0, up0) + STREET.rise * s) need = up;
         else {
           k = Math.max(1.6 / d, (i - 1.5) / n);
           break;
         }
       }
     }
-    lift += (need - P.up - lift) * (Math.abs(need - P.up - lift) < 0.02 ? 1 : 0.2); // (eased: walking past houses doesn't jolt it)
-    cam.position.set(x + c * k * Math.sin(yw), ty + (P.up + lift) * k, z + c * k * Math.cos(yw));
-    if (s > 0) cam.position.y = Math.max(cam.position.y, heightAt(cam.position.x, cam.position.z) + 0.6);
-    cam.lookAt(x, ty, z);
-    setLens(cam, P.fov, P.lens[0] * k, P.lens[1] * k); // (pulled in front of a building: the shift eases off with it)
+    lift += (need - up0 - lift) * (Math.abs(need - up0 - lift) < 0.02 ? 1 : 0.2); // (eased: walking past houses doesn't jolt it)
+    cam.position.set(x + c * k * Math.sin(yw), ty + (up0 + lift) * k, z + c * k * Math.cos(yw));
+    const yV = cam.position.y;
+    if (s > 0) cam.position.y = overGround(cam.position.y, heightAt(cam.position.x, cam.position.z));
+    if (tilt > 0 && s > 0 && cam.position.y > yV) {
+      // looking up with the camera held over the ground: it rises, but looks where the unheld camera would (up past you)
+      const h = Math.hypot(x - cam.position.x, z - cam.position.z) || 1,
+        a = Math.atan2(ty - yV, h);
+      _aim.set(x - cam.position.x, 0, z - cam.position.z).multiplyScalar(Math.cos(a) / h);
+      _aim.y = Math.sin(a);
+      cam.lookAt(cam.position.x + _aim.x, cam.position.y + _aim.y, cam.position.z + _aim.z);
+    } else cam.lookAt(x, ty, z);
+    setLens(cam, P.fov, P.lens[0] * k * T.lensK, P.lens[1] * k * T.lensK); // (pulled in front of a building: the shift eases off with it)
     const near = Math.max(lerp(STREET.near[0], STREET.near[1], s), view.d * 0.03 * (1 - s)), // (far out the near plane backs off: no sea showing through the low ground, T-350)
       far = lerp(STREET.far[0], STREET.far[1], s);
     if (Math.abs(cam.near - near) > 0.01 || Math.abs(cam.far - far) > 1) ((cam.near = near), (cam.far = far), cam.updateProjectionMatrix());
@@ -214,10 +267,11 @@ export function createMapCam(cam, canvas, sun, S) {
 
   // input: drag pans (grab the ground point) — at street level it orbits —, a right-drag orbits, wheel zooms, a click (< CLICK_PX) picks a map point
   const onDown = e => {
-    if ((e.button !== 0 && e.button !== 2) || walking()) return;
+    if (e.button === 1 && st > 0.5) e.preventDefault(); // (a middle drag at street level orbits / tilts: no autoscroll)
+    if ((e.button !== 0 && e.button !== 2 && !(e.button === 1 && st > 0.5)) || walking()) return;
     if (e.button === 2 && st < 0.3) return; // (a right-click on the map: the figure menu, map3d)
     fly = null; // the player takes the camera
-    down = { x: e.clientX, y: e.clientY, lx: e.clientX, moved: 0, b: e.button, orbit: e.button === 2 || st > 0.5 };
+    down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, moved: 0, b: e.button, orbit: e.button !== 0 || st > 0.5 };
     dragged = false;
     const g = down.orbit ? null : ground(e);
     grab = g ? { x: g.x, z: g.z } : null;
@@ -229,10 +283,12 @@ export function createMapCam(cam, canvas, sun, S) {
     if (down.orbit) {
       if (down.moved >= CLICK_PX) {
         yaw -= (e.clientX - down.lx) * STREET.drag;
+        if (st > 0.5) ((tilt = clampTilt(tilt - (e.clientY - down.ly) * TILT.drag)), (tiltT = 0)); // (drag up: look up)
         if (down.b === 2) dragged = true;
         place();
       }
       down.lx = e.clientX;
+      down.ly = e.clientY;
       return;
     }
     if (down.moved < CLICK_PX || !grab) return;
@@ -270,7 +326,7 @@ export function createMapCam(cam, canvas, sun, S) {
   const typing = e => e.target && e.target.closest && e.target.closest('input,select,textarea,[contenteditable]');
   const onKey = e => {
     const k = e.code;
-    if (!(k in KEYS) && k !== 'KeyQ' && k !== 'KeyE') return;
+    if (!(k in KEYS) && !(k in TILT_KEYS) && k !== 'KeyQ' && k !== 'KeyE') return;
     if (e.type === 'keyup') return void held.delete(k);
     if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || typing(e) || st < 0.5 || !canvas.isConnected) return;
     if (k in KEYS && !canRoam()) return;
@@ -417,6 +473,14 @@ export function createMapCam(cam, canvas, sun, S) {
       yaw = v;
       if (view) place();
     },
+    /** Street level's tilt (rad; + = looking up). */
+    tilt: () => tilt,
+    /** Dev / QA: set the tilt (clamped to TILT). */
+    setTilt(v) {
+      tilt = clampTilt(v);
+      tiltT = 0;
+      if (view) place();
+    },
     /** First view of a model: every known place and you in frame, else on the player ~60 m away. */
     initView(m) {
       const at = m.you ? m.you.at : m.focus;
@@ -466,6 +530,9 @@ export function createMapCam(cam, canvas, sun, S) {
     },
     /** Per frame: a flight in progress, then holding the camera on your walking player; street level: on you, orbit, WASD. */
     step(dt) {
+      if (st > 0)
+        dt = smoothDt(sdt, dt); // (pacing, street level: one long frame doesn't jerk the camera — avatar3d's walk the same)
+      else sdt.debt = 0;
       if (fly) {
         fly.t = Math.min(1, fly.t + dt / FLY_S);
         const k = smooth(0, 1, fly.t);
@@ -490,6 +557,14 @@ export function createMapCam(cam, canvas, sun, S) {
         view.z += (az - view.z) * k;
         if (held.has('KeyQ')) yaw += STREET.orbit * dt;
         if (held.has('KeyE')) yaw -= STREET.orbit * dt;
+        let tk = 0;
+        for (const k of held) tk += TILT_KEYS[k] || 0;
+        if (tk) ((tilt = clampTilt(tilt + Math.sign(tk) * TILT.key * dt)), (tiltT = 0));
+        else if (down && down.orbit && down.moved >= CLICK_PX) tiltT = 0;
+        else if ((tiltT += dt) > TILT.idle && tilt && (A.busy() || roam)) {
+          tilt *= Math.exp(-dt * TILT.back); // (walking, hands off the tilt: back to the framing)
+          if (Math.abs(tilt) < 0.003) tilt = 0;
+        }
         if (swing > 0 && A.busy() && A.heading) {
           // a click walk: swing round behind you, gently
           swing -= dt;

@@ -2043,6 +2043,24 @@ the AI coach fills every slot you leave with the same function. Built and measur
     frame, FXAA 4 % → 1 %. The fade's gate turned off 2 of 50 patched draws there (the big merged meshes reach the line; the in-shader
     early-outs do the rest); the VRM pool is not loaded headless (the people numbers need the real run). Re-measure: Measure on the same spot at night (Auto), the "Auto" line
     in F3 after ~10 s of walking, and the post chain / fade / bloom rows.
+    **Smooth frame pacing, the GPU side (owner, 2026-10-27, RTX 5060 laptop: "it runs at 60 fps steady but it stutters most of the
+    time, so I guess we do some heavy load too often") [built 2026-10-27]**: the hitches came from work done in the middle of play —
+    the render scale's steps re-made every post buffer (a stall each time, and on a 60 Hz screen the scale stepped down after a spike
+    but never back up), the sky behind the reflections was re-baked into a newly made buffer every few game minutes (six faces at once),
+    the street sky re-painted a cube face most frames, a VRM's textures were uploaded and its shaders compiled in the frame it first
+    appeared, and the shadow map was redrawn every frame even with nothing moving. Now: the render scale draws into a part of buffers
+    made once (nothing re-made; a step needs 2 slow / 3 quick seconds in a row, judged by the GPU's own time where the browser gives it);
+    the reflections' sky is drawn a face a frame into one buffer and filtered into the same one, at most once a second after the sun
+    moved ~7 game minutes; street level's sky is drawn directly (§4.44); people's and your models are uploaded and compiled before they
+    show (a pool figure is dressed when it is made; a model's load and upload are cut into idle moments between frames); the shadow map is redrawn only when the sun turned, the camera's shadow box moved a
+    shadow texel (snapped: walking no longer makes the shadow edges swim), or something that casts a shadow moved, appeared or vanished
+    near you (a figure breathing in place doesn't count); the camera and your walk spread one long frame's time over the next few
+    frames instead of jumping. Look unchanged. Measured headless (SwiftShader, Auto, street level, 480 × 300; per minute, before → after):
+    walking ×1 — buffer re-makes 7 → 0, textures made mid-frame 81 → 24 (the VRMs' now before they show), texture allocations 58 → 3,
+    shader links 3 → 0, sky cube faces 18 → 0; dusk → night at ×4 — buffer re-makes 15 → 0 (env bakes 15 → 6, into the same
+    buffers); standing with the clock paused — shadow redraws 4.8 vs 81.6 skipped (each frame before). Walking or with the sun moving
+    fast the shadow still redraws each frame (things move); at 60 fps a sun at ×1 redraws it ~1.5 × a second. GPU ms need the real
+    GPU: re-check in F3 (the spike log should no longer list "render scale", "sky bake" or "shader compile" while walking).
 - §4.40 The island × 2 and real facilities **[built 2026-10-24 — T-350–T-351; not yet: the drone's field spots lit like places; zoomed out shows region names, not district names;  later (owner, 2026-10-24): more fillers for Wei, the Cup-win drop (63 → 42 %, 12 runs) re-measured]** (owner, 2026-10-23: "expand the island 2× so travel matters
   and there is room for proper facilities"; "remove pins entirely — a building or a piece of kit lights up on hover"):
   - **Scale** (T-350): `MAP_SCALE` 2.25 → 4.5 (~2.4 × 1.6 km). Towns and districts spread out with it (the same layout, twice the
@@ -2234,6 +2252,15 @@ the AI coach fills every slot you leave with the same function. Built and measur
     elsewhere) read left to right from the street; blade signs stack the same letters upright, readable from both sides (they were mirrored).
     **[fixed 2026-10-26]** the painted sky never keeps an old hour: after a jump in the time (a skip, a fast-forward) the whole sky
     repaints at once (no seam, no lavender dusk sky at 23:00), and its low haze matches the hour.
+    **Sky render (owner, 2026-10-27: "add a sky render — it can be just an image") [built 2026-10-27]**: the street sky is drawn
+    straight behind the scene every frame (a sky dome, only where nothing else covers it) from the same painted keys and the tiling
+    cloud image, instead of re-painting a small cube a face at a time — no bakes during play, the clouds drift smoothly, the stars are
+    soft dots; the horizon still meets the hour's haze. The same look; its cost is a cheap shader on the sky's own pixels.
+    **Tilt (owner, 2026-10-27: "the camera angle is fixed at street level — make it tiltable") [built 2026-10-27]**: at street level
+    drag up / down (right or middle button, or any drag) to look up / down — Z / X or PageUp / PageDown too; from 10° further down to
+    35° up (the sky, the façades: the camera comes in and you sink to the bottom of the view); the camera never goes under the ground.
+    Standing still it stays where you put it; walking with your hands off the tilt for 3 s it eases back to the usual framing (a
+    third-person game's camera). Q / E and the drag still orbit; zooming out resets it.
     Measured (headless, Auto, same spots): draw calls unchanged (market 158 / 171, gym 150 / 165 at 10:00 / 21:00), triangles within
     ±0.3 %, draw time unchanged; Fast unchanged (140 / 142, 113 / 115 calls).
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
