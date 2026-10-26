@@ -1990,6 +1990,17 @@ the AI coach fills every slot you leave with the same function. Built and measur
     over 2× the median or over 50 ms keeps what ran just before it (a shader compile, a ring rebuild, blocks prepared, a props
     re-pick, a sky bake face, a map update, the fog re-dim, textures for a VRM, renderCareer / MapModel.build / a save with their ms;
     else "a gap": a GC or browser stall); the last 20. Copy falls back to selecting the text when the clipboard is blocked.
+    **Frame pacing (owner, 2026-10-27: "it runs at 60 fps steady but it stutters most of the time") [built 2026-10-27]**: the map's
+    periodic heavy work no longer lands in one frame. The detail ring's rebuild (every 30 m you walk: ~80–125 ms in one frame) is built
+    a few slices a frame within a ~2.5 ms budget (a building, a road's pavements, a part merged at a time; your nearby work first), the
+    old ring drawn until the new one swaps in, identical to before; a target a step away restarts it. Street blocks are prepared one
+    layer at a time; the instance re-packs and the props' re-pick make no garbage and upload only what is drawn; the meadow keeps its
+    ground heights per tile; the ring's meshes and buffers are reused across rebuilds. Measured headless (a ~170 m WASD walk at street
+    level, the clock running, a loaded 2-core container): our JavaScript per frame p50 2.1 → 2.5, p95 7.5 → 8.4, p99 79.5 → 20.6 ms;
+    ring-rebuild frames 78–125 ms → none (the heaviest job frame 17 ms); frames over 20 ms 8 → 6, the rest the sky bake and VRMs.
+    Repeated objects (owner: "render one object and copy it"): the map's layers already draw each repeated shape once per kind
+    (instanced trees, props, people figures, buses; merged town parts) — a scene audit (dev `audit()`) finds no geometry + material
+    drawn as separate meshes; draw calls unchanged (street level 151, zoomed out at 110 m ~100); the ring no longer makes new meshes.
     **Inside a building (owner, 2026-10-25: "the frame rate bug happens when I try to walk inside interior") [built 2026-10-25]**:
     the cost inside is today's people at the stations, all VRMs right by the camera (~43 draw calls and ~110k triangles each with
     their shadow; the gym has 7). Now at most 4 of an interior's station people are VRMs (the nearest; the rest stay the light

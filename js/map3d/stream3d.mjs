@@ -83,22 +83,38 @@ export function pack(mesh, list) {
       list: null
     };
   const m = mesh.instanceMatrix.array,
-    c = mesh.instanceColor && P.c ? mesh.instanceColor.array : null;
+    c = mesh.instanceColor && P.c ? mesh.instanceColor.array : null,
+    S = P.m,
+    Sc = P.c;
   if (!list) {
-    m.set(P.m);
-    if (c) c.set(P.c);
+    m.set(S);
+    if (c) c.set(Sc);
     mesh.count = P.n;
   } else {
-    for (let j = 0; j < list.length; j++) {
-      const i = list[j];
-      m.set(P.m.subarray(i * 16, i * 16 + 16), j * 16);
-      if (c) c.set(P.c.subarray(i * 3, i * 3 + 3), j * 3);
+    // (plain copies, no subarray views: a pack runs on every near-set change — no garbage per instance)
+    for (let j = 0, n = list.length; j < n; j++) {
+      const i = list[j] * 16,
+        o = j * 16;
+      for (let e = 0; e < 16; e++) m[o + e] = S[i + e];
+      if (c) {
+        const i3 = list[j] * 3,
+          o3 = j * 3;
+        c[o3] = Sc[i3];
+        c[o3 + 1] = Sc[i3 + 1];
+        c[o3 + 2] = Sc[i3 + 2];
+      }
     }
     mesh.count = list.length;
   }
   P.list = list;
-  mesh.instanceMatrix.needsUpdate = true;
-  if (c) mesh.instanceColor.needsUpdate = true;
+  // upload only the drawn part (three: updateRanges → bufferSubData of that span)
+  const up = (a, k) => {
+    a.clearUpdateRanges();
+    a.addUpdateRange(0, Math.max(1, mesh.count * k));
+    a.needsUpdate = true;
+  };
+  up(mesh.instanceMatrix, 16);
+  if (c) up(mesh.instanceColor, 3);
   mesh.boundingSphere = null; // (three recomputes it from the drawn instances)
 }
 /** Run fn on the mesh's full instance set (e.g. setColorAt by full index), then pack it again as it was. */
@@ -184,17 +200,21 @@ export function createStream(G, layers) {
       const t0 = now(),
         budget = boost ? STREAM.boost.budget : P.budget,
         per = boost ? STREAM.boost.per : P.per;
-      let n = 0;
-      while (queue.length && (n === 0 || (n < per && now() - t0 < budget))) {
-        const k = queue.shift();
-        for (const l of layers) {
-          const b = built.get(l.id);
-          if (b.set.has(k)) continue;
-          if (l.prep) l.prep(k);
-          b.set.add(k);
+      // one layer's share of a block a slice (Pacing A: not a whole block in one go), the time looked at after each
+      let n = 0,
+        sl = 0;
+      while (queue.length && (sl === 0 || (n < per && now() - t0 < budget))) {
+        const k = queue[0],
+          l = layers.find(l => !built.get(l.id).set.has(k));
+        if (l) {
+          if (l.prep) (l.prep(k), sl++);
+          built.get(l.id).set.add(k);
         }
-        n++;
-        N.preps++;
+        if (!l || layers.every(q => built.get(q.id).set.has(k))) {
+          queue.shift();
+          n++;
+          N.preps++;
+        }
       }
       // show the ready part of the near set: all of it at once, a growing part every topUp s (sooner when your block is new)
       since += dt;
@@ -211,7 +231,7 @@ export function createStream(G, layers) {
         since = 0;
         N.shows++;
       }
-      if (n) N.ms = +(now() - t0).toFixed(1);
+      if (n || sl) N.ms = +(now() - t0).toFixed(1);
       const busy = queue.length > 0;
       held = boost === 'act' && busy ? held + dt : 0;
       return { on: true, busy, wait: held >= STREAM.wait };

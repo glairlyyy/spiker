@@ -485,6 +485,13 @@ export function createNature(scene, heightAt, opts = {}) {
     blk = null; // { ver, by: shape → block → [instance] }
   const farMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });
   const md = { mesh: null, tiles: new Map(), at: null, n: 0, ms: 0, k: 1 }; // street level's meadow (T-370)
+  const mdTmp = {
+    q: new THREE.Quaternion(),
+    up: new THREE.Vector3(0, 1, 0),
+    m4: new THREE.Matrix4(),
+    v: new THREE.Vector3(),
+    sc: new THREE.Vector3()
+  }; // (reused: no garbage per rebuild)
   const meadowHide = () => {
     if (md.mesh) md.mesh.visible = false;
     md.at = null;
@@ -513,11 +520,7 @@ export function createNature(scene, heightAt, opts = {}) {
       t0j = Math.floor((you[1] - R) / M.tile),
       t1j = Math.floor((you[1] + R) / M.tile),
       cf = opts.colour || ((x, z, o) => ((o[0] = 0.4), (o[1] = 0.6), (o[2] = 0.3), o)),
-      q = new THREE.Quaternion(),
-      up = new THREE.Vector3(0, 1, 0),
-      m4 = new THREE.Matrix4(),
-      v = new THREE.Vector3(),
-      sc = new THREE.Vector3();
+      { q, up, m4, v, sc } = mdTmp;
     let n = 0,
       fresh = 0; // tiles made this frame (≤ M.per: the rest next frame)
     for (let tj = t0j; tj <= t1j && n < M.max; tj++)
@@ -527,7 +530,10 @@ export function createNature(scene, heightAt, opts = {}) {
         if (!T) {
           if (fresh >= M.per) continue;
           fresh++;
-          md.tiles.set(k, (T = meadowTile(ti, tj, opts.grass, opts.clear, cf)));
+          T = meadowTile(ti, tj, opts.grass, opts.clear, cf);
+          T.y = new Float32Array(T.length / 7); // (the ground under each clump, once per tile: not on every rebuild)
+          for (let a = 0; a < T.length; a += 7) T.y[a / 7] = heightAt(T[a], T[a + 1]) - 0.05;
+          md.tiles.set(k, T);
         }
         for (let a = 0; a < T.length && n < M.max; a += 7) {
           const x = T[a],
@@ -536,7 +542,7 @@ export function createNature(scene, heightAt, opts = {}) {
           if (d > R) continue;
           const s = T[a + 3] * Math.min(1, (R - d) / M.edge);
           q.setFromAxisAngle(up, T[a + 2]);
-          m4.compose(v.set(x, heightAt(x, z) - 0.05, z), q, sc.set(s, s, s));
+          m4.compose(v.set(x, T.y[a / 7], z), q, sc.set(s, s, s));
           m.setMatrixAt(n, m4);
           m.setColorAt(n, col.setRGB(T[a + 4], T[a + 5], T[a + 6]));
           n++;
@@ -547,8 +553,11 @@ export function createNature(scene, heightAt, opts = {}) {
       if (Math.hypot((i + 0.5) * M.tile - you[0], (j + 0.5) * M.tile - you[1]) > R + M.keep) md.tiles.delete(k);
     }
     m.count = n;
-    m.instanceMatrix.needsUpdate = true;
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    for (const [a, w] of [
+      [m.instanceMatrix, 16],
+      [m.instanceColor, 3]
+    ])
+      if (a) (a.clearUpdateRanges(), a.addUpdateRange(0, Math.max(1, n * w)), (a.needsUpdate = true)); // (only the drawn part uploads)
     m.visible = n > 0;
     md.at = fresh >= M.per ? null : [you[0], you[1]]; // (tiles still to make: again next frame)
     md.n = n;
@@ -785,11 +794,11 @@ export function createNature(scene, heightAt, opts = {}) {
           }
           for (const [shape, F] of Object.entries(far)) {
             F.visible = !!keys;
-            if (keys)
-              pack(
-                F,
-                (blk.at[shape] || []).map((b, i) => (keys.has(b) ? -1 : i)).filter(i => i >= 0)
-              );
+            if (!keys) continue;
+            const at = blk.at[shape] || [],
+              list = [];
+            for (let i = 0; i < at.length; i++) if (!keys.has(at[i])) list.push(i);
+            pack(F, list);
           }
         }
       };

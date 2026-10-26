@@ -59,6 +59,7 @@ import {
 } from './look3d.mjs';
 import { nightLayer, warLayer } from './layers3d.mjs';
 import { createStream, blockGrid, STREAM } from './stream3d.mjs';
+import { createJobs, JOBS } from './jobs3d.mjs';
 import { MAP_M, clamp, lerp, fogFactor, inside, edgeDist, sideDist } from './geo3d.mjs';
 export { inside, edgeDist, sideDist }; // (the polygon maths live in geo3d.mjs; tests import them from here too)
 
@@ -157,6 +158,7 @@ export function create(onIdle) {
   water.userData.probe = look.sea.userData.probe = 'terrain';
   for (const o of [sun, sun.target, hemi]) o.userData.probe = 'lights';
   tagAdds(scene, PROBE_OF, 'map3d'); // (the perf probe's layers)
+  const jobs = createJobs(); // the frame-budget jobs (jobs3d, Pacing A): the ring's rebuild a few slices a frame
 
   let terrain = null,
     mesh = null,
@@ -289,7 +291,7 @@ export function create(onIdle) {
     scene.add(mesh);
     water.position.set(terrain.W / 2, 0, terrain.D / 2);
     avatar = createAvatar(scene);
-    town = createTown(scene, terrain.heightAt, { fast: () => low }); // the Fast boxes follow setLow (T-342 × T-343)
+    town = createTown(scene, terrain.heightAt, { fast: () => low, jobs }); // the Fast boxes follow setLow (T-342 × T-343)
     furn = createFurniture(scene, terrain.heightAt, id => {
       const f = town.facility(id); // the tag and the popup's anchor stand over the building's roof (spec §4.40)
       return f && { x: f.x, y: f.base + f.h, z: f.z, r: Math.max(f.w, f.d) / 2 };
@@ -613,7 +615,7 @@ export function create(onIdle) {
     d('progs', (renderer.info.programs || []).length, n => `shader compile ${n > 0 ? '+' : ''}${n}`);
     d('tex', renderer.info.memory.textures, n => `textures ${n > 0 ? '+' : ''}${n} (VRM load / dress?)`);
     d('geo', renderer.info.memory.geometries, n => `geometries ${n > 0 ? '+' : ''}${n}`);
-    if (ri) d('ring', ri.builds, () => `ring rebuild (${ri.lots} lots, ${(ri.ms || 0).toFixed(1)} ms)`);
+    if (ri) d('ring', ri.builds, () => `ring swap (${ri.lots} lots, built over ${(ri.ms || 0).toFixed(0)} ms of frames)`);
     if (S) (d('sprep', S.preps || 0, n => `stream: ${n} block(s) prepared`), d('sshow', S.shows || 0, () => 'stream: near blocks shown'));
     if (Pi) (d('pprep', Pi.preps || 0, n => `props: ${n} block(s) prepared`), d('ppick', Pi.picks || 0, () => 'props re-pick'));
     if (L.sky) d('sky', L.sky.bakes, n => `sky bake ${n} face(s)`);
@@ -996,6 +998,8 @@ export function create(onIdle) {
       lap('look');
       fxStep(dt);
       lap('street fx');
+      jobs.run(actK || arriveT > 0 ? JOBS.boost : JOBS.budget); // (the slices of the heavy work this frame may take)
+      lap('jobs');
       const n = avatar.lapse(),
         txt = n ? `×${n < 2 ? n.toFixed(1) : Math.round(n)}` : '';
       if (badge && badge.textContent !== txt) {
@@ -1280,8 +1284,47 @@ export function create(onIdle) {
         src: probeApi
       };
     },
+    /**
+     * Dev / QA (Pacing A, owner 2026-10-27 "render one object and copy it"): the shown draws grouped by layer — meshes, the
+     * repeated ones (one geometry + material in several meshes: instancing candidates) and materials many meshes share (batching).
+     */
+    audit() {
+      const top = o => {
+          while (o.parent && o.parent !== scene) o = o.parent;
+          return o.userData.probe || 'other';
+        },
+        same = new Map(),
+        mats = new Map(),
+        per = {};
+      scene.traverseVisible(o => {
+        if (!(o.isMesh || o.isLine || o.isPoints || o.isSprite)) return;
+        const L = top(o),
+          M = Array.isArray(o.material) ? o.material : [o.material],
+          k = `${L}|${o.geometry.uuid}|${M.map(m => m.uuid).join()}`;
+        per[L] = (per[L] || 0) + 1;
+        same.set(k, (same.get(k) || 0) + 1);
+        for (const m of M) {
+          const q = `${L}|${m.type}|${m.uuid}`;
+          mats.set(q, (mats.get(q) || 0) + 1);
+        }
+      });
+      const list = (m, min) =>
+        [...m]
+          .filter(([, n]) => n >= min)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 12)
+          .map(([k, n]) => `${n}× ${k.split('|')[0]} ${k.split('|')[1]}`);
+      return {
+        per,
+        repeated: list(same, 2),
+        sharedMats: list(mats, 4),
+        calls: renderer.info.render.calls,
+        progs: (renderer.info.programs || []).length
+      };
+    },
     info: () => ({
       calls: renderer.info.render.calls,
+      jobs: jobs.info(), // (the frame-budget jobs: waiting ids, slices, ms a frame)
       tris: renderer.info.render.triangles,
       geos: renderer.info.memory.geometries,
       tex: renderer.info.memory.textures,

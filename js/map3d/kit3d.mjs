@@ -947,11 +947,12 @@ export function mesher(extra = {}, cap0 = 4096) {
       put(p1, nr, c, t[2], t[3], e);
       put(p2, nr, c, t[4], t[5], e);
     },
-    /** The finished BufferGeometry (null when empty). */
-    geometry() {
+    /** The finished BufferGeometry (null when empty); share = views on the mesher's arrays, no copy (the mesher is done with). */
+    geometry(share = false) {
       if (!n) return null;
       const g = new THREE.BufferGeometry();
-      for (const k in sizes) g.setAttribute(k, new THREE.BufferAttribute(A[k].slice(0, n * sizes[k]), sizes[k]));
+      for (const k in sizes)
+        g.setAttribute(k, new THREE.BufferAttribute(share ? A[k].subarray(0, n * sizes[k]) : A[k].slice(0, n * sizes[k]), sizes[k]));
       return g;
     }
   };

@@ -833,19 +833,22 @@ export function createProps(scene, heightAt, opts = {}) {
           const x = R.m[i * 16 + 12],
             z = R.m[i * 16 + 14];
           if ((x - you[0]) ** 2 + (z - you[1]) ** 2 > R2) continue;
-          M.set(R.m.subarray(i * 16, i * 16 + 16), c * 16);
-          Cc.set(R.c.subarray(i * 3, i * 3 + 3), c * 3);
-          if (E) E.set(R.e.subarray(i * ex, i * ex + ex), c * ex);
+          // (plain copies: no subarray views per instance — a re-pick makes no garbage)
+          for (let e = 0, a = i * 16, b = c * 16; e < 16; e++) M[b + e] = R.m[a + e];
+          for (let e = 0, a = i * 3, b = c * 3; e < 3; e++) Cc[b + e] = R.c[a + e];
+          if (E) for (let e = 0, a = i * ex, b = c * ex; e < ex; e++) E[b + e] = R.e[a + e];
           c++;
         }
       }
       if (!mesh) continue;
       mesh.count = c;
       mesh.visible = c > 0;
-      mesh.instanceMatrix.needsUpdate = true;
-      mesh.instanceColor.needsUpdate = true;
-      if (kind === 'wire') mesh.geometry.attributes.wsp.needsUpdate = true;
-      if (kind === 'decal') mesh.geometry.attributes.dtile.needsUpdate = true;
+      // only the drawn part uploads (updateRanges → bufferSubData), not the whole cap
+      const up = (a, w) => (a.clearUpdateRanges(), a.addUpdateRange(0, Math.max(1, c * w)), (a.needsUpdate = true));
+      up(mesh.instanceMatrix, 16);
+      up(mesh.instanceColor, 3);
+      if (kind === 'wire') up(mesh.geometry.attributes.wsp, 4);
+      if (kind === 'decal') up(mesh.geometry.attributes.dtile, 1);
       mesh.boundingSphere = null;
       n[kind] = c;
     }

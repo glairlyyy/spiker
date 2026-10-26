@@ -38,6 +38,7 @@ import {
 import { buildFacility } from './facility3d.mjs';
 import { pack, repack, ranges } from './stream3d.mjs';
 import { groundMat } from './look3d.mjs';
+import { drainGen } from './jobs3d.mjs';
 
 export const ROAD = {
     main: { w: 3.2, color: '#6d6e73' },
@@ -517,12 +518,65 @@ export function createTown(scene, heightAt, opts = {}) {
     ringWant = new Set(), // … the ones the built ring draws
     ringN = { lots: 0, tris: 0, builds: 0, ms: 0 },
     ringCache = new Map(), // lot index → its full build { ok, W, G, R, I } (mesher raws), kept while near the ring (rebuilt per layout)
+    ringJob = null, // [x, z] the ring being built across frames is for (opts.jobs), or null
     lastModel = null;
+  const jobs = opts.jobs || null; // the frame-budget jobs (jobs3d; map3d's): the ring builds a few slices a frame; none = at once
+  const ringStop = () => {
+    if (jobs && ringJob) jobs.cancel('ring');
+    ringJob = null;
+  };
+  /**
+   * The ring's pooled objects (owner 2026-10-27: no new mesh / geometry per rebuild): one per part (W G R I S, ink) made once and
+   * kept; a rebuild copies its vertices into the part's buffers (draw range = the new count, only that span uploaded) — new
+   * buffers only when a ring outgrows them.
+   */
+  const ringPool = {};
+  const ringPut = (k, g, mat) => {
+    const n = g.attributes.position.count;
+    let o = ringPool[k];
+    const fits =
+      o &&
+      Object.keys(g.attributes).every(a => o.geometry.attributes[a] && o.geometry.attributes[a].count >= n) &&
+      Object.keys(o.geometry.attributes).length === Object.keys(g.attributes).length;
+    if (fits) {
+      for (const [a, A] of Object.entries(g.attributes)) {
+        const T = o.geometry.attributes[a];
+        T.array.set(A.array);
+        T.clearUpdateRanges();
+        T.addUpdateRange(0, A.array.length);
+        T.needsUpdate = true;
+      }
+      o.geometry.setDrawRange(0, n);
+      o.geometry.boundingSphere = g.boundingSphere;
+    } else {
+      // (first use, or bigger than before: buffers of this size — a copy when g's arrays are views on a mesher's larger ones)
+      const G2 = new THREE.BufferGeometry();
+      for (const [a, A] of Object.entries(g.attributes))
+        G2.setAttribute(
+          a,
+          new THREE.BufferAttribute(A.array.length === A.array.buffer.byteLength / 4 ? A.array : A.array.slice(), A.itemSize)
+        );
+      G2.boundingSphere = g.boundingSphere;
+      if (!o) {
+        o = ringPool[k] = k === 'ink' ? new THREE.LineSegments(G2, mat) : new THREE.Mesh(G2, mat);
+        o.castShadow = k === 'W' || k === 'R';
+        o.receiveShadow = k !== 'ink';
+        o.userData.ring = k;
+        ringG.add(o);
+      } else {
+        o.geometry.dispose();
+        o.geometry = G2;
+      }
+    }
+    o.material = mat;
+    o.visible = true;
+  };
   const ringClear = () => {
     for (const o of [...ringG.children]) {
       ringG.remove(o);
       o.geometry.dispose();
     }
+    for (const k in ringPool) delete ringPool[k];
   };
   /** Collapse (hide) / restore the map look's items for the lots in `want` (the detailed look's merged meshes; Fast: instance scale). */
   const baseHide = want => {
@@ -558,7 +612,7 @@ export function createTown(scene, heightAt, opts = {}) {
    * Kerbs, pavements, the main roads' centre dashes and zebra crossings (into mesher S: the painted ground, T-370; Fast: W), and
    * pavement props (W), within the ring.
    */
-  const ringGround = (W, S, roads, cx, cz, frames, fast) => {
+  const ringGround = function* (W, S, roads, cx, cz, frames, fast) {
     const inLot = (x, z) =>
       frames.some(f => {
         const dx = x - f.x,
@@ -580,17 +634,18 @@ export function createTown(scene, heightAt, opts = {}) {
       slabs = { wmask: [0, 0, 0], gk: [2, 0, 0, 0] },
       worn = { wmask: [0, 0, 0], gk: [3, 0, 0, 0] },
       R2 = (RING.r + 20) ** 2;
-    roads.forEach((r, ri) => {
-      if (r.kind !== 'main' && r.kind !== 'street') return;
+    for (let ri = 0; ri < roads.length; ri++) {
+      const r = roads[ri];
+      if (r.kind !== 'main' && r.kind !== 'street') continue;
       const spec = ROAD[r.kind],
         [a, b] = [r.pts[0], r.pts[r.pts.length - 1]].map(toM),
         L = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      if (L < 1) return;
+      if (L < 1) continue;
       const ux = (b[0] - a[0]) / L,
         uz = (b[1] - a[1]) / L,
         // nearest point of the segment to the camera: skip roads out of the ring
         t = Math.max(0, Math.min(L, (cx - a[0]) * ux + (cz - a[1]) * uz));
-      if ((a[0] + ux * t - cx) ** 2 + (a[1] + uz * t - cz) ** 2 > R2) return;
+      if ((a[0] + ux * t - cx) ** 2 + (a[1] + uz * t - cz) ** 2 > R2) continue;
       const hw = spec.w / 2,
         s0 = deg.get(kk(r.pts[0])) > 1 ? RING.trim : 0,
         s1 = L - (deg.get(kk(r.pts[r.pts.length - 1])) > 1 ? RING.trim : 0),
@@ -611,6 +666,7 @@ export function createTown(scene, heightAt, opts = {}) {
             ord = (A, B, C, D) => (side > 0 ? [A, B, C, D] : [B, A, D, C]);
           S.quad(...ord(at(p, i1, K), at(q, i1, K), at(q, i0, K), at(p, i0, K)), pave, flat, slabs); // the pavement
           S.quad(...ord(at(p, i0, K), at(q, i0, K), at(q, i0, 0), at(p, i0, 0)), kerb, flat, none); // the kerb face
+          if (j % 24 === 23) yield 'road'; // (a long road: a few slices)
         }
       if (r.kind === 'main') {
         const hl = RING.line / 2;
@@ -641,10 +697,16 @@ export function createTown(scene, heightAt, opts = {}) {
           if ((x - cx) ** 2 + (z - cz) ** 2 > R2 || inLot(x, z)) continue;
           streetProp(W, kind, x, y, z, uz * side, -ux * side);
         }
-    });
+      yield 'road'; // (one road a slice: the frame-budget jobs, jobs3d)
+    }
   };
-  /** Build the ring round world (cx, cz): its lots in full (every face, rooms behind the ground-floor glass), the ground detail. */
-  const ringBuild = (m, cx, cz) => {
+  /**
+   * Build the ring round world (cx, cz): its lots in full (every face, rooms behind the ground-floor glass), the ground detail.
+   * A generator (Pacing A, owner 2026-10-27): each yield = a slice (a lot built, a road's ground, a part merged / its geometry made)
+   * for the frame-budget jobs (jobs3d); the built ring replaces the shown one in its last slice — the old ring draws until then.
+   * Run at once (drainGen) it is the full build of before, identical.
+   */
+  const ringGen = function* (m, cx, cz) {
     const t0 = typeof performance !== 'undefined' ? performance.now() : 0,
       L = m.land,
       fast = !!fastOf(),
@@ -656,7 +718,9 @@ export function createTown(scene, heightAt, opts = {}) {
       col = new THREE.Color(),
       frames = [],
       got = []; // the ring's lots' builds (cached), in lot order
-    (L.lots || []).forEach((l, i) => {
+    let built = 0; // (lots built / outlined since the last slice)
+    const lots = L.lots || [];
+    const one = (l, i) => {
       const k = KIT[l.kind];
       if (!k) return;
       const x = l.at[0] * MAP_M,
@@ -667,6 +731,7 @@ export function createTown(scene, heightAt, opts = {}) {
       if (fast || (x - cx) ** 2 + (z - cz) ** 2 > R2) return;
       let c = ringCache.get(i);
       if (!c) {
+        built++;
         // built once (while it stays near): a rebuild only merges the cached vertices again
         const B = { W: mesher({ wmask: 3 }, 256), G: mesher({ glow: 3 }, 256), R: mesher({}, 256), I: mesher({ room: 4, tan: 3 }, 256) };
         lotColour(l, i, k, col);
@@ -681,23 +746,34 @@ export function createTown(scene, heightAt, opts = {}) {
             q = [];
           lotOutline(l, i, heightAt(x, z), rgb0(lotColour(l, i, k, col)), p, q);
           c.ink = { p, q };
+          built++;
         }
         O.pos.push(...c.ink.p);
         O.col.push(...c.ink.q);
       }
-    });
+    };
+    for (let i = 0; i < lots.length; i++) {
+      one(lots[i], i);
+      if (built || i % 256 === 255) ((built = 0), yield 'lot'); // (a new lot's build a slice; the cached ones by the 256)
+    }
     for (const p of ['W', 'G', 'R', 'I']) {
       M[p].reserve(got.reduce((n, c) => n + (c[p] ? c[p].n : 0), 0) + (p === 'W' ? 8000 : 0)); // (W: + the pavement props)
-      for (const c of got) M[p].append(c[p]);
+      let v = 0;
+      for (const c of got) {
+        M[p].append(c[p]);
+        v += c[p] ? c[p].n : 0;
+        if (v > 15000) ((v = 0), yield 'merge'); // (~15k vertices copied a slice)
+      }
+      yield 'merge';
     }
     const keep = (RING.r + 2 * RING.step) ** 2; // (the cache keeps the lots a short walk can bring back)
     for (const i of ringCache.keys()) {
       const l = L.lots[i];
       if (!l || (l.at[0] * MAP_M - cx) ** 2 + (l.at[1] * MAP_M - cz) ** 2 > keep) ringCache.delete(i);
     }
-    ringGround(M.W, fast ? M.W : M.S, L.roads || [], cx, cz, frames, fast);
-    ringClear();
-    const mats = detailMats();
+    yield* ringGround(M.W, fast ? M.W : M.S, L.roads || [], cx, cz, frames, fast);
+    const mats = detailMats(),
+      made = []; // the new ring's objects (added in the last slice)
     let tris = 0;
     for (const [k, mat] of [
       ['W', mats.wall],
@@ -706,25 +782,25 @@ export function createTown(scene, heightAt, opts = {}) {
       ['I', interiorMat()],
       ['S', ringGroundMat()]
     ]) {
-      const g = M[k].geometry();
+      const g = M[k].geometry(true); // (views: the ring's meshers are dropped after the build)
       if (!g) continue;
-      const mesh = new THREE.Mesh(g, mat);
-      mesh.castShadow = k === 'W' || k === 'R';
-      mesh.receiveShadow = true;
-      mesh.userData.ring = k;
+      yield 'geometry';
       g.computeBoundingSphere();
       tris += g.attributes.position.count / 3;
-      ringG.add(mesh);
+      made.push({ k, g, mat });
+      yield 'geometry';
     }
     if (O.pos.length) {
       const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.Float32BufferAttribute(O.pos, 3));
-      g.setAttribute('color', new THREE.Float32BufferAttribute(O.col, 3));
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(O.pos), 3));
+      g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(O.col), 3));
       g.computeBoundingSphere();
-      const lines = new THREE.LineSegments(g, inkMat());
-      lines.userData.ring = 'ink';
-      ringG.add(lines);
+      made.push({ k: 'ink', g, mat: inkMat() });
+      yield 'ink';
     }
+    // the swap (one slice): the new ring into the pooled meshes (their buffers reused), the map look's lots collapsed to match
+    for (const o of ringG.children) o.visible = false;
+    for (const q of made) ringPut(q.k, q.g, q.mat);
     baseHide(want);
     ringWant = want;
     ringAt = [cx, cz];
@@ -732,9 +808,11 @@ export function createTown(scene, heightAt, opts = {}) {
       lots: want.size,
       tris,
       builds: ringN.builds + 1,
-      ms: +((typeof performance !== 'undefined' ? performance.now() : 0) - t0).toFixed(1)
+      ms: +((typeof performance !== 'undefined' ? performance.now() : 0) - t0).toFixed(1) // (wall time, over the frames it took)
     };
+    ringJob = null;
   };
+  const ringBuild = (m, cx, cz) => drainGen(ringGen(m, cx, cz));
 
   /** A wall ring round each walled district (compound style) with a gatehouse where a road crosses it. */
   const wallParts = (districts, roads) => {
@@ -1055,6 +1133,7 @@ export function createTown(scene, heightAt, opts = {}) {
       if (key !== layoutKey) {
         layoutKey = key;
         clear();
+        ringStop();
         ringLots = new Set(); // (the new map-look meshes show every lot)
         ringCache = new Map();
         ringWant = new Set();
@@ -1100,7 +1179,15 @@ export function createTown(scene, heightAt, opts = {}) {
      */
     ring(cx, cz, k, on) {
       const show = !!lastModel && on && k >= RING.show;
-      if (show && (!ringAt || Math.hypot(cx - ringAt[0], cz - ringAt[1]) > RING.step)) ringBuild(lastModel, cx, cz);
+      if (show && (!ringAt || Math.hypot(cx - ringAt[0], cz - ringAt[1]) > RING.step)) {
+        // across frames (jobs): started once per target, restarted when the camera got a step away from the one being built
+        if (!jobs) ringBuild(lastModel, cx, cz);
+        else if (!ringJob || Math.hypot(cx - ringJob[0], cz - ringJob[1]) > RING.step) {
+          ringJob = [cx, cz];
+          jobs.add('ring', ringGen(lastModel, cx, cz), 1);
+        }
+      }
+      if (!show) ringStop();
       if (!show && ringG.visible) baseHide(new Set());
       if (show && !ringG.visible && ringAt) baseHide(ringWant);
       ringG.visible = show;
@@ -1174,7 +1261,7 @@ export function createTown(scene, heightAt, opts = {}) {
     /** The hovered facility now (QA): { id, k }. */
     hovered: () => ({ ...hov }),
     /** QA: the ring's counts { on, lots, tris, builds, ms (the last build) }. */
-    ringInfo: () => ({ on: ringG.visible, ...ringN }),
+    ringInfo: () => ({ on: ringG.visible, ...ringN, pending: !!ringJob }),
     /**
      * Cut the landmarks (the hall you are near while its insides are built, T-336b / T-362): every landmark triangle wholly inside
      * a box is dropped (collapsed) — box = { x0, x1, z0, z1, y0?, y1? } or a turned { cx, cz, c, s, hw, hd, y0?, y1? } (world m; c / s

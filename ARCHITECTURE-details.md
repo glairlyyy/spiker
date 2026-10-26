@@ -909,6 +909,21 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   (every frame) writes ≤ `FOG_MS` 2 ms of grid rows outward from the camera's row and uploads the two bands it wrote
   (`addUpdateRange`). **Precompile**: map3d `precompile()` = `renderer.compile(scene, cam)` with `look.target()` (the scene's render
   target) bound — on st crossing 0.3 and after a finish sweep patched new materials (`info().fx.pre`).
+- **Frame pacing** (Pacing A, owner 2026-10-27: "60 fps but it stutters"): `jobs3d.mjs` `createJobs()` (map3d's `jobs`, `info().jobs`):
+  generator jobs, each `yield` a slice; `run(budget)` (map3d each frame after fxStep, `lap('jobs')`: `JOBS.budget` 2.5 ms, `JOBS.boost`
+  30 behind an action / on arrival) steps them lowest `pri` first, older first, until the budget is used (the first slice always);
+  `add(id, …)` under a running id closes it (`return()`) and starts the new one; `drain(id?)` runs to the end (tests). town3d
+  `ringGen` = the ring build as a generator (a new lot's `buildLot`, 256 cached lots, ~30k merged vertices, one road / 24 segments
+  of it, a part's geometry — one slice each); with `opts.jobs` `ring()` starts it once per target (`ringJob`, pri 1; a camera a
+  `step` away from that target restarts it; hidden / a new layout cancels), else `ringBuild` = `drainGen(ringGen)` (identical, tests).
+  The old ring draws until the last slice swaps: `ringPut` copies each part into its pooled object (`ringPool`: W G R I S + ink made
+  once; draw range = the new count, `addUpdateRange` of that span; new buffers only when a part outgrows them), `baseHide(want)`.
+  `ringInfo().pending`; ms = wall time over the frames. stream3d's preparing slices per layer (one layer's share of a block, the
+  budget checked after each). Garbage-free re-picks: stream3d `pack` and props3d `pickNear` copy by loop (no `subarray` per
+  instance) and upload only the drawn span (`addUpdateRange(0, count × size)`); nature3d's meadow keeps each tile's ground heights
+  (`T.y`, not `heightAt` per clump per rebuild) and reuses its temporaries (`mdTmp`). Dev `audit()`: the shown draws per layer,
+  repeated geometry + material pairs and much-shared materials (instancing / batching candidates). Workers were not used: the
+  module graph imports `three` by the page's import map (a worker has none) — the slices keep each frame under budget instead.
 - **Inside a hall** (owner 2026-10-25): the cost there is the people at its stations as VRMs near the camera (each ~13 meshes,
   ~36k tris, 7 outlined: ~20 draws + its shadow). interior3d `people()` marks the moved people `inside: true` → life3d state
   `inside` → people3d `insideCap(cands, VRM_LOD.inside 4)` (the nearest station people only; the rest stay humanoids). people3d
