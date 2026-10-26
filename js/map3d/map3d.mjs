@@ -33,6 +33,7 @@
 import * as THREE from 'three';
 import { createAvatar } from './avatar3d.mjs';
 import { createFurniture } from './pins3d.mjs';
+import { VRM_Q } from './people3d.mjs';
 import { createLife } from './life3d.mjs';
 import { createVehicles } from './vehicles3d.mjs';
 import { createTown } from './town3d.mjs';
@@ -40,7 +41,22 @@ import { createNature } from './nature3d.mjs';
 import { createProps } from './props3d.mjs';
 import { createMapCam, STREET } from './mapcam3d.mjs';
 import { buildTerrain } from './terrain3d.mjs';
-import { lightScene, skyAt, SKY, LOOK, PSKY, GLOW, STREET_U, richLook, streetMat, STREET_FX } from './look3d.mjs';
+import {
+  lightScene,
+  skyAt,
+  SKY,
+  LOOK,
+  PSKY,
+  GLOW,
+  STREET_U,
+  richLook,
+  streetMat,
+  STREET_FX,
+  FD_GATE,
+  autoAt,
+  TERRAIN_LOD,
+  GROUND_U
+} from './look3d.mjs';
 import { nightLayer, warLayer } from './layers3d.mjs';
 import { createStream, blockGrid, STREAM } from './stream3d.mjs';
 import { MAP_M, clamp, lerp, fogFactor, inside, edgeDist, sideDist } from './geo3d.mjs';
@@ -161,6 +177,9 @@ export function create(onIdle) {
     props = null, // street life at street level (props3d.mjs, T-372)
     clock = 0,
     fogKey = null,
+    fogRows = 0, // (the terrain rows the fog re-dimmed so far: fogStep)
+    terrN = 0, // (terrain chunks on the far material now: terrainLod)
+    stPre = 0, // (the last frame's st: entering street level precompiles)
     badge = null,
     walkK = 1, // your walking speed (×1 / ×2 / ×4 — the map's speed selector, T-214)
     seen = null, // the you.at last shown
@@ -431,21 +450,55 @@ export function create(onIdle) {
     night.sync(fm, low);
     applyFog(fm.fog);
   };
-  /** Darken the terrain where nothing you have visited lies within fog.r (unexplored land stays visible, dim). */
+  /**
+   * Darken the terrain where nothing you have visited lies within fog.r (unexplored land stays visible, dim). The first time at
+   * once; later spread over frames (owner 2026-10-26: a 66 ms frame — the whole grid re-dimmed in one): fogStep re-dims ≤ FOG_MS
+   * a frame, the grid rows nearest the camera first, uploading only the rows it wrote (two ranges a frame).
+   */
+  const FOG_MS = 2;
+  let fogJob = null;
   const applyFog = f => {
     const key = JSON.stringify(f);
     if (key === fogKey) return;
+    const first = fogKey === null;
     fogKey = key;
     fogN++;
-    const attr = terrain.geo.attributes.color,
+    const RW = terrain.shore.w,
+      RH = terrain.shore.h,
+      c = clamp(Math.round((cam.position.z / terrain.D) * (RH - 1)), 0, RH - 1);
+    fogJob = { k: fogFactor(f), c, lo: c - 1, hi: c };
+    if (first || !RW) fogStep(Infinity);
+  };
+  const fogStep = (ms = FOG_MS) => {
+    const J = fogJob;
+    if (!J || !terrain) return;
+    const t0 = performance.now(),
+      attr = terrain.geo.attributes.color,
       pos = terrain.geo.attributes.position.array,
       base = terrain.base,
-      k = fogFactor(f);
-    for (let i = 0; i < attr.count; i++) {
-      const v = k(pos[i * 3], pos[i * 3 + 2]);
-      attr.setXYZ(i, base[i * 3] * v, base[i * 3 + 1] * v, base[i * 3 + 2] * v);
+      RW = terrain.shore.w,
+      RH = terrain.shore.h;
+    let a0 = RH,
+      a1 = -1,
+      b0 = RH,
+      b1 = -1;
+    while (J.lo >= 0 || J.hi < RH) {
+      let j;
+      if (J.hi < RH && (J.lo < 0 || J.hi - J.c <= J.c - J.lo)) ((j = J.hi++), (b0 = Math.min(b0, j)), (b1 = Math.max(b1, j)));
+      else ((j = J.lo--), (a0 = Math.min(a0, j)), (a1 = Math.max(a1, j)));
+      for (let i = j * RW, e = i + RW; i < e; i++) {
+        const v = J.k(pos[i * 3], pos[i * 3 + 2]);
+        attr.setXYZ(i, base[i * 3] * v, base[i * 3 + 1] * v, base[i * 3 + 2] * v);
+      }
+      if (performance.now() - t0 > ms) break;
     }
+    if (ms !== Infinity) {
+      if (a1 >= 0) attr.addUpdateRange(a0 * RW * 3, (a1 - a0 + 1) * RW * 3);
+      if (b1 >= 0) attr.addUpdateRange(b0 * RW * 3, (b1 - b0 + 1) * RW * 3);
+    } else attr.clearUpdateRanges();
     attr.needsUpdate = true;
+    fogRows += Math.max(0, a1 - a0 + 1) + Math.max(0, b1 - b0 + 1);
+    if (J.lo < 0 && J.hi >= RH) fogJob = null;
   };
   const size = () => {
     if (!el || !el.clientWidth || !el.clientHeight) return;
@@ -473,6 +526,41 @@ export function create(onIdle) {
     waitShown = r.wait;
   };
   /** Street level's extras each frame: the detail ring round the camera, the sky and the haze. */
+  /** Auto's ladder now (look3d AUTO): on = Auto's detailed look, tight = stepped down, reach = props / grass reach factor. */
+  const autoQ = () => {
+    const L = look.on && gfx() === 'auto' ? look.parts().dyn : null,
+      step = L ? L.A.step : 0;
+    return { on: !!L, step, tight: step >= 1, reach: autoAt(step).reach };
+  };
+  /**
+   * The terrain chunks' material (owner 2026-10-26): on Auto a chunk whose box lies beyond TERRAIN_LOD.near[1] m of the camera draws
+   * look.terrainFar (the painted grass and smooth normals compiled out — they fade out by then: GROUND_U.uGrD); the chunk nearest
+   * the camera always the full one (both programs exist from the start: no compile on the way down). High: all full.
+   */
+  const terrainLod = () => {
+    if (low || !look.on || !mesh) return;
+    const auto = gfx() === 'auto',
+      N = TERRAIN_LOD.near,
+      x = cam.position.x,
+      z = cam.position.z;
+    if (auto) GROUND_U.uGrD.value.set(N[0], N[1]);
+    else GROUND_U.uGrD.value.set(1e5, 2e5);
+    let best = null,
+      bd = Infinity,
+      far = 0;
+    for (const c of mesh.children) {
+      const B = c.geometry.boundingBox,
+        d = B ? Math.hypot(Math.max(B.min.x - x, 0, x - B.max.x), Math.max(B.min.z - z, 0, z - B.max.z)) : 0;
+      c.userData.d = d;
+      if (d < bd) ((bd = d), (best = c));
+    }
+    for (const c of mesh.children) {
+      const f = auto && c !== best && c.userData.d > N[1];
+      c.material = f ? look.terrainFar : look.terrainMat;
+      far += f ? 1 : 0;
+    }
+    terrN = far;
+  };
   const streetLook = () => {
     const [ax, az] = avatar.pos(),
       inD = C.inDistrict(ax, az);
@@ -562,8 +650,8 @@ export function create(onIdle) {
   const fxMats = o => {
     if (!o.isMesh) return;
     const M = o.material;
-    if (Array.isArray(M)) for (const m of M) streetMat(m) && (m.needsUpdate = true);
-    else if (streetMat(M)) M.needsUpdate = true; // (not yet drawn: harmless; drawn: it recompiles with the patch)
+    if (Array.isArray(M)) for (const m of M) streetMat(m) && ((m.needsUpdate = true), fxInfo.patched++);
+    else if (streetMat(M)) ((M.needsUpdate = true), fxInfo.patched++); // (not yet drawn: harmless; drawn: it recompiles with the patch)
     if (o.isInstancedMesh) fxBox(o);
   };
   /** An instanced mesh's local box into its materials' `fdBox` (the union when a material serves several shapes): look3d's lens hide. */
@@ -578,11 +666,31 @@ export function create(onIdle) {
       if (B) (B.lo.value.min(g.boundingBox.min), B.hi.value.max(g.boundingBox.max));
     }
   };
-  const fxInfo = { ms: 0, sweeps: 0, sig: '', n: 0 };
+  const fxInfo = { ms: 0, sweeps: 0, sig: '', n: 0, patched: 0, pre: 0, gate: null };
+  /**
+   * Precompile (owner 2026-10-26: a shader compile landed mid-walk): the shown scene's programs for the buffer they draw into
+   * (look.target: the post's scene target), issued at once (three compile: the driver links them in parallel) — on entering
+   * street level and after a sweep patched new materials, not one by one in the draws that first use them.
+   */
+  const precompile = () => {
+    if (!renderer.compile || !look.on) return;
+    const rt = look.target(),
+      prev = renderer.getRenderTarget();
+    try {
+      if (rt) renderer.setRenderTarget(rt);
+      renderer.compile(scene, cam); // (three defers each program's status check to its first use: the links run in parallel)
+      fxInfo.pre++;
+    } catch (e) {
+      /* (a compile failure shows in the draw as before) */
+    } finally {
+      renderer.setRenderTarget(prev);
+    }
+  };
   const fxStep = dt => {
     const t0 = performance.now(),
       R = town.ringInfo ? town.ringInfo().builds : 0,
       sig = `${R}|${scene.children.length}`;
+    const p0 = fxInfo.patched;
     if (fxDirty || sig !== fxInfo.sig || ++fxInfo.n >= FX_EVERY) {
       scene.traverseVisible(fxMats);
       fxDirty = false;
@@ -590,17 +698,23 @@ export function create(onIdle) {
       fxInfo.n = 0;
       fxInfo.sweeps++;
     }
+    if (fxInfo.patched > p0 || (st >= 0.3 && stPre < 0.3)) precompile(); // (new patched materials / entering street level)
+    stPre = st;
     const F = STREET_FX,
       [x, y, z] = api.youPos(),
       want = clamp((st - 0.4) / 0.4, 0, 1);
     F.uFdA.value.copy(cam.position);
     F.uFdB.value.set(x, y + STREET.head, z);
-    F.uFdK.value += (want - F.uFdK.value) * (1 - Math.exp(-dt * 6));
-    if (F.uFdK.value < 0.003) F.uFdK.value = 0;
+    // (the fade's weight: each patched draw gets it only when its bounds come near the camera → you line — look3d FD_GATE)
+    FD_GATE.k += (want - FD_GATE.k) * (1 - Math.exp(-dt * 6));
+    if (FD_GATE.k < 0.003) FD_GATE.k = 0;
+    fxInfo.gate = { ...FD_GATE.n };
+    FD_GATE.n.on = FD_GATE.n.off = 0;
+    FD_GATE.last = null;
     fxInfo.ms = EMA(fxInfo.ms, performance.now() - t0);
   };
   renderer.info.autoReset = false; // (the post draws several passes: info counts the whole frame)
-  const draw = () => (renderer.info.reset(), look.on && !pPlain ? look.render() : renderer.render(scene, cam));
+  const draw = () => (renderer.info.reset(), look.on && !pPlain ? look.render(!pdrv) : renderer.render(scene, cam));
   // ---- the perf probe (owner, 2026-10-26; PerfHUD Measure): its driver runs round the draw (pre → draw → mid → GPU sync → post)
   let pdrv = null,
     pPlain = false, // (the "post chain" item: the scene drawn straight to the canvas)
@@ -735,8 +849,8 @@ export function create(onIdle) {
         id: 'fade',
         label: 'occluder fade',
         group: 'look',
-        can: () => STREET_FX.uFdK.value > 0 || 'street level only',
-        mask: () => swap(STREET_FX.uFdK, 'value', 0)
+        can: () => FD_GATE.k > 0 || 'street level only',
+        mask: () => swap(FD_GATE, 'k', 0)
       },
       {
         id: 'res1',
@@ -803,6 +917,7 @@ export function create(onIdle) {
         scale: L.scale,
         res: L.res,
         look: { fast: 'Fast', detailed: 'Auto', high: 'High' }[L.look] || L.look,
+        auto: L.auto ? L.auto.label : '',
         view: `${I && I.active && I.active.length && st > 0.5 ? 'inside' : st > 0.5 ? 'street' : 'map'} (street ${st.toFixed(2)}, d ${C.view ? Math.round(C.view.d) : '–'} m)`,
         place: I && I.active && I.active.length && st > 0.5 ? I.active.join(', ') : '',
         time: `${String(Math.floor(tod * 24)).padStart(2, '0')}:${String(Math.floor((tod * 1440) % 60)).padStart(2, '0')}`,
@@ -830,7 +945,12 @@ export function create(onIdle) {
       frustum.setFromProjectionMatrix(projM.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)); // (last frame's camera)
       lodView.px = (ch || 1) / (2 * Math.tan((cam.fov * Math.PI) / 360));
       avatar.setLife(st);
+      const AQ = autoQ();
+      VRM_Q.auto = AQ.on; // (Auto at street level: fewer VRMs, outlines near only — people3d VRM_Q)
+      VRM_Q.tight = AQ.tight;
+      lodView.outline = true;
       avatar.tick(dt * walkK, terrain.heightAt, lodView); // your walk at the chosen speed (setWalk; the others keep theirs)
+      lodView.outline = !(AQ.on && AQ.tight && st > 0.5); // (tight: the story figures without outlines; you keep yours)
       for (const f of figs.values()) (f.setLife(st), f.tick(dt, terrain.heightAt, lodView)); // (the guide, the rival, the aces: life size too)
       lap('avatars');
       if (!pz) clock += dt;
@@ -857,13 +977,15 @@ export function create(onIdle) {
       lap('camera');
       streamStep(dt);
       lap('stream');
-      nature.near(avatar.pos(), st); // (T-370: street level's grass round you)
+      nature.near(avatar.pos(), st, AQ.reach); // (T-370: street level's grass round you; Auto's last step: nearer)
       lap('grass');
-      props.tick(dt, clock, avatar.pos(), st, low); // (T-372: street life near you)
+      props.tick(dt, clock, avatar.pos(), st, low, AQ.reach); // (T-372: street life near you)
       lap('props');
       if (cur && st < STREAM.show && fogDrawn !== cur.fog) fogSync(cur); // (up from street level: the lantern catches up)
       lap('fog');
       streetLook();
+      terrainLod();
+      fogStep();
       lap('ring+haze');
       interStep(dt);
       lap('interiors');
@@ -1151,6 +1273,7 @@ export function create(onIdle) {
         look: { fast: 'Fast', detailed: 'Auto', high: 'High' }[L.look] || L.look,
         ao: L.ao,
         shadow: sun.shadow.mapSize.x,
+        auto: L.auto ? `${L.auto.label}${L.auto.gpu !== null ? ` · GPU ${L.auto.gpu.toFixed(1)} ms` : ''}` : null, // (look3d AUTO)
         raw: P.raw,
         secs: { ...secE, draw: P.draw, tags: P.labels },
         ev: P.ev,
@@ -1181,7 +1304,9 @@ export function create(onIdle) {
         cam: +cam.aspect.toFixed(3),
         proj: +(cam.projectionMatrix.elements[5] / cam.projectionMatrix.elements[0]).toFixed(3)
       }, // (= canvas: no stretch)
-      fx: { ms: +fxInfo.ms.toFixed(3), sweeps: fxInfo.sweeps } // (T-369: the street finish — JS ms a frame, scene sweeps so far)
+      fx: { ms: +fxInfo.ms.toFixed(3), sweeps: fxInfo.sweeps, pre: fxInfo.pre }, // (T-369: the street finish — JS ms a frame, scene sweeps so far, precompiles)
+      fd: fxInfo.gate, // (the occluder fade's gate, last frame: draws with it on / off — look3d FD_GATE)
+      terrain: { far: terrN, chunks: mesh ? mesh.children.length : 0, fogRows, fogBusy: !!fogJob } // (terrainLod; fogStep)
     }),
     /** The perf probe (PerfHUD Measure): items(), start(drv), stop(), ctx(). */
     probe: probeApi,

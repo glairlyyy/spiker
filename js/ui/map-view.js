@@ -338,7 +338,7 @@ const MapView = {
 /**
  * The perf overlay (owner, 2026-10-25; spec §4.39 Performance): F3 on the map and in a match, ⚙ › Perf overlay, the title's Dev tab;
  * off by default, remembered per browser. map3d / r3d call frame(kind, p) each frame while it is on (p = { fps, ms, update, draw,
- * labels, calls, tris, res, scale, px, vrm, blocks, look, ao, shadow, raw?, secs?, ev?, src? }); the page's rules step (career-map
+ * labels, calls, tris, res, scale, px, vrm, blocks, look, ao, shadow, auto? (Auto's ladder step), raw?, secs?, ev?, src? }); the page's rules step (career-map
  * spotFollow) adds rule(ms). Redrawn 4 times a second: the averages, and the worst frame of the last 2 s (a hitch: a save, a rebuild).
  * Measure (owner, 2026-10-26; Shift+F3, Esc cancels): `p.src` = the renderer's probe ({ kind, gl(), items(), start(drv), stop(),
  * ctx() }) — each layer / look feature switched off in turn (probeRun), a report to paste (probeReport). The spike log: a frame
@@ -467,6 +467,7 @@ const PerfHUD = {
       ${kind === 'map' ? row('rules worst', `${f(H.shown[1])} ms`) : ''}
       ${row('draws', `${p.calls} · ${k(p.tris)} tris`)}
       ${row('scale', `${f(p.scale, 2)} · ${p.px ? p.px.join('×') : '–'}${p.ao !== undefined ? ` · AO ${p.ao ? 'on' : 'off'}` : ''}${p.shadow ? ` · sh ${p.shadow}` : ''}`)}
+      ${p.auto ? row('Auto', esc(String(p.auto))) : ''}
       ${row('VRMs', `${p.vrm}${p.blocks !== null && p.blocks !== undefined ? ` · blocks ${p.blocks}` : ''}`)}
       ${row('spikes', `${H.spikes.length} · median ${f(H.med)} ms`)}`;
     if (H.probe) H.paint();
@@ -783,7 +784,7 @@ const PerfHUD = {
     L.push(`Spite & Spike perf report · ${stamp} · ${C.kind === 'match' ? 'match' : 'map'}`);
     L.push(`device   ${C.gpu || '–'} · ${C.browser || '–'}${C.os ? ` · ${C.os}` : ''}`);
     L.push(
-      `canvas   ${C.css ? C.css.join('×') : '–'} css · ${C.px ? C.px.join('×') : '–'} px · dpr ${f(C.dpr, 2)} · scale ${f(C.scale, 2)}${C.res !== undefined ? ` (dyn ${f(C.res, 2)})` : ''} · ${C.look || C.gfx || '–'}`
+      `canvas   ${C.css ? C.css.join('×') : '–'} css · ${C.px ? C.px.join('×') : '–'} px · dpr ${f(C.dpr, 2)} · scale ${f(C.scale, 2)}${C.res !== undefined ? ` (dyn ${f(C.res, 2)})` : ''} · ${C.look || C.gfx || '–'}${C.auto ? ` · ${C.auto}` : ''}`
     );
     L.push(`view     ${C.view || '–'}${C.place ? ` · ${C.place}` : ''}${C.time ? ` · ${C.time}` : ''}${C.extra ? ` · ${C.extra}` : ''}`);
     L.push(

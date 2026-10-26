@@ -186,6 +186,39 @@ export function nearestOnScreen(cands, cap, held, keep = 0.8) {
  * people at an interior's stations (state `inside`, the nearest) are VRMs — the rest stay humanoids (performance, owner 2026-10-25).
  */
 export const VRM_LOD = { cap: 16, maxD: 260, every: 0.25, fade: 0.3, delay: 1.5, gap: 0.35, shadows: 6, full: 3, inside: 4 };
+/**
+ * Auto at street level (owner 2026-10-26, a laptop GPU: people + VRMs were 76 draws): map3d sets `auto` (Auto's detailed look) and
+ * `tight` (Auto's ladder has stepped down: look3d AUTO) each frame. Then the pool holds at most `cap` [normal, tight] VRMs, a VRM
+ * draws its MToon outlines only within `outline` m of the camera (none when tight; you keep yours), and only the `shadows` nearest
+ * within `outline` m cast. High and Fast: as before.
+ */
+export const VRM_Q = { auto: false, tight: false, cap: [3, 2], outline: 12, shadows: 2 };
+/** Street level's VRM cap (pure, tested): SL = { street, cap } from life3d; Q = VRM_Q. Off street level: null (the map's cap). */
+export function streetCap(SL, Q = VRM_Q) {
+  if (!SL || !(SL.street > 0.5)) return null;
+  return Q && Q.auto ? Math.min(SL.cap, Q.cap[Q.tight ? 1 : 0]) : SL.cap;
+}
+/** Whether a VRM at d m draws its outlines / casts (rank = its place by distance among the shown) — pure, tested. */
+export function vrmDraws(d, rank, street, Q = VRM_Q, shadows = VRM_LOD.shadows) {
+  const auto = !!(Q && Q.auto && street);
+  return {
+    outline: !auto || (!Q.tight && d <= Q.outline),
+    shadow: rank < shadows && (!auto || (rank < Q.shadows && d <= Q.outline))
+  };
+}
+/** Show / hide a VRM's MToon outline draws (its outline materials; listed once per root). */
+export function setOutline(root, on) {
+  const U = root.userData;
+  if (U.olOn === on) return;
+  if (!U.ol) {
+    U.ol = [];
+    root.traverse(o => {
+      if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m && m.isOutline) U.ol.push(m);
+    });
+  }
+  for (const m of U.ol) m.visible = on;
+  U.olOn = on;
+}
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z).normalize();
 const leg = (a, k, f = 0, s = 0.1) => ({ a, k, f, s });
@@ -306,7 +339,7 @@ export function createPeopleVRM(scene, opts = {}) {
   const lod = (states, cam, SL) => {
     const cands = [],
       maxD = SL ? O.maxD + (SL.near.maxD - O.maxD) * smooth(0, 1, SL.street) : O.maxD,
-      cap = SL && SL.street > 0.5 ? SL.cap : O.cap;
+      cap = streetCap(SL) ?? O.cap;
     for (const [id, f] of states) {
       if (!f.vis || f.g === 'grey') continue; // unscouted: grey silhouettes stay
       P.set(f.x, f.y + 0.7 * f.s, f.z);
@@ -424,11 +457,13 @@ export function createPeopleVRM(scene, opts = {}) {
           S.fr = 99;
           continue;
         }
-        const sh = (near.get(S.id) ?? O.cap) < O.shadows;
+        const rank = near.get(S.id) ?? O.cap,
+          Dw = vrmDraws(cam.position.distanceTo(sph.center), rank, !!(SL && SL.street > 0.5), VRM_Q, O.shadows),
+          sh = Dw.shadow;
         if (sh !== S.sh) for (const m of S.meshes) m.castShadow = sh;
         S.sh = sh;
+        setOutline(S.pl.root, Dw.outline);
         S.acc = (S.acc || 0) + dt;
-        const rank = near.get(S.id) ?? O.cap;
         if ((S.fr = (S.fr || 0) + 1) < Math.max(every(f, cam), rank < O.full ? 1 : 2)) {
           pl3(S, f);
           continue;

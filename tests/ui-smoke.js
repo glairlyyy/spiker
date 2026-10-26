@@ -65,6 +65,11 @@ const step = async (name, fn) => {
     pg = await browser.newPage({ viewport: { width: 1440, height: 900 } }),
     errors = [];
   pg.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
+  // (a shader that doesn't compile is no page error — three logs it and the view goes black: 2026-10-26)
+  pg.on(
+    'console',
+    m => m.type() === 'error' && /Shader Error|program not valid/.test(m.text()) && errors.push(`shader: ${m.text().slice(0, 300)}`)
+  );
   pg.setDefaultTimeout(60000);
   const ev = (fn, arg) => pg.evaluate(fn, arg);
 

@@ -877,6 +877,38 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   sections) + `PerfHUD.note`s since (`hook()`: renderCareer, MapModel.build, Run.save wrapped while on). map3d's `lap(name)` splits
   the frame's JS (`secE` averages → the report's hot JS).
 - `MapView.saveSoon()`: the running clock's periodic save on `requestIdleCallback` (≤ 1 s), not in the frame.
+- **Auto on a laptop GPU** (owner 2026-10-26: Radeon 610M, street level at night 51 ms, GPU-bound). Post: RenderPass → (GTAO, High) →
+  bloom → `FinishShader` (one ShaderPass, `toneMapped = false`): per tap HDR + `uBloom` × the bloom's composite
+  (`renderTargetsHorizontal[0]`) → ACES → sRGB, three's FXAA 3.11 body (`FX_BODY`, its taps through `fsTap`; `uAA` branch), then the
+  grade (`uK`) — straight to the canvas; no OutputPass / grade / FXAA passes, no bloom full-size blend (`bloomRender` replaces the
+  pass's render: high pass, `useMips` blurs, composite). `grade` / `fxaa` are `{ enabled }` switches (the probe swaps them).
+  `postPlan({ gfx, st, lit, sg, step })` (pure) → { bloom (lit > 0.02 and the ladder), mips (Auto at street level `AUTO.bloomMips` 3,
+  the rest weigh 0), aa, grade, msaa }; `info().post` { passes, full (full-size passes after the scene: 1, + AO), bloomMips }. The
+  composer stays even when nothing in it is on (rendering straight to the canvas would compile every material's tone-mapped variant
+  on each switch: a hitch); then it is the scene + one tap. **Ladder** (`AUTO`, `autoState` / `autoStep(A, ms, dt)` / `autoAt(step)` /
+  `autoLabel`, pure): look's `adapt` ticks it each second on Auto's detailed look with the GPU ms (`dyn.gpu`: a TIME_ELAPSED query round
+  `composer.render`, ≤ 4 pending, polled; not while the probe times the draw — `render(timed)`) else the frame EMA: over `budget` 30 ms
+  for `down` s → step + 1, under `up` 21 for `back` 5 s → step − 1, a step down within `bounce` s of a step up doubles `back` (≤ 40).
+  Steps: 1 bloom off, 2 the scene target's MSAA 4 → 0 where FXAA is on (`setMsaa`: targets disposed, re-made on use), 3–5 the
+  dynamic-resolution floor 0.65 / 0.6 / 0.55 (`res` follows by the old rule), 6 the 1024 shadow map, 7 props / meadow reach × 0.6
+  (map3d `autoQ()` → `props.tick(…, reach)`, `nature.near(…, reach)`). `basePixelRatio(dpr, gfx, w, h, Q)` (pure): Auto caps the dpr at
+  `AUTO.dpr` 1.25. `info().auto` { step, label, gpu, msaa }; `perf().auto` → the F3 overlay's "Auto" row; `ctx().auto` → the report's
+  canvas line. **Occluder fade gate**: `FD_GATE` { k (map3d fxStep eases it; the probe's fade item swaps it), R 1.6 m, n, last };
+  streetMat chains `onBeforeRender` → `fdGate`: uFdK = k only when `fdNear(o, uFdA, uFdB)` (the object's world sphere — geometry's, or
+  an InstancedMesh's / BatchedMesh's own — within R of the camera → you segment; not frustum culled → always), else 0 (the shader's
+  coherent early-out); the same material drawn again with a new value unbinds the program (`renderer.state.useProgram(null)`: three
+  re-uploads its uniforms). In the shader the instance box tests run only for an instance whose bounding ball reaches the segment, the
+  fragment test only within L + 1.2 m of the camera. `info().fd` { on, off } (last frame's draws). **People** (people3d `VRM_Q`, map3d
+  sets `auto` / `tight` = ladder step ≥ 1 each frame): `streetCap(SL, Q)` → Auto at street level ≤ 3 VRMs (tight 2); `vrmDraws(d, rank,
+  street)` → outlines within 12 m (none tight), shadows for the 2 nearest within 12 m; `setOutline(root, on)` hides the MToon outline
+  materials (`isOutline`; their shadow draws too); avatar3d by `view.outline` (map3d: you always, the story figures off when tight).
+  **Terrain**: look `terrainFar` (`LK_FAR`: the painted grass's three reads and the smooth normals compiled out); on Auto
+  `GROUND_U.uGrD` = `TERRAIN_LOD.near` [45, 60] fades both out by distance, and map3d `terrainLod()` gives a chunk whose box is beyond 60 m
+  the far material (the chunk nearest the camera always the full one: both programs exist from the first frame); High: all full.
+  `info().terrain` { far, chunks, fogRows, fogBusy }. **Fog re-dim**: `applyFog` sets a job (the first one runs at once); `fogStep`
+  (every frame) writes ≤ `FOG_MS` 2 ms of grid rows outward from the camera's row and uploads the two bands it wrote
+  (`addUpdateRange`). **Precompile**: map3d `precompile()` = `renderer.compile(scene, cam)` with `look.target()` (the scene's render
+  target) bound — on st crossing 0.3 and after a finish sweep patched new materials (`info().fx.pre`).
 - **Inside a hall** (owner 2026-10-25): the cost there is the people at its stations as VRMs near the camera (each ~13 meshes,
   ~36k tris, 7 outlined: ~20 draws + its shadow). interior3d `people()` marks the moved people `inside: true` → life3d state
   `inside` → people3d `insideCap(cands, VRM_LOD.inside 4)` (the nearest station people only; the rest stay humanoids). people3d
@@ -929,9 +961,9 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   1.6 m, kerb 0.14 m) both sides of main / street roads, trimmed `RING.trim` at junctions; main roads' centre dashes and zebra
   crossings at junctions of 3+; pavement props (bollard, planter, hydrant — kit3d `RING_PROPS`) by hash, clear of lots — Fast only since T-372 (Auto / High: props3d). Fast: the ground
   detail only (the boxes stay). `ringInfo()` → { on, lots, tris, builds, ms }.
-- **Finish (T-369, spec §4.44)** — look3d: the composer gets a grade pass (`GradeShader`: gain / lift (coloured darks) / saturation /
-  contrast in display colours, weight `uK` = smooth(0.15, 0.8, st); off below) and FXAA (st > 0.3) after the OutputPass — Auto / High only
-  (Fast draws without the composer, its canvas MSAA). `GRADE` keys by time of day (night, warm morning, clear noon, orange-pink dusk,
+- **Finish (T-369, spec §4.44)** — look3d: the grade (gain / lift (coloured darks) / saturation / contrast in display colours, weight
+  `uK` = smooth(0.15, 0.8, st); off below) and FXAA (st > 0.3) — since 2026-10-26 both inside the one `FinishShader` pass (see "Auto on
+  a laptop GPU" above) — Auto / High only (Fast draws without the composer, its canvas MSAA). `GRADE` keys by time of day (night, warm morning, clear noon, orange-pink dusk,
   violet after-glow; `gradeAt(tod, out)`, wrapping) also give the haze hue (`look.haze()`, every look; map3d scales it to the sky colour's brightness). `streetMat(m)`: each built-in
   mesh material (not ShaderMaterial / VRM MToon, not `userData.noStreetFx`: terrain, sea) is patched once before its first compile —
   map3d `fxStep` before each draw: a `scene.traverseVisible` sweep when objects may have come (`update`, setLow, an interiors flip,

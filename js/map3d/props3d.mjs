@@ -8,7 +8,7 @@
 // blocks within the kind's reach of you, re-picked every PROPS.step m). Lit faces glow by NIGHT_U on the T-373 emissive path
 // (look3d streetMat lifts and blooms them); wires sway a little (STREET_U.st). Auto / High only: Fast draws none (the ring's
 // old pavement props stay there). Display only.
-//   createProps(scene, heightAt, { solid }) → { sync(model), layer(G), tick(dt, t, you, st, low), info(), dispose() }
+//   createProps(scene, heightAt, { solid }) → { sync(model), layer(G), tick(dt, t, you, st, low, reach = 1), info(), dispose() }
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP_M } from './geo3d.mjs';
@@ -501,6 +501,7 @@ export function createProps(scene, heightAt, opts = {}) {
     at = null, // where the drawn set was picked
     dirty = false,
     low = false,
+    reach = 1, // (× each kind's reach: Auto's ladder)
     N = { n: {}, ms: 0, preps: 0, picks: 0 };
   const T = 32; // the index tiles (m)
   const tk = (x, z) => `${Math.floor(x / T)},${Math.floor(z / T)}`;
@@ -816,7 +817,7 @@ export function createProps(scene, heightAt, opts = {}) {
       n = {};
     for (const kind of Object.keys(K)) {
       const S = K[kind],
-        R2 = S.r * S.r;
+        R2 = (S.r * reach) ** 2; // (Auto's last ladder step: nearer — look3d AUTO.reach)
       let mesh = meshes[kind],
         c = 0;
       for (const bk of shown) {
@@ -887,9 +888,10 @@ export function createProps(scene, heightAt, opts = {}) {
       };
     },
     /** Each frame (map3d, after the stream): the wind's clock; the drawn set re-picked when the shown blocks changed or you moved PROPS.step m. Fast: none. */
-    tick(dt, t, you, st, lo) {
+    tick(dt, t, you, st, lo, k = 1) {
       U.uT.value = t;
       if (lo !== low) ((low = lo), (dirty = true));
+      if (k !== reach) ((reach = k), (dirty = true));
       if (low || !shown || !you || st < 0.5) {
         if (at || dirty) hideAll();
         dirty = false;

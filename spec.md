@@ -2016,6 +2016,33 @@ the AI coach fills every slot you leave with the same function. Built and measur
     meanwhile) or redraws the hub in that frame: the rules move you, the week strip refreshes, the save waits for an idle moment
     and the hub redraws once you have rested ~1 s. Measured headless: the stop's own work 76 ms → ~4 ms (the redraw, ~70–110 ms,
     now once after you rest instead of at every stop and again at its lock's end).
+    **Auto on a laptop GPU (owner, 2026-10-26: a Measure report — AMD Radeon 610M, Chrome, Auto, street level at 20:59: frame 51 ms
+    ≈ 20 fps, GPU-bound (JS 1 ms, GPU 39.5 ms), 175 draws, ~1.0 M triangles, 1038 × 927 px (dpr 1.5) at scale 0.70; switched off:
+    the post chain 12.4 ms (occluder fade 3.65, FXAA 3.17, bloom 2.66, colour grade 2.05), terrain + sea 7.3, town 5.1, people +
+    VRMs 4.8 (76 draws), nature + grass 4.1, props 2.1, the 1024 shadow map 1.3; one 134 ms frame with 66 ms of JS: a shader compile,
+    a map update and the fog re-dim together) [built 2026-10-26]**. Goal: Auto at street level on this class of GPU (Radeon 610M,
+    Intel Iris Xe / UHD) holds ≥ 30 fps at night without the look collapsing; High keeps everything; Fast stays cheap. Now:
+    the post is one full-screen pass (tone mapping, the colour grade, FXAA and the bloom's glow in one shader, straight to the
+    screen — before: three passes and the bloom's own full-size blend, each a full-screen read and write); the bloom runs only while
+    the night lights are on, on Auto at street level with 3 of its 5 mips (the wide ones weighed ~0 there). The occluder fade is paid
+    only by what lies near the camera → you line (a building or a clump of trees elsewhere skips it; inside a mesh the test skips
+    everything beyond you). On Auto at street level at most 3 passers-by are VRMs (2 when the frame is tight), their outlines only
+    within 12 m and their shadows from the nearest 2 within 12 m; when tight the story figures drop their outlines too (you keep
+    yours). On Auto the terrain's painted grass fades out by 60 m and the chunks beyond draw a cheaper ground shader (the same pixels).
+    **Auto adapts** (Auto only): when the frame (the GPU's time where the browser gives it, else the frame time) stays over 30 ms for
+    a second it steps down one step — bloom off → anti-aliasing by FXAA only (no MSAA) → render scale 0.65 → 0.6 → 0.55 → the 1024
+    shadow map → props and grass nearer (× 0.6) — and under 21 ms for 5 s it steps back up (twice as patient after a step that didn't
+    hold: no flicker); the F3 overlay shows the step ("Auto · step 2: bloom off, MSAA off") and so does Measure's report. Auto draws
+    at most 1.25 × the CSS pixels on a high-dpi screen (a 1.5-dpr laptop: 1.25). The fog re-dim spreads over frames (≤ 2 ms a frame,
+    nearest the camera first) and entering street level compiles the shown materials' shaders at once (not mid-walk). Expected on the
+    owner's laptop at night (from the report): the post 12.4 → ~4 ms, the fade 3.65 → ~1, people −2 to −3, the far terrain −1 to −2,
+    then the ladder as needed: ~51 → ≤ 33 ms. Measured headless (counts; SwiftShader has no meaningful GPU ms), street level 21:00
+    on a main road, Auto, the ladder held at step 0: draw calls 153 → 146 (the post 16 → 9: the bloom 13 → 8, OutputPass + grade +
+    FXAA → 1), full-size passes after the scene 4 → 1, shader programs 77 → 78 (+ the far terrain); High 150 calls (its bloom 5 mips,
+    one Finish pass); Fast unchanged (112). Measure's SwiftShader ranking, for direction only: the post chain 10 % → 4 % of the
+    frame, FXAA 4 % → 1 %. The fade's gate turned off 2 of 50 patched draws there (the big merged meshes reach the line; the in-shader
+    early-outs do the rest); the VRM pool is not loaded headless (the people numbers need the real run). Re-measure: Measure on the same spot at night (Auto), the "Auto" line
+    in F3 after ~10 s of walking, and the post chain / fade / bloom rows.
 - §4.40 The island × 2 and real facilities **[built 2026-10-24 — T-350–T-351; not yet: the drone's field spots lit like places; zoomed out shows region names, not district names;  later (owner, 2026-10-24): more fillers for Wei, the Cup-win drop (63 → 42 %, 12 runs) re-measured]** (owner, 2026-10-23: "expand the island 2× so travel matters
   and there is room for proper facilities"; "remove pins entirely — a building or a piece of kit lights up on hover"):
   - **Scale** (T-350): `MAP_SCALE` 2.25 → 4.5 (~2.4 × 1.6 km). Towns and districts spread out with it (the same layout, twice the

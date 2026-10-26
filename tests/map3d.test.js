@@ -1501,3 +1501,135 @@ test('map3d: street view polish (2026-10-26) — a tight night glow, props dropp
   });
   assert(quads > 40 && blades > 20, `sign quads checked ${quads} (blade letters ${blades})`);
 });
+
+test('map3d: Auto on a laptop GPU (owner 2026-10-26) — one post pass, the fade gated per object, the adaptive ladder, the dpr cap', () => {
+  const THREE = require('three'),
+    fs = require('fs'),
+    L = require('../js/map3d/look3d.mjs'),
+    P = require('../js/map3d/people3d.mjs'),
+    src = fs.readFileSync(require.resolve('../js/map3d/look3d.mjs'), 'utf8');
+  // one full-size pass after the scene: tone map + sRGB + FXAA + grade + the bloom's composite in the Finish shader
+  const F = L.FinishShader.fragmentShader;
+  assert(
+    /ACESFilmicToneMapping/.test(F) && /sRGBTransferOETF/.test(F) && /FxaaPixelShader/.test(F),
+    'tone map, sRGB and FXAA in one shader'
+  );
+  assert(
+    /uniform sampler2D tDiffuse, tBloom/.test(F) && /uBloom \* texture2D\(tBloom/.test(F),
+    'the bloom added per tap (no full-size blend pass)'
+  );
+  assert(/#define FxaaTexTop\(t, p\) fsTap\(p\)/.test(F) && !/texture2D\(t, p/.test(F), "FXAA's taps go through the tone map");
+  for (const d of new Set(F.match(/#if \((\w+)/g) || []))
+    assert(F.includes(`#define ${d.slice(5)}`), `${d.slice(5)} defined (the FXAA body's switches)`);
+  assert(/c\.rgb = mix\(x, clamp\(g, 0\.0, 1\.0\), uK\)/.test(F), 'the grade at the end');
+  assert(
+    !/OutputPass/.test(src.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '')) && (src.match(/new ShaderPass\(/g) || []).length === 1,
+    'no OutputPass; one ShaderPass (Finish)'
+  );
+  assert(/bloom\.render = bloomRender/.test(src), 'the bloom renders its mips only');
+  const night = L.postPlan({ gfx: 'auto', st: 1, lit: 0.9, sg: 1 }),
+    day = L.postPlan({ gfx: 'auto', st: 1, lit: 0, sg: 1 }),
+    map = L.postPlan({ gfx: 'auto', st: 0, lit: 0.9, sg: 0 }),
+    high = L.postPlan({ gfx: 'high', st: 1, lit: 0.9, sg: 1, step: 5 });
+  assert(
+    night.bloom && night.aa && night.grade && night.mips === L.AUTO.bloomMips && night.mips < 5,
+    'Auto at night: bloom on, fewer mips'
+  );
+  assert(!day.bloom && day.aa && day.grade, 'by day: no bloom');
+  assert(map.bloom && !map.aa && !map.grade && map.mips === 5 && map.msaa === L.LOOK.samples, 'the map view: bloom, MSAA, no FXAA / grade');
+  assert(high.bloom && high.mips === 5 && high.msaa === L.LOOK.samples, 'High keeps everything (no ladder)');
+  assert(!L.postPlan({ gfx: 'auto', st: 1, lit: 0.9, sg: 1, step: 1 }).bloom, 'step 1: bloom off');
+  eq(L.postPlan({ gfx: 'auto', st: 1, lit: 0, step: 2 }).msaa, 0, 'step 2 at street level: MSAA off (FXAA smooths)');
+  eq(L.postPlan({ gfx: 'auto', st: 0, lit: 0, step: 2 }).msaa, L.LOOK.samples, 'the map view keeps MSAA (no FXAA there)');
+  // the occluder fade's gate: only objects whose bounds reach the camera → you segment get uFdK; the rest the early-out
+  const m = new THREE.MeshStandardMaterial(),
+    geo = new THREE.BoxGeometry(1, 1, 1),
+    near = new THREE.Mesh(geo, m),
+    far = new THREE.Mesh(geo, m),
+    loose = new THREE.Mesh(geo, m);
+  near.position.set(0, 1, 3);
+  far.position.set(40, 1, 3);
+  loose.position.set(40, 1, 3);
+  loose.frustumCulled = false;
+  for (const o of [near, far, loose]) o.updateMatrixWorld(true);
+  const A = new THREE.Vector3(0, 2, 0),
+    B = new THREE.Vector3(0, 1.5, 7);
+  assert(L.fdNear(near, A, B) && !L.fdNear(far, A, B) && L.fdNear(loose, A, B), 'near / far / not culled (always on)');
+  const inst = new THREE.InstancedMesh(geo, m, 2),
+    M4 = new THREE.Matrix4();
+  inst.setMatrixAt(0, M4.makeTranslation(60, 0, 0));
+  inst.setMatrixAt(1, M4.makeTranslation(80, 0, 0));
+  inst.updateMatrixWorld(true);
+  assert(!L.fdNear(inst, A, B), 'instances: their bounds (all far)');
+  inst.setMatrixAt(1, M4.makeTranslation(0.5, 1, 4));
+  inst.boundingSphere = null;
+  assert(L.fdNear(inst, A, B), 'one instance on the line: on');
+  assert(L.streetMat(m) && typeof m.onBeforeRender === 'function', 'a patched material gates each draw');
+  let unbound = 0;
+  const R = { state: { useProgram: p => (p === null ? unbound++ : 0) } };
+  L.STREET_FX.uFdA.value.copy(A);
+  L.STREET_FX.uFdB.value.copy(B);
+  L.FD_GATE.k = 0.8;
+  L.FD_GATE.last = null;
+  L.FD_GATE.n.on = L.FD_GATE.n.off = 0;
+  m.onBeforeRender(R, null, null, geo, near, null);
+  eq(L.STREET_FX.uFdK.value, 0.8, 'near: the fade on');
+  m.onBeforeRender(R, null, null, geo, far, null);
+  eq(L.STREET_FX.uFdK.value, 0, 'far: the plain path');
+  eq(unbound, 1, 'the same material again with a new value: its uniforms re-uploaded (program unbound once)');
+  m.onBeforeRender(R, null, null, geo, far, null);
+  eq(unbound, 1, 'no change: nothing forced');
+  eq([L.FD_GATE.n.on, L.FD_GATE.n.off].join(), '1,2', 'counted');
+  L.FD_GATE.k = 0;
+  m.onBeforeRender(R, null, null, geo, near, null);
+  eq(L.STREET_FX.uFdK.value, 0, 'off street level: off everywhere');
+  // the ladder: over budget → one step a `down`; the band holds; under `up` for `back` s → one step up; a bounce waits longer
+  const S = L.autoState(),
+    run = (ms, s) => {
+      for (let t = 0; t < s; t++) L.autoStep(S, ms, 1);
+      return S.step;
+    };
+  eq(run(40, 1), 1, 'one second over budget: bloom off');
+  eq(run(40, 3), 4, 'still over: MSAA, then the scale');
+  eq(run(40, 20), L.AUTO.steps.length, 'capped at the last step');
+  eq(run(25, 30), L.AUTO.steps.length, 'in the band: holds');
+  eq(run(15, L.AUTO.back - 1), L.AUTO.steps.length, 'not before `back` s quick');
+  eq(run(15, 1), L.AUTO.steps.length - 1, 'one step up');
+  const b0 = S.back;
+  run(40, 1);
+  assert(S.back === b0 * 2, 'a step down right after a step up: the next try waits twice as long');
+  eq(L.autoAt(0).floor, 0.7, 'step 0: the old floor');
+  eq(L.autoAt(3).floor, 0.65, 'step 3: scale 0.65');
+  eq(L.autoAt(5).floor, 0.55, 'step 5: scale 0.55');
+  assert(
+    !L.autoAt(5).shadow && L.autoAt(6).shadow === 1024 && L.autoAt(6).reach === 1 && L.autoAt(7).reach < 1,
+    'then the shadow map, then the reach'
+  );
+  assert(/step 2: bloom off, MSAA off/.test(L.autoLabel(2)), 'the step as words (F3, the report)');
+  // the dpr cap: a 1.5-dpr laptop draws 1.25 on Auto; High and Fast keep the device's (≤ 2)
+  eq(L.basePixelRatio(1.5, 'auto', 989, 883, { px3d: 3.7e6 }), 1.25, 'Auto: capped');
+  eq(L.basePixelRatio(1.5, 'high', 989, 883, { px3d: 9e6 }), 1.5, 'High: the device');
+  eq(L.basePixelRatio(3, 'fast', 400, 300, { px3d: 2e6 }), 2, 'Fast: ≤ 2 as before');
+  // the far terrain chunks compile the painted grass and smooth normals out
+  assert(
+    /#ifndef LK_FAR[\s\S]*texture2D\(tGround[\s\S]*#else\s*lkG = 0\.0;/.test(src) && /terrainFar\.defines = \{ LK_FAR: '' \}/.test(src),
+    'LK_FAR'
+  );
+  // people at street level on Auto: fewer VRMs, outlines and shadows near only, none when tight; you keep yours (avatar3d)
+  const SL = { street: 1, cap: 15 };
+  eq(P.streetCap(SL, { ...P.VRM_Q, auto: false }), 15, 'High: the street cap');
+  eq(P.streetCap(SL, { ...P.VRM_Q, auto: true }), P.VRM_Q.cap[0], 'Auto');
+  eq(P.streetCap(SL, { ...P.VRM_Q, auto: true, tight: true }), P.VRM_Q.cap[1], 'Auto, tight');
+  eq(P.streetCap({ street: 0.2, cap: 15 }, P.VRM_Q), null, 'off street level: the map cap');
+  const Qa = { ...P.VRM_Q, auto: true };
+  assert(P.vrmDraws(5, 0, true, Qa).outline && P.vrmDraws(5, 0, true, Qa).shadow, 'near: outlines, shadow');
+  assert(!P.vrmDraws(20, 0, true, Qa).outline && !P.vrmDraws(20, 0, true, Qa).shadow, 'beyond 12 m: neither');
+  assert(!P.vrmDraws(5, 2, true, Qa).shadow, 'only the nearest two cast');
+  assert(!P.vrmDraws(5, 0, true, { ...Qa, tight: true }).outline, 'tight: no outlines');
+  assert(
+    P.vrmDraws(30, 3, true, { ...Qa, auto: false }).outline && P.vrmDraws(30, 3, true, { ...Qa, auto: false }).shadow,
+    'High: as before'
+  );
+  const av = fs.readFileSync(require.resolve('../js/map3d/avatar3d.mjs'), 'utf8');
+  assert(/setOutline\(pl\.root, !view \|\| view\.outline !== false\)/.test(av), 'avatars: outlines by the view (you: always)');
+});

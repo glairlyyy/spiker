@@ -484,16 +484,17 @@ export function createNature(scene, heightAt, opts = {}) {
     far = {}, // shape → its far version (street level, built on first need)
     blk = null; // { ver, by: shape → block → [instance] }
   const farMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });
-  const md = { mesh: null, tiles: new Map(), at: null, n: 0, ms: 0 }; // street level's meadow (T-370)
+  const md = { mesh: null, tiles: new Map(), at: null, n: 0, ms: 0, k: 1 }; // street level's meadow (T-370)
   const meadowHide = () => {
     if (md.mesh) md.mesh.visible = false;
     md.at = null;
     md.n = 0;
   };
-  /** Street level's meadow round you (world [x, z], avatar pos()) at street level st (shown at st ≥ 0.6, Auto / High). */
-  const meadow = (you, st) => {
+  /** Street level's meadow round you (world [x, z], avatar pos()) at street level st (shown at st ≥ 0.6, Auto / High); k × its reach. */
+  const meadow = (you, st, k = 1) => {
     if (low || st < 0.6 || !you || !opts.grass || !opts.clear) return meadowHide();
     const M = MEADOW;
+    if (k !== md.k) ((md.k = k), (md.at = null)); // (Auto's ladder: a nearer reach — look3d AUTO.reach)
     if (md.at && Math.hypot(you[0] - md.at[0], you[1] - md.at[1]) < M.step) return;
     const t0 = performance.now();
     if (!md.mesh) {
@@ -506,7 +507,7 @@ export function createNature(scene, heightAt, opts = {}) {
       scene.add(md.mesh);
     }
     const m = md.mesh,
-      R = M.r,
+      R = M.r * md.k,
       t0i = Math.floor((you[0] - R) / M.tile),
       t1i = Math.floor((you[0] + R) / M.tile),
       t0j = Math.floor((you[1] - R) / M.tile),

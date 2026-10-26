@@ -6,7 +6,6 @@ import { Sky } from 'three/addons/objects/Sky.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { clamp, lerp, smooth, tileNoise, heightToNormal } from './geo3d.mjs';
@@ -177,7 +176,13 @@ export function groundBytes(n = GROUND.n) {
   return out;
 }
 /** Shared uniforms: the texture (made on first use) and the weight (look.step: smooth(0.2, 0.8, st) on Auto / High, 0 on Fast). */
-export const GROUND_U = { tGround: { value: null }, uGr: { value: 0 } };
+export const GROUND_U = { tGround: { value: null }, uGr: { value: 0 }, uGrD: { value: new THREE.Vector2(1e5, 2e5) } };
+/**
+ * The terrain's painted grass and smooth normals by distance (owner 2026-10-26, a laptop GPU): on Auto they fade out between
+ * `near` m from the camera (GROUND_U.uGrD), so a terrain chunk whose box lies beyond `near[1]` draws the far material (LK_FAR:
+ * three texture reads and the normal mix compiled out — the same pixels). High keeps them to the pixel-footprint fade only.
+ */
+export const TERRAIN_LOD = { near: [45, 60] };
 /**
  * Street level's painted distance on the buildings (T-371, spec §4.44): past `SIL.r` m a building leans toward the hour's haze hue
  * darkened (`SIL.dark`) — a blue-grey painted skyline under the haze instead of pale boxes washed white. kit3d's building materials
@@ -383,9 +388,29 @@ void main() {
   c = mix(c, uHaze, smoothstep(0.07, -0.01, h)); // the skyline's haze
   gl_FragColor = vec4(c, 1.0);
 }`;
-const GradeShader = {
+/**
+ * The post's one full-screen pass (owner 2026-10-26, a laptop GPU: the chain was OutputPass → grade → FXAA, three full-screen
+ * passes and render-target copies, and the bloom's own full-size blend): `FinishShader` reads the HDR buffer (+ the bloom's
+ * composite, added per tap — `uBloom`), tone maps (ACES) and encodes sRGB per tap, runs three's FXAA 3.11 over those taps
+ * (`uAA`, a uniform branch: off = one tap) and grades the result (`uK`) — straight to the canvas. FXAA's edge search reads the
+ * ungraded display colours (the grade is per pixel and near linear: the same look).
+ */
+const FX_BODY = (() => {
+  const f = FXAAShader.fragmentShader,
+    a = f.indexOf('#define NUM_SAMPLES'),
+    b = f.indexOf('void main()');
+  return a > 0 && b > a ? f.slice(a, b) : '';
+})();
+export const FinishShader = {
+  name: 'FinishShader',
+  defines: { ACES_FILMIC_TONE_MAPPING: '', SRGB_TRANSFER: '' },
   uniforms: {
     tDiffuse: { value: null },
+    tBloom: { value: null },
+    uBloom: { value: 0 },
+    toneMappingExposure: { value: 1 },
+    resolution: { value: new THREE.Vector2(1 / 1024, 1 / 512) },
+    uAA: { value: 0 },
     uGain: { value: new THREE.Vector3(1, 1, 1) },
     uLift: { value: new THREE.Vector3() },
     uSat: { value: 1 },
@@ -393,17 +418,114 @@ const GradeShader = {
     uK: { value: 0 }
   },
   vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-  fragmentShader: `uniform sampler2D tDiffuse; uniform vec3 uGain, uLift; uniform float uSat, uCon, uK; varying vec2 vUv;
+  fragmentShader: `precision highp float;
+  uniform sampler2D tDiffuse, tBloom; uniform vec2 resolution; uniform float uBloom, uAA, uSat, uCon, uK; uniform vec3 uGain, uLift;
+  varying vec2 vUv;
+  #include <tonemapping_pars_fragment>
+  vec4 fsTap(vec2 p) {
+    vec4 c = texture2D(tDiffuse, p);
+    if (uBloom > 0.0) c.rgb += uBloom * texture2D(tBloom, p).rgb;
+    #ifdef ACES_FILMIC_TONE_MAPPING
+    c.rgb = ACESFilmicToneMapping(c.rgb);
+    #endif
+    #ifdef SRGB_TRANSFER
+    c = sRGBTransferOETF(c);
+    #endif
+    return c;
+  }
+  #define FXAA_DISCARD 0
+  #define FxaaTexTop(t, p) fsTap(p)
+  #define FxaaTexOff(t, p, o, r) fsTap(p + (o * r))
+  ${FX_BODY}
   void main() {
-    vec4 c = texture2D(tDiffuse, vUv);
-    vec3 x = c.rgb;
-    float l = dot(x, vec3(0.2126, 0.7152, 0.0722));
-    vec3 g = x * uGain + uLift * (1.0 - l) * (1.0 - l);
-    g = mix(vec3(dot(g, vec3(0.2126, 0.7152, 0.0722))), g, uSat);
-    g = (g - 0.5) * uCon + 0.5;
-    gl_FragColor = vec4(mix(x, clamp(g, 0.0, 1.0), uK), c.a);
+    vec4 c = uAA > 0.5 ? FxaaPixelShader(vUv, tDiffuse, resolution, 0.2, 5.0) : fsTap(vUv);
+    if (uK > 0.0) {
+      vec3 x = c.rgb;
+      float l = dot(x, vec3(0.2126, 0.7152, 0.0722));
+      vec3 g = x * uGain + uLift * (1.0 - l) * (1.0 - l);
+      g = mix(vec3(dot(g, vec3(0.2126, 0.7152, 0.0722))), g, uSat);
+      g = (g - 0.5) * uCon + 0.5;
+      c.rgb = mix(x, clamp(g, 0.0, 1.0), uK);
+    }
+    gl_FragColor = c;
   }`
 };
+/**
+ * Auto's adaptive quality (owner 2026-10-26: a Radeon 610M at street level, night — 51 ms): when the measured frame (the GPU's
+ * time by timer query when the browser has one, else the frame interval) stays over `budget` ms for `down` s, one step down —
+ * `steps` in order (bloom off, MSAA off where FXAA smooths, render scale toward `res`, the 1024 shadow map, props / grass reach ×
+ * `reach`); under `up` ms for `back` s, one step back up. A step down within `bounce` s of a step up doubles `back` (≤ `backMax`):
+ * no flicker between two steps. `dpr`: Auto's backing store at most this device pixel ratio. High and Fast don't step.
+ */
+export const AUTO = {
+  budget: 30,
+  up: 21,
+  down: 1,
+  back: 5,
+  backMax: 40,
+  bounce: 10,
+  steps: ['bloom off', 'MSAA off', 'scale 0.65', 'scale 0.6', 'scale 0.55', 'shadow 1024', 'near reach'],
+  res: [0.7, 0.65, 0.6, 0.55],
+  shadow: 1024,
+  reach: 0.6,
+  dpr: 1.25,
+  bloomMips: 3 // (Auto at street level: the bloom's mips — the 4th / 5th weigh ~0 there)
+};
+/**
+ * The pixel ratio before the dynamic factor (pure, tested): the device's (≤ 2; Auto ≤ AUTO.dpr — a 1.5-dpr laptop draws 1.25), within
+ * the setting's pixel budget Q.px3d (GFX, as in matches) for a w × h CSS-px canvas.
+ */
+export function basePixelRatio(dpr, gfx, w, h, Q) {
+  const d = Math.min(dpr || 1, gfx === 'auto' ? AUTO.dpr : 2);
+  return Q && Q.px3d ? d * Math.min(1, Math.sqrt(Q.px3d / Math.max(1, w * h * d * d))) : d;
+}
+/** A fresh ladder state. */
+export const autoState = () => ({ step: 0, over: 0, under: 0, back: AUTO.back, t: 0, upAt: -1e9 });
+/** One tick (dt s, ms = the measured frame) of the ladder (pure, tested): returns the step (0 … AUTO.steps.length). */
+export function autoStep(A, ms, dt) {
+  const n = AUTO.steps.length;
+  A.t += dt;
+  if (ms > AUTO.budget) {
+    A.under = 0;
+    A.over += dt;
+    if (A.over >= AUTO.down && A.step < n) {
+      A.step++;
+      A.over = 0;
+      if (A.t - A.upAt < AUTO.bounce) A.back = Math.min(AUTO.backMax, A.back * 2); // (a bounce: wait longer before the next try)
+    }
+  } else if (ms < AUTO.up) {
+    A.over = 0;
+    A.under += dt;
+    if (A.under >= A.back && A.step > 0) (A.step--, (A.under = 0), (A.upAt = A.t));
+  } else A.over = A.under = 0; // (in the band: hold)
+  return A.step;
+}
+/** The ladder's step as words (the F3 overlay and the report). */
+export const autoLabel = step => (step ? `step ${step}: ${AUTO.steps.slice(0, step).join(', ')}` : 'step 0: full');
+/**
+ * The post for a frame (pure, tested) on the detailed look: { bloom, mips, aa, grade, msaa } — the bloom only while the night
+ * lights are on (lit) and Auto's ladder allows it (fewer mips on Auto at street level: `AUTO.bloomMips`), FXAA at street level,
+ * the grade from st 0.15, the scene's MSAA off on Auto's step 2+ where FXAA smooths. One full-size pass after the scene either way.
+ */
+export function postPlan({ gfx, st = 0, lit = 0, sg = 0, step = 0 }) {
+  const Q = autoAt(gfx === 'auto' ? step : 0),
+    aa = st > 0.3;
+  return {
+    bloom: lit > 0.02 && Q.bloom,
+    mips: gfx === 'auto' && sg > 0.5 ? AUTO.bloomMips : 5,
+    aa,
+    grade: smooth(0.15, 0.8, st) > 0.001,
+    msaa: gfx === 'auto' && !Q.msaa && aa ? 0 : LOOK.samples
+  };
+}
+/** What the step means (pure): bloom, msaa (allowed), the render-scale floor, the shadow map, the props / grass reach. */
+export const autoAt = step => ({
+  bloom: step < 1,
+  msaa: step < 2,
+  floor: AUTO.res[Math.max(0, Math.min(AUTO.res.length - 1, step - 2))],
+  shadow: step >= 6 ? AUTO.shadow : 0,
+  reach: step >= 7 ? AUTO.reach : 1
+});
 /**
  * Street level's material finish (T-369), shared uniforms: the toon bands on the sun's light (uFdToon 0–1: 0 = today's smooth
  * light) and the occluder fade (uFdA = the camera, uFdB = your middle, uFdK 0–1): what lies near the camera → you line (not the
@@ -421,6 +543,50 @@ export const STREET_FX = {
   uFdToon: { value: 0 },
   uFdGlow: { value: 1 } // (T-373) × every emissive at street level at dusk / night (Auto / High): the lit panes and signs bloom
 };
+/**
+ * The occluder fade's gate (owner 2026-10-26: 3.65 ms on a laptop GPU — every patched draw paid the per-fragment test and the
+ * instances' box test): map3d sets `k` (the eased fade weight; the probe's "occluder fade" item swaps it). Each patched material's
+ * onBeforeRender (fdGate) gives uFdK = k only to an object whose bounds (its geometry's / the instances' sphere, in the world) come
+ * within `R` m of the camera → you segment (uFdA → uFdB) — the rest draw with uFdK = 0: the shader's coherent early-out (no test,
+ * no discard). An object that isn't frustum culled (bounds not kept) always gets it. `n` = this frame's { on, off } draws.
+ */
+export const FD_GATE = { k: 0, R: 1.6, n: { on: 0, off: 0 }, last: null };
+const _fgS = new THREE.Sphere(),
+  _fgV = new THREE.Vector3(),
+  _fgW = new THREE.Vector3();
+/** An object's world bounds within R of the segment a → b (pure maths; the test the gate runs per draw). */
+export function fdNear(o, a, b, R = FD_GATE.R) {
+  if (!o || o.frustumCulled === false) return true;
+  let s = null;
+  if (o.isInstancedMesh || o.isBatchedMesh) {
+    if (!o.boundingSphere) o.computeBoundingSphere();
+    s = o.boundingSphere;
+  } else if (o.geometry) {
+    if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+    s = o.geometry.boundingSphere;
+  }
+  if (!s || !(s.radius >= 0)) return true;
+  _fgS.copy(s);
+  if (o.matrixWorld) _fgS.applyMatrix4(o.matrixWorld);
+  _fgV.subVectors(b, a);
+  const L2 = _fgV.lengthSq(),
+    t = L2 > 1e-8 ? Math.max(0, Math.min(1, _fgW.subVectors(_fgS.center, a).dot(_fgV) / L2)) : 0;
+  return _fgW.copy(a).addScaledVector(_fgV, t).distanceTo(_fgS.center) < _fgS.radius + R;
+}
+/** Before each draw of a patched material: its uFdK (the shared uniform) for this object; same material again → re-upload. */
+function fdGate(renderer, m, o) {
+  const G = FD_GATE,
+    on = G.k > 0 && fdNear(o, STREET_FX.uFdA.value, STREET_FX.uFdB.value),
+    v = on ? G.k : 0;
+  if (G.k > 0) G.n[on ? 'on' : 'off']++;
+  if (STREET_FX.uFdK.value !== v) {
+    STREET_FX.uFdK.value = v;
+    // (three uploads a material's uniforms only when the material or program changes: the same material drawn again with a new
+    // value forces it — no program bound → the next setProgram binds it and refreshes every uniform; cached values skip the rest)
+    if (G.last === m && renderer && renderer.state) renderer.state.useProgram(null);
+  }
+  G.last = m;
+}
 /** Street level's weight on Auto / High (0 on Fast and on the map) — the night layer's lamp glows and pools read it (T-373). */
 export const STREET_U = { st: { value: 0 } };
 /**
@@ -474,8 +640,11 @@ export function streetMat(m) {
           #endif
           #ifdef USE_INSTANCING
           fw = instanceMatrix * fw;
-          if (uFdK > 0.0) { // an instance at the lens goes whole: the camera's distance to its box (fdHide)
-            mat4 im = modelMatrix * instanceMatrix; mat3 rm = mat3(im);
+          if (uFdK > 0.0) { mat4 im = modelMatrix * instanceMatrix; mat3 rm = mat3(im);
+          // (2026-10-26, a laptop GPU: the box tests only for an instance whose bounding ball reaches the camera → you segment)
+          vec3 fsab = uFdB - uFdA, fio = im[3].xyz - uFdA;
+          if (length(fio - fsab * clamp(dot(fio, fsab) / max(dot(fsab, fsab), 1e-4), 0.0, 1.0)) <
+              max(length(rm[0]), max(length(rm[1]), length(rm[2]))) * length(max(abs(uFdLo), abs(uFdHi))) + ${FD_GATE.R.toFixed(2)}) { // an instance at the lens goes whole: the camera's distance to its box (fdHide)
             vec3 lc = inverse(rm) * (uFdA - im[3].xyz);
             vec3 dq = max(abs(lc - 0.5 * (uFdLo + uFdHi)) - 0.5 * (uFdHi - uFdLo), 0.0);
             if (length(rm * dq) < ${FD.inst.toFixed(2)} * uFdK) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);${
@@ -490,7 +659,7 @@ export function streetMat(m) {
             if (length(rm * q) < ${FD.whole.r.toFixed(2)} * uFdK) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);`
                 : ''
             }
-          }
+          } }
           #endif
           vFdW = (modelMatrix * fw).xyz; }`
       );
@@ -521,10 +690,11 @@ export function streetMat(m) {
     sh.fragmentShader = f.replace(
       '#include <clipping_planes_fragment>',
       `#include <clipping_planes_fragment>
-      if (uFdK > 0.0) {
-        vec3 ab = uFdB - uFdA, aw = vFdW - uFdA;
+      vec3 ab = uFdB - uFdA, aw = vFdW - uFdA;
+      float L = max(length(ab), 0.01);
+      if (uFdK > 0.0 && dot(aw, aw) < (L + 1.2) * (L + 1.2)) { // (2026-10-26: beyond you + the fade's radius nothing fades — one dot product)
         if (length(aw) < ${FD.lens.toFixed(2)} * uFdK) discard; // right at the lens: gone, not dithered
-        float L = max(length(ab), 0.01), a = dot(aw, ab) / L;
+        float a = dot(aw, ab) / L;
         float d = length(aw - ab * (a / L));
         float r = min(${FD.near[0].toFixed(2)} + ${FD.near[1].toFixed(2)} * max(a, 0.0), mix(${FD.r[0].toFixed(2)}, ${FD.r[1].toFixed(2)}, clamp(a / L, 0.0, 1.0)));
         float fd = (1.0 - smoothstep(r * 0.55, r, d)) * step(0.0, a) * (1.0 - smoothstep(L - 1.3, L - 0.7, a));
@@ -533,6 +703,11 @@ export function streetMat(m) {
     );
   };
   m.customProgramCacheKey = () => (hadKey ? prevKey.call(m) : src) + (whole ? '|sfxw' : '|sfx');
+  const obr = m.onBeforeRender;
+  m.onBeforeRender = function (r, sc, cam, g, o, grp) {
+    obr.call(this, r, sc, cam, g, o, grp);
+    fdGate(r, this, o);
+  };
   return true;
 }
 export function richLook(renderer, scene, cam, sun) {
@@ -570,7 +745,7 @@ export function richLook(renderer, scene, cam, sun) {
         '#include <common>',
         `#include <common>
         uniform sampler2D tDet; varying vec4 vGnd; varying vec2 vGdir; varying float vPav; varying vec3 vWp; varying vec3 vWn;
-        uniform sampler2D tGround; uniform float uGr; varying vec3 vNsm;
+        uniform sampler2D tGround; uniform float uGr; uniform vec2 uGrD; varying vec3 vNsm;
         float lkH; float lkWet; float lkG; ${GLSL_BUMP}`
       )
       .replace(
@@ -589,13 +764,18 @@ export function richLook(renderer, scene, cam, sun) {
           vec3 g = base * (0.72 + 0.52 * d1.r) * (0.9 + 0.2 * d2.g);
           g = mix(g, g * vec3(1.2, 1.1, 0.68), smoothstep(0.5, 0.85, d2.g) * 0.5);
           // street level (T-370): painted grass near you — blade strokes in three bands, cool shade / sunlit warm patches
-          float gf = uGr * (1.0 - smoothstep(0.05, 0.35, length(fwidth(gp))));
+          #ifndef LK_FAR
+          float gD = 1.0 - smoothstep(uGrD.x, uGrD.y, distance(vWp, cameraPosition)); // (Auto: gone by uGrD.y m — the far chunks' material)
+          float gf = uGr * gD * (1.0 - smoothstep(0.05, 0.35, length(fwidth(gp))));
           float gs = texture2D(tGround, gp / ${GROUND.tile.grass.toFixed(1)}).b, gv = texture2D(tGround, gp / ${GROUND.tile.var.toFixed(1)} + 0.5).b;
           float gw2 = texture2D(tGround, gp / 41.0 + 0.21).b;
           vec3 gpn = base * (0.66 + 0.68 * gs) * (0.84 + 0.32 * smoothstep(0.3, 0.7, gw2));
           gpn = mix(gpn * vec3(0.84, 0.94, 1.14), gpn * vec3(1.14, 1.08, 0.76), smoothstep(0.36, 0.64, gv));
           g = mix(g, gpn, gf);
-          lkG = uGr * (1.0 - smoothstep(0.08, 0.6, length(fwidth(gp)))); // (the smooth normals' weight: near the camera)
+          lkG = uGr * gD * (1.0 - smoothstep(0.08, 0.6, length(fwidth(gp)))); // (the smooth normals' weight: near the camera)
+          #else
+          lkG = 0.0;
+          #endif
           float rip = texture2D(tDet, vec2(gp.x + gp.y * 0.35, gp.y - gp.x * 0.25) / 9.0).b;
           vec3 sa = base * (0.9 + 0.1 * rip + 0.16 * (d1.r - 0.5));
           vec3 ro = mix(base, vec3(0.2, 0.19, 0.165), steep) * (0.78 + 0.22 * d2.a) * (0.8 + 0.4 * d1.r);
@@ -623,10 +803,17 @@ export function richLook(renderer, scene, cam, sun) {
       .replace(
         '#include <normal_fragment_maps>',
         `#include <normal_fragment_maps>
+        #ifndef LK_FAR
         normal = normalize(mix(normal, normalize(vNsm), lkG)); // (T-370: street level's smooth slopes)
+        #endif
         normal = lkBump(-vViewPosition, normal, vec2(dFdx(lkH), dFdy(lkH)) * 0.07 * (1.0 - lkWet));`
       );
   };
+  // (the far chunks' terrain: the same shader without the near-only painted grass and smooth normals — TERRAIN_LOD)
+  const terrainFar = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
+  terrainFar.defines = { LK_FAR: '' };
+  terrainFar.onBeforeCompile = terrainMat.onBeforeCompile;
+  terrainFar.userData.noStreetFx = true;
   // ---- the sea
   const SEA = LOOK.sea,
     seaMat = new THREE.MeshStandardMaterial({ color: SEA.deep, roughness: 0.07, metalness: 0 }),
@@ -796,11 +983,11 @@ export function richLook(renderer, scene, cam, sun) {
     pk.bakes = (pk.bakes || 0) + 1;
   };
   let paintOn = false;
-  // ---- post: render → (GTAO) → bloom → ACES + sRGB
+  // ---- post (owner 2026-10-26, one pass): render → (GTAO) → bloom (its mips only) → Finish (tone map + sRGB + FXAA + grade + the
+  // bloom added) straight to the canvas. grade / fxaa are the Finish pass's switches (the probe swaps `enabled`).
   let composer = null,
     bloom = null,
-    grade = null,
-    fxaa = null,
+    finish = null,
     gtao = null,
     gtaoWant = false,
     gtaoLoading = false,
@@ -809,32 +996,77 @@ export function richLook(renderer, scene, cam, sun) {
     hi = false,
     w = 1,
     h = 1,
-    pr = 1;
-  const dyn = { res: 1, ema: 16.7, t: 0, last: 0, shed: 0, quick: 0, gfx: 'auto' };
-  /** The pixel ratio before the dynamic factor: the device's (≤ 2), within the setting's pixel budget (GFX px3d, as in matches). */
-  const basePR = () => {
-    const d = Math.min(devicePixelRatio || 1, 2),
-      Q = typeof GFX !== 'undefined' && GFX[dyn.gfx];
-    return Q && Q.px3d ? d * Math.min(1, Math.sqrt(Q.px3d / Math.max(1, w * h * d * d))) : d;
-  };
+    pr = 1,
+    gradeK = 0,
+    msaa = LOOK.samples;
+  const grade = { enabled: false },
+    fxaa = { enabled: false };
+  const dyn = { res: 1, ema: 16.7, t: 0, last: 0, shed: 0, quick: 0, gfx: 'auto', A: autoState(), gpu: null };
+  const basePR = () => basePixelRatio(devicePixelRatio || 1, dyn.gfx, w, h, typeof GFX !== 'undefined' && GFX[dyn.gfx]);
+  /** The bloom without its full-size additive blend (the Finish pass adds the composite) and with `useMips` of its mips. */
+  function bloomRender(r, writeBuffer, readBuffer) {
+    r.getClearColor(this._oldClearColor);
+    const oa = r.getClearAlpha(),
+      ac = r.autoClear;
+    r.autoClear = false;
+    r.setClearColor(this.clearColor, 0);
+    this.highPassUniforms.tDiffuse.value = readBuffer.texture;
+    this.highPassUniforms.luminosityThreshold.value = this.threshold;
+    this.fsQuad.material = this.materialHighPassFilter;
+    r.setRenderTarget(this.renderTargetBright);
+    r.clear();
+    this.fsQuad.render(r);
+    let inp = this.renderTargetBright;
+    for (let i = 0; i < Math.min(this.nMips, this.useMips || this.nMips); i++) {
+      const M = this.separableBlurMaterials[i];
+      this.fsQuad.material = M;
+      M.uniforms.colorTexture.value = inp.texture;
+      M.uniforms.direction.value = UnrealBloomPass.BlurDirectionX;
+      r.setRenderTarget(this.renderTargetsHorizontal[i]);
+      r.clear();
+      this.fsQuad.render(r);
+      M.uniforms.colorTexture.value = this.renderTargetsHorizontal[i].texture;
+      M.uniforms.direction.value = UnrealBloomPass.BlurDirectionY;
+      r.setRenderTarget(this.renderTargetsVertical[i]);
+      r.clear();
+      this.fsQuad.render(r);
+      inp = this.renderTargetsVertical[i];
+    }
+    this.fsQuad.material = this.compositeMaterial;
+    this.compositeMaterial.uniforms.bloomStrength.value = this.strength;
+    this.compositeMaterial.uniforms.bloomRadius.value = this.radius;
+    this.compositeMaterial.uniforms.bloomTintColors.value = this.bloomTintColors;
+    r.setRenderTarget(this.renderTargetsHorizontal[0]);
+    r.clear();
+    this.fsQuad.render(r);
+    r.setClearColor(this._oldClearColor, oa);
+    r.autoClear = ac;
+  }
   const makeComposer = () => {
     const rt = new THREE.WebGLRenderTarget(w * pr, h * pr, { type: THREE.HalfFloatType, samples: LOOK.samples });
+    msaa = LOOK.samples;
     composer = new EffectComposer(renderer, rt);
     composer.setPixelRatio(pr);
     composer.setSize(w, h);
     composer.addPass(new RenderPass(scene, cam));
     bloom = new UnrealBloomPass(new THREE.Vector2(w, h), LOOK.bloom.strength, LOOK.bloom.radius, LOOK.bloom.day);
+    bloom.render = bloomRender;
+    bloom.useMips = bloom.nMips;
+    bloom.enabled = false;
     composer.addPass(bloom);
-    composer.addPass(new OutputPass());
-    grade = new ShaderPass(GradeShader); // street level's colour grade (T-369), then the edge smoothing
-    grade.enabled = false;
-    composer.addPass(grade);
-    fxaa = new ShaderPass(FXAAShader);
-    fxaa.enabled = false;
-    composer.addPass(fxaa);
+    finish = new ShaderPass(FinishShader);
+    finish.material.toneMapped = false; // (it tone maps itself: three adds nothing)
+    composer.addPass(finish);
     fxaaSize();
   };
-  const fxaaSize = () => fxaa && fxaa.material.uniforms.resolution.value.set(1 / Math.max(1, w * pr), 1 / Math.max(1, h * pr));
+  const fxaaSize = () =>
+    finish && finish.material.uniforms.resolution.value.set(1 / Math.max(1, Math.round(w * pr)), 1 / Math.max(1, Math.round(h * pr)));
+  /** The scene buffer's MSAA (Auto steps it off where FXAA smooths): the targets re-made on their next use. */
+  const setMsaa = n => {
+    if (!composer || msaa === n) return;
+    msaa = n;
+    for (const t of [composer.renderTarget1, composer.renderTarget2]) ((t.samples = n), t.dispose());
+  };
   /** AO on the High setting (spec §4.39): the pass loads on first use, sits before the bloom. */
   const wantAO = v => {
     gtaoWant = v;
@@ -859,20 +1091,35 @@ export function richLook(renderer, scene, cam, sun) {
   };
   const GR = { gain: new THREE.Vector3(1, 1, 1), lift: new THREE.Vector3(), sat: 1, con: 1, haze: new THREE.Color() };
   const SKYDIR = new THREE.Vector3();
+  // the GPU's time for the frame (EXT_disjoint_timer_query_webgl2 when the browser has it): Auto's ladder reads it (else the frame)
+  const gl = renderer.getContext(),
+    gpuT = { ext: (gl && gl.getExtension && gl.getExtension('EXT_disjoint_timer_query_webgl2')) || null, q: [] };
+  const gpuPoll = () => {
+    while (gpuT.q.length) {
+      const q = gpuT.q[0];
+      if (!gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE)) break;
+      const bad = gl.getParameter(gpuT.ext.GPU_DISJOINT_EXT),
+        ms = gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6;
+      gl.deleteQuery(q);
+      gpuT.q.shift();
+      if (!bad) dyn.gpu = dyn.gpu === null ? ms : dyn.gpu + (ms - dyn.gpu) * (ms > dyn.gpu ? 0.2 : 0.05);
+    }
+  };
   /**
    * Dynamic resolution (like matches, r3d adaptRes), every look: under ~42 fps step down to the setting's floor, back up with
    * headroom (the real time between frames: the frame's dt is capped at 0.1 s). High sheds AO, then the big shadow map, instead.
+   * Auto (the detailed look) also climbs its ladder (autoStep: AUTO), whose step lowers the floor toward AUTO.res's last.
    */
   const adapt = gfx => {
     const D = LOOK.dyn,
       now = performance.now(),
       ms = dyn.last ? Math.min(1000, now - dyn.last) : 16.7,
-      dire = dyn.ema > D.dire,
-      floor = (dire ? D.rescue[gfx] : D.floor[gfx]) || (dire ? D.rescue.auto : D.floor.auto);
+      dire = dyn.ema > D.dire;
     dyn.last = now;
     dyn.ema += (ms - dyn.ema) * (ms > dyn.ema ? 0.2 : 0.05);
     dyn.t += ms / 1000;
     if (dyn.t < 1) return;
+    const tick = Math.min(2, dyn.t);
     dyn.t = 0;
     const r0 = dyn.res;
     dyn.quick = dyn.ema < D.quick ? dyn.quick + 1 : 0;
@@ -880,10 +1127,24 @@ export function richLook(renderer, scene, cam, sun) {
       if (dyn.ema > D.slow && dyn.shed < 2) ((dyn.shed += 1), (dyn.quick = 0));
       else if (dyn.quick >= D.back && dyn.shed > 0) ((dyn.shed -= 1), (dyn.quick = 0));
     } else dyn.shed = 0;
+    if (gfx === 'auto' && on) autoStep(dyn.A, dyn.gpu !== null && gpuT.ext ? dyn.gpu : dyn.ema, tick);
+    else if (dyn.A.step || dyn.A.t) dyn.A = autoState();
+    const floor = dire ? D.rescue[gfx] || D.rescue.auto : gfx === 'auto' && on ? autoAt(dyn.A.step).floor : D.floor[gfx] || D.floor.auto;
     if (dyn.ema > D.slow && dyn.res > floor) dyn.res = Math.max(floor, +(dyn.res - (dire ? 0.15 : 0.05)).toFixed(2));
     else if (dyn.ema < D.quick && dyn.res < 1) dyn.res = Math.min(1, +(dyn.res + 0.05).toFixed(2));
     if (dyn.res < floor) dyn.res = floor;
     if (dyn.res !== r0) resize(w, h);
+  };
+  const postInfo = () => {
+    const P = composer.passes.filter(p => p.enabled),
+      id = p => (p === bloom ? 'bloom' : p === finish ? 'finish' : p === gtao ? 'ao' : p instanceof RenderPass ? 'scene' : 'other');
+    return {
+      passes: P.map(id),
+      full: P.filter(p => p === finish || p === gtao).length,
+      bloomMips: bloom.enabled ? bloom.useMips : 0,
+      aa: fxaa.enabled,
+      grade: grade.enabled
+    };
   };
   const resize = (cw, ch) => {
     w = Math.max(1, cw);
@@ -893,6 +1154,7 @@ export function richLook(renderer, scene, cam, sun) {
   };
   return {
     terrainMat,
+    terrainFar,
     sea,
     get on() {
       return on;
@@ -962,11 +1224,14 @@ export function richLook(renderer, scene, cam, sun) {
       STREET_U.st.value = sg;
       paintOn = on && st > 0.1;
       if (!on) return;
-      const G = grade.material.uniforms;
-      G.uK.value = smooth(0.15, 0.8, st);
-      grade.enabled = G.uK.value > 0.001;
+      const G = finish.material.uniforms,
+        Q = autoAt(gfx === 'auto' ? dyn.A.step : 0),
+        plan = postPlan({ gfx, st, lit, sg, step: gfx === 'auto' ? dyn.A.step : 0 });
+      gradeK = smooth(0.15, 0.8, st);
+      grade.enabled = plan.grade;
       if (grade.enabled) (G.uGain.value.copy(GR.gain), G.uLift.value.copy(GR.lift), (G.uSat.value = GR.sat), (G.uCon.value = GR.con));
-      fxaa.enabled = st > 0.3;
+      fxaa.enabled = plan.aa;
+      setMsaa(plan.msaa);
       U.t.value = t;
       // the real sun (below the horizon at night: the sky goes dark; the moon is only the directional light)
       const a = ((tod - 0.25) / 0.5) * Math.PI;
@@ -979,17 +1244,18 @@ export function richLook(renderer, scene, cam, sun) {
       }
       scene.environmentIntensity = LOOK.env * smooth(-0.05, 0.35, SKYDIR.y);
       renderer.toneMappingExposure = lerp(LOOK.exposure[0], lerp(LOOK.exposure[1], GLOW.exposure, sg), lit);
-      bloom.enabled = lit > 0.02;
+      bloom.enabled = plan.bloom;
+      bloom.useMips = plan.mips;
       bloom.threshold = lerp(lerp(LOOK.bloom.day, LOOK.bloom.night, lit), GLOW.thr, sg);
       bloom.strength = lerp(LOOK.bloom.strength * lit, GLOW.strength * smooth(GLOW.lit[0], GLOW.lit[1], lit), sg);
       bloom.radius = lerp(LOOK.bloom.radius, GLOW.radius, sg);
       const BF = bloom.compositeMaterial.uniforms.bloomFactors.value;
-      for (let i = 0; i < BF.length; i++) BF[i] = lerp(MIPS0[i], GLOW.mips[i], sg);
+      for (let i = 0; i < BF.length; i++) BF[i] = i < plan.mips ? lerp(MIPS0[i], GLOW.mips[i], sg) : 0;
       // shadows: the box follows the zoom (crisp near, the whole view far), the sun far enough to cover it
       const S = LOOK.shadow,
         box = clamp(view ? view.d * S.k : 120, S.box[0], S.box[1]),
         sc = sun.shadow.camera,
-        size = gfx === 'high' && dyn.shed < 2 ? S.mapHi : S.map;
+        size = gfx === 'high' && dyn.shed < 2 ? S.mapHi : Q.shadow && gfx === 'auto' ? Math.min(S.map, Q.shadow) : S.map;
       if (sc.right !== box) {
         Object.assign(sc, { left: -box, right: box, top: box, bottom: -box, near: 1, far: box * 4 + 400 });
         sc.updateProjectionMatrix();
@@ -1005,9 +1271,25 @@ export function richLook(renderer, scene, cam, sun) {
       wantAO(gfx === 'high' && dyn.shed < 1);
       hi = gfx === 'high';
     },
-    /** Draw the frame through the post. */
-    render() {
-      composer.render();
+    /** Draw the frame through the post (timed: the GPU timer query round it — not while the perf probe times the draw itself). */
+    render(timed = true) {
+      const F = finish.material.uniforms;
+      F.uBloom.value = bloom.enabled ? 1 : 0;
+      F.tBloom.value = bloom.renderTargetsHorizontal[0].texture;
+      F.toneMappingExposure.value = renderer.toneMappingExposure;
+      F.uAA.value = fxaa.enabled ? 1 : 0;
+      F.uK.value = grade.enabled ? gradeK : 0;
+      if (timed && gpuT.ext && gpuT.q.length < 4) {
+        const q = gl.createQuery();
+        gl.beginQuery(gpuT.ext.TIME_ELAPSED_EXT, q);
+        try {
+          composer.render();
+        } finally {
+          gl.endQuery(gpuT.ext.TIME_ELAPSED_EXT);
+          gpuT.q.push(q);
+        }
+      } else composer.render();
+      if (gpuT.q.length) gpuPoll();
     },
     info: () => ({
       look: on ? (hi ? 'high' : 'detailed') : 'fast',
@@ -1018,10 +1300,18 @@ export function richLook(renderer, scene, cam, sun) {
       grade: !!(grade && grade.enabled && on),
       sky: paintOn && pk ? { bakes: pk.bakes || 0, tod: +pk.tod.toFixed(4), ms: +pk.ms.toFixed(3) } : null,
       bloom: !!(bloom && bloom.enabled && on),
-      shed: dyn.shed
+      shed: dyn.shed,
+      // the passes drawn after the scene (full = full-size ones: the Finish pass, + AO on High) and Auto's ladder
+      post: on && composer ? postInfo() : null,
+      auto:
+        dyn.gfx === 'auto' && on
+          ? { step: dyn.A.step, label: autoLabel(dyn.A.step), gpu: dyn.gpu === null ? null : +dyn.gpu.toFixed(1), msaa }
+          : null
     }),
     /** Dev (the perf probe, map3d): the post passes and the dynamic resolution's state, to switch off for a measured draw. */
     parts: () => ({ bloom, grade, fxaa, gtao, dyn }),
+    /** The scene's render target (precompiles: the materials' programs for the buffer they draw into). */
+    target: () => (on && composer ? composer.readBuffer : null),
     /** The grade's haze colour at time of day `t` (default: the last step's) — street level's distance haze, every look. */
     haze: t => (t === undefined ? GR.haze : gradeAt(t, GR).haze),
     /** Street level's background: the painted sky (T-373; Auto / High), else the baked one (PMREM). */
@@ -1040,6 +1330,7 @@ export function richLook(renderer, scene, cam, sun) {
       if (tex) (tex.det.dispose(), tex.wave.dispose());
       if (shoreU.tShore.value) shoreU.tShore.value.dispose();
       terrainMat.dispose();
+      terrainFar.dispose();
       seaMat.dispose();
     }
   };

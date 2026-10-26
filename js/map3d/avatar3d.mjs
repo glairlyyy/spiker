@@ -35,7 +35,7 @@ import {
   MAIN_URL
 } from '../render3d/players3d.mjs';
 import { STAND, READY, locoPose, mix } from '../render3d/poses3d.mjs';
-import { BLOCK, SIT, shadowPart } from './people3d.mjs';
+import { BLOCK, SIT, shadowPart, setOutline } from './people3d.mjs';
 import { toWorld, clamp, wrap, smooth } from './geo3d.mjs';
 import { DECK } from './town3d.mjs';
 
@@ -528,6 +528,7 @@ export function createAvatar(scene, opts = {}) {
         return;
       }
       if (shadow !== S.sh) ((S.sh = shadow), pl.root.traverse(o => o.isMesh && (o.castShadow = shadow && shadowPart(o))));
+      setOutline(pl.root, !view || view.outline !== false); // (Auto, tight: the story figures' outlines off — map3d lodView)
       S.acc += dt;
       if (++S.fr < every) {
         pl.root.rotation.set(0, S.yaw, 0); // (between poses the figure still moves and turns)
