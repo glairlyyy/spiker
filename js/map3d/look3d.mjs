@@ -302,9 +302,12 @@ const GradeShader = {
 };
 /**
  * Street level's material finish (T-369), shared uniforms: the toon bands on the sun's light (uFdToon 0–1: 0 = today's smooth
- * light) and the occluder fade (uFdA = the camera, uFdB = your middle, uFdK 0–1): what lies within ~1 m of the camera → you line
- * (not the last metre by you) or right at the lens dissolves by an ordered dither (no transparency, no sorting, no CPU rays).
+ * light) and the occluder fade (uFdA = the camera, uFdB = your middle, uFdK 0–1): what lies near the camera → you line (not the
+ * last metre by you) dissolves by a coarse 8 × 8 ordered dither (2-px cells) to a faint ghost; what is right at the lens goes
+ * outright — fragments within `FD.lens` m, and a whole instance (tree, filler block, tuft) whose box comes within `FD.inst` m of the
+ * camera (no screen-wide screen door). No transparency, no sorting, no CPU rays.
  */
+export const FD = { lens: 1.0, inst: 1.4, ghost: 0.15, cell: 2, r: [1.1, 0.6], near: [0.35, 0.3] };
 export const STREET_FX = {
   uFdA: { value: new THREE.Vector3() },
   uFdB: { value: new THREE.Vector3() },
@@ -323,29 +326,41 @@ export function streetMat(m) {
   if (m.isShaderMaterial || !(m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial || m.isMeshBasicMaterial))
     return false;
   if (m.userData && m.userData.noStreetFx) return false;
+  // the instances' local box (map3d fxBox: the union over the instanced meshes using m; empty = never hidden whole)
+  const box = (m.userData.fdBox = { lo: { value: new THREE.Vector3(1e9, 1e9, 1e9) }, hi: { value: new THREE.Vector3(-1e9, -1e9, -1e9) } });
   const prev = m.onBeforeCompile,
     hadKey = Object.prototype.hasOwnProperty.call(m, 'customProgramCacheKey'),
     prevKey = hadKey ? m.customProgramCacheKey : null,
     src = prev.toString();
   m.onBeforeCompile = function (sh, r) {
     prev.call(this, sh, r);
-    Object.assign(sh.uniforms, STREET_FX);
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vFdW;').replace(
-      '#include <project_vertex>',
-      `#include <project_vertex>
+    Object.assign(sh.uniforms, STREET_FX, { uFdLo: box.lo, uFdHi: box.hi });
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vFdW; uniform vec3 uFdA, uFdLo, uFdHi; uniform float uFdK;')
+      .replace(
+        '#include <project_vertex>',
+        `#include <project_vertex>
         { vec4 fw = vec4(transformed, 1.0);
           #ifdef USE_BATCHING
           fw = batchingMatrix * fw;
           #endif
           #ifdef USE_INSTANCING
           fw = instanceMatrix * fw;
+          if (uFdK > 0.0) { // an instance at the lens goes whole: the camera's distance to its box (fdHide)
+            mat4 im = modelMatrix * instanceMatrix; mat3 rm = mat3(im);
+            vec3 lc = inverse(rm) * (uFdA - im[3].xyz);
+            vec3 dq = max(abs(lc - 0.5 * (uFdLo + uFdHi)) - 0.5 * (uFdHi - uFdLo), 0.0);
+            if (length(rm * dq) < ${FD.inst.toFixed(2)} * uFdK) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
+          }
           #endif
           vFdW = (modelMatrix * fw).xyz; }`
-    );
+      );
     let f = sh.fragmentShader.replace(
       '#include <common>',
       `#include <common>
       varying vec3 vFdW; uniform vec3 uFdA, uFdB; uniform float uFdK, uFdToon; float fdDir;
+      float fdB2(vec2 a) { a = floor(a); return fract(a.x * 0.5 + a.y * a.y * 0.75); }
+      float fdB8(vec2 a) { return (fdB2(0.25 * a) * 0.25 + fdB2(0.5 * a)) * 0.25 + fdB2(a); }
       float fdBand(float x) { return mix(x, 0.55 * smoothstep(0.0, 0.08, x) + 0.45 * smoothstep(0.38, 0.46, x), uFdToon * fdDir); }`
     );
     // (the bands on the sun / moon only: the lamps' point lights keep their smooth fall-off)
@@ -366,13 +381,12 @@ export function streetMat(m) {
       `#include <clipping_planes_fragment>
       if (uFdK > 0.0) {
         vec3 ab = uFdB - uFdA, aw = vFdW - uFdA;
+        if (length(aw) < ${FD.lens.toFixed(2)} * uFdK) discard; // right at the lens: gone, not dithered
         float L = max(length(ab), 0.01), a = dot(aw, ab) / L;
-        float d = length(aw - ab * (a / L)), r = mix(1.1, 0.6, clamp(a / L, 0.0, 1.0));
+        float d = length(aw - ab * (a / L));
+        float r = min(${FD.near[0].toFixed(2)} + ${FD.near[1].toFixed(2)} * max(a, 0.0), mix(${FD.r[0].toFixed(2)}, ${FD.r[1].toFixed(2)}, clamp(a / L, 0.0, 1.0)));
         float fd = (1.0 - smoothstep(r * 0.55, r, d)) * step(0.0, a) * (1.0 - smoothstep(L - 1.3, L - 0.7, a));
-        fd = max(fd, 1.0 - smoothstep(0.7, 1.5, length(aw)));
-        vec2 q = mod(floor(gl_FragCoord.xy), 4.0);
-        float bay = (dot(q, vec2(1.0, 4.0)) * 7.0 - floor(dot(q, vec2(1.0, 4.0)) * 7.0 / 16.0) * 16.0 + 0.5) / 16.0;
-        if (fd * uFdK * 0.85 > bay) discard;
+        if (fd * uFdK * ${(1 - FD.ghost).toFixed(2)} > fdB8(gl_FragCoord.xy / ${FD.cell.toFixed(1)}) + 0.008) discard;
       }`
     );
   };

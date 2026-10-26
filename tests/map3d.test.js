@@ -527,6 +527,34 @@ test('map3d: street level — one continuous zoom path (pitch, distance, height 
       b = at(0.01);
     assert(Math.abs(a.gain.x - b.gain.x) < 1e-3 && Math.abs(a.haze.b - b.haze.b) < 1e-3, 'no jump at midnight');
   }
+  // the occluder fade (T-369, fixed 2026-10-26): the lens zone and instances at the lens go outright, the line dissolves by a coarse 8 × 8 pattern
+  {
+    const THREE = require('three'),
+      { streetMat, FD } = require('../js/map3d/look3d.mjs'),
+      m = new THREE.MeshStandardMaterial(),
+      sh = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
+    assert(streetMat(m) && !streetMat(m), 'patched once');
+    m.onBeforeCompile(sh, null);
+    assert(sh.uniforms.uFdLo === m.userData.fdBox.lo && sh.uniforms.uFdHi === m.userData.fdBox.hi, 'the instance box is per material');
+    assert(m.userData.fdBox.lo.value.x > m.userData.fdBox.hi.value.x, 'empty until map3d gives it a box (never hidden whole)');
+    assert(
+      /USE_INSTANCING[\s\S]*inverse\(rm\)[\s\S]*gl_Position = vec4\(0\.0, 0\.0, -2\.0, 1\.0\)/.test(sh.vertexShader),
+      'an instance at the lens is dropped whole'
+    );
+    assert(/length\(aw\) < [\d.]+ \* uFdK\) discard/.test(sh.fragmentShader), 'fragments right at the lens are discarded, not dithered');
+    assert(
+      !/mod\(floor\(gl_FragCoord\.xy\), 4\.0\)/.test(sh.fragmentShader) && /fdB8\(gl_FragCoord\.xy \/ 2\.0\)/.test(sh.fragmentShader),
+      'the 4 × 4 screen door is gone'
+    );
+    // the 8 × 8 pattern as the shader computes it: 64 distinct levels, every 2 × 2 cell block spread over the range
+    const fr = x => x - Math.floor(x),
+      b2 = (x, y) => ((x = Math.floor(x)), (y = Math.floor(y)), fr(x * 0.5 + y * y * 0.75)),
+      b8 = (x, y) => (b2(x / 4, y / 4) * 0.25 + b2(x / 2, y / 2)) * 0.25 + b2(x, y),
+      lv = new Set();
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) lv.add(Math.round(b8(x, y) * 64));
+    eq(lv.size, 64, 'an 8 × 8 ordered pattern');
+    assert(FD.ghost > 0.05 && FD.ghost < 0.3 && FD.inst > FD.lens, 'a faint ghost; instances go a little before fragments');
+  }
   // a capsule district (the T-336a prototype's shape; still supported)
   const { load } = require('./harness'),
     g = load(5),

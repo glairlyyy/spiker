@@ -912,9 +912,12 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   map3d `fxStep` before each draw: a `scene.traverseVisible` sweep when objects may have come (`update`, setLow, an interiors flip,
   a ring rebuild, a new top-level part) and every `FX_EVERY` 20 frames (a material found already drawn recompiles once; `info().fx`
   { ms, sweeps }) — with `STREET_FX` uniforms: toon bands on the sun's / moon's dotNL only (3 bands; `fdDir` set round the directional loop of lights_fragment_begin — the lamps' point lights keep their smooth fall-off;
-  `uFdToon` = smooth(0.3, 0.9, st) on Auto / High, 0 on Fast) and the occluder fade: fragments within ~1.1 → 0.6 m of the camera →
-  your middle line (not its last ~1 m) or within ~1 m of the lens are discarded by a 4 × 4 ordered dither (`uFdK`, eased in from st
-  0.4; ghost floor 15 %). No transparency, no extra draws; `info()` `aa` / `grade`.
+  `uFdToon` = smooth(0.3, 0.9, st) on Auto / High, 0 on Fast) and the occluder fade (`FD`; `uFdK`, eased in from st 0.4): fragments
+  within `FD.lens` m of the lens are discarded outright; an instance (tree, filler box, tuft) whose local box (`fdBox` per material:
+  map3d `fxBox` unions the geometry boxes of the instanced meshes using it; empty = never) comes within `FD.inst` m of the camera is
+  dropped whole in the vertex shader; fragments near the camera → your middle line (radius min(0.35 + 0.3 a, 1.1 → 0.6 m), not its
+  last ~1 m) dissolve by an 8 × 8 Bayer pattern on 2-px cells (`fdB8`, static: no TAA to hide an animated one; FXAA after) to a
+  15 % ghost. No transparency, no extra draws; `info()` `aa` / `grade`.
 - **Ground (T-370, spec §4.44)** — look3d `GROUND` / `groundBytes(n)`: one tileable RGBA texture made in code (R asphalt, G 0.5 m
   slabs, B grass strokes posterized, A paint wear; shades round 0.5), shared via `GROUND_U` { tGround, uGr } — `uGr` = smooth(0.2,
   0.8, st) on Auto / High, 0 on Fast (look.step); every use fades to its mean by the pixel footprint (`GROUND.fade` m/px). `groundMat(m)`

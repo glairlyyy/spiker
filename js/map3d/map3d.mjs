@@ -446,6 +446,19 @@ export function create(onIdle) {
     const M = o.material;
     if (Array.isArray(M)) for (const m of M) streetMat(m) && (m.needsUpdate = true);
     else if (streetMat(M)) M.needsUpdate = true; // (not yet drawn: harmless; drawn: it recompiles with the patch)
+    if (o.isInstancedMesh) fxBox(o);
+  };
+  /** An instanced mesh's local box into its materials' `fdBox` (the union when a material serves several shapes): look3d's lens hide. */
+  const fxBoxed = new WeakMap();
+  const fxBox = o => {
+    const g = o.geometry;
+    if (fxBoxed.get(o) === g) return;
+    fxBoxed.set(o, g);
+    if (!g.boundingBox) g.computeBoundingBox();
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+      const B = m.userData && m.userData.fdBox;
+      if (B) (B.lo.value.min(g.boundingBox.min), B.hi.value.max(g.boundingBox.max));
+    }
   };
   const fxInfo = { ms: 0, sweeps: 0, sig: '', n: 0 };
   const fxStep = dt => {

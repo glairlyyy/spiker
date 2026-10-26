@@ -2130,7 +2130,10 @@ the AI coach fills every slot you leave with the same function. Built and measur
     colours by the hour, and the sun's light falls in soft toon bands (Fast keeps its look; the haze takes the hour's hue there too).
     Measured (headless, gym junction, Auto): draw calls 153 → 152 (10:00), 168 → 171 (18:30), triangles unchanged (~0.99 M), the
     new per-frame JavaScript 0.06–0.16 ms; Fast unchanged. **[fixed 2026-10-26]** the street view no longer stretches: the picture keeps
-    the window's proportions after the lens shift, a resize or a resolution change.
+    the window's proportions after the lens shift, a resize or a resolution change. **[fixed 2026-10-26]** the fade no longer leaves a
+    fine screen-door pattern over the picture when a tree or a wall stands at the lens: what is right at the lens is hidden outright
+    (a whole tree / block when the camera is within ~1.4 m of it), only the part by the camera → you line dissolves (a coarser, softer
+    pattern) to a faint ghost.
   - **Ground** (T-370): roads as asphalt with lane markings, curbs and pavements; grass with painted variation and tufts near
     you; the near terrain smooth (no flat-shaded facets). **[built 2026-10-26]**: near you (Auto / High) the roads are painted
     asphalt (soft mottling, tar seams), main roads get solid white edge lines besides the centre dashes and zebras, the pavements
