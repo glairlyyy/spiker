@@ -1201,6 +1201,11 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - You walk the road route. Trip cost = cheaper of road route (main/overpass fast; Wei streets, boardwalk, dirt
     slower; Shu mountain paths slowest) or cross-country (Shu highlands rough). Airport → harbor 2 days by coast road;
     Shu mountain trail 3.
+  - **Walks follow the drawn roads** (owner, 2026-10-26: "fix pathing — it should follow the drawn road") **[built 2026-10-26]**: a
+    walk (a trip, a ride's walking legs, a street-level click, the walk back from a WASD stop) joins the roads at the nearest road point
+    (not the nearest node, which could stand behind a building), follows the drawn roads junction to junction and leaves them at the
+    nearest point to where it ends; out of a place's door it walks to its road first. Along the overpass you climb its deck as drawn
+    (no more walking beneath it). The rules count the same way: the walk's cost is the leg to the road + the road + the leg off it.
 - §4.18b Island scale (owner, 2026-10-03; × 1.5 again, owner 2026-10-05, T-225) **[built]**: the island is drawn at
   `MAP_SCALE` 2.25 (2385 × 1575 map units, ~1190 × 790 m) — more room between the same towns (they fill out a little:
   ~1,230 lots, was ~970, where roads and places had squeezed them); nature scatters on a wider grid (`NATURE.cell` 18).

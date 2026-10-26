@@ -145,7 +145,7 @@ export function createMapCam(cam, canvas, sun, S) {
     st = s;
     if (s <= 0) yaw = 0;
     const yw = yaw * s,
-      ty = s > 0 ? s * (heightAt(x, z) + STREET.head) : 0,
+      ty = s > 0 ? s * (heightAt(x, z) + STREET.head + (S().avatar && S().avatar.lift ? S().avatar.lift() : 0)) : 0, // (on the overpass deck: up with you)
       c = d * Math.cos(P.pitch);
     let k = 1,
       need = P.up;

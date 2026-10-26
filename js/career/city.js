@@ -780,10 +780,8 @@ const City = {
    */
   wheelTrip(o, p, k) {
     const T = TRANSPORT[k],
-      P = City.path(o, p),
-      N = ROADS.nodes,
-      K = City.edgeKinds();
-    if (!P.ids.length) return null;
+      P = City.path(o, p);
+    if (!P.run.length) return null;
     const segs = [],
       ridden = [],
       add = (m, a, b, h) => {
@@ -792,18 +790,13 @@ const City = {
         else segs.push({ m, pts: [a.slice(), b.slice()], h, wait: 0 });
       };
     let rh = 0;
-    add('walk', o, N[P.ids[0]], City.ground(o, N[P.ids[0]]) / WALK_PACE);
-    for (let i = 1; i < P.ids.length; i++) {
-      const a = P.ids[i - 1],
-        b = P.ids[i],
-        kind = K[`${a}|${b}`],
-        A = N[a],
-        B = N[b],
-        cost = Math.hypot(B[0] - A[0], B[1] - A[1]) * (ROAD_COST[kind] ?? 1),
+    add('walk', o, P.run[0].a, City.ground(o, P.run[0].a) / WALK_PACE);
+    for (const { a: A, b: B, kind, u, v } of P.run) {
+      const cost = Math.hypot(B[0] - A[0], B[1] - A[1]) * (ROAD_COST[kind] ?? 1),
         foot =
           TRANSPORT.foot.includes(kind) ||
-          a === 'steps' ||
-          b === 'steps' ||
+          u === 'steps' ||
+          v === 'steps' ||
           City.regionAt([(A[0] + B[0]) / 2, (A[1] + B[1]) / 2]) === 'shu'; // Shu's highlands stay on foot (§4.42)
       if (foot) add('walk', A, B, cost / WALK_PACE);
       else {
@@ -813,7 +806,8 @@ const City = {
         add(k, A, B, h);
       }
     }
-    add('walk', N[P.ids[P.ids.length - 1]], p, City.ground(N[P.ids[P.ids.length - 1]], p) / WALK_PACE);
+    const end = P.run[P.run.length - 1].b;
+    add('walk', end, p, City.ground(end, p) / WALK_PACE);
     if (!ridden.length) return null;
     const legs = segs.filter(l => l.h > 0 || l.m !== 'walk');
     return { raw: legs.reduce((s, l) => s + l.h, 0), legs, rideH: rh, ridden };
@@ -998,73 +992,127 @@ const City = {
   /** The road path from map point `from` to `to` (spec §4.18): the points of City.path. */
   route: (from, to) => City.path(from, to).pts,
   /**
-   * The way from map point `from` to `to` (spec §4.18, T-048): { pts: [from, …road nodes…, to], cost } — the nearest node to each end,
-   * the cheapest way between them over ROADS (Dijkstra on length × ROAD_COST[kind]; ties broken by node id, so the same call always
-   * gives the same path), the legs to / from the network as ground. `cost` is the cheaper of that and going cross-country (City.ground);
-   * the points stay on the roads (you walk them) unless the two ends are nearer each other than to any node. Pure data, no randoms.
+   * The way from map point `from` to `to` (spec §4.18, T-048; joins 2026-10-26): { pts: [from, join, …road nodes…, join, to], cost, ids,
+   * run } — each end joins the network at its nearest road point (`City.join`: the nearest point on any drawn road but the overpass,
+   * not the nearest node, which may stand behind a building), then the cheapest way over ROADS (Dijkstra on length × ROAD_COST[kind]
+   * from the join along its edge to either end; ties broken by node id, so the same call always gives the same path; two joins on one
+   * edge may go straight along it). `ids` = the nodes passed, `run` = the road pieces walked [{ a, b, kind, u, v }] (a / b map points,
+   * u / v the edge's nodes). `cost` = the cheaper of the legs to / from the joins as ground + the road, or going cross-country
+   * (City.ground); the points stay on the roads (you walk them) unless the two ends are nearer each other than to the road. Pure data.
    */
   path(from, to) {
     const key = `${from[0]},${from[1]}>${to[0]},${to[1]}`,
       hit = PATH_CACHE.get(key);
-    if (hit) return { pts: hit.pts.map(p => p.slice()), cost: hit.cost, ids: hit.ids.slice() };
+    if (hit) return City.pathCopy(hit);
     if (PATH_CACHE.size > 4000) PATH_CACHE.clear();
     const r = City.pathRaw(from, to);
     PATH_CACHE.set(key, r);
-    return { pts: r.pts.map(p => p.slice()), cost: r.cost, ids: r.ids.slice() };
+    return City.pathCopy(r);
+  },
+  pathCopy: r => ({
+    pts: r.pts.map(p => p.slice()),
+    cost: r.cost,
+    ids: r.ids.slice(),
+    run: r.run.map(q => ({ ...q, a: q.a.slice(), b: q.b.slice() }))
+  }),
+  /** ROADS edges a walk joins at (all but the overpass: you get onto it at its ends), with their nodes; built once. */
+  joinEdges() {
+    if (!City._je) {
+      const N = ROADS.nodes;
+      City._je = ROADS.edges.filter(e => e[2] !== 'overpass').map(([u, v, kind]) => ({ u, v, kind, A: N[u], B: N[v] }));
+    }
+    return City._je;
+  },
+  /**
+   * Where map point p joins the road network (2026-10-26): the nearest point `q` on any drawn road but the overpass — { q, d (p → q),
+   * u, v, kind, t (0 at u … 1 at v) }; ties go to the first edge in ROADS order. Pure.
+   */
+  join(p) {
+    let best = null;
+    for (const e of City.joinEdges()) {
+      const dx = e.B[0] - e.A[0],
+        dy = e.B[1] - e.A[1],
+        t = clamp(((p[0] - e.A[0]) * dx + (p[1] - e.A[1]) * dy) / (dx * dx + dy * dy || 1), 0, 1),
+        q = [e.A[0] + t * dx, e.A[1] + t * dy],
+        d = Math.hypot(p[0] - q[0], p[1] - q[1]);
+      if (!best || d < best.d - 1e-9) best = { q, d, u: e.u, v: e.v, kind: e.kind, t };
+    }
+    return best;
   },
   pathRaw(from, to) {
     const N = ROADS.nodes,
       ids = Object.keys(N).sort(),
       d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]),
-      near = p => ids.reduce((best, id) => (d(p, N[id]) < d(p, N[best]) ? id : best), ids[0]),
-      a = near(from),
-      b = near(to),
-      straight = { pts: [from.slice(), to.slice()], cost: City.ground(from, to), ids: [] };
-    if (d(from, to) <= d(from, N[a]) && d(from, to) <= d(to, N[b])) return straight;
-    const adj = {};
-    for (const [u, v, kind] of ROADS.edges) {
-      const w = d(N[u], N[v]) * (ROAD_COST[kind] ?? 1);
-      (adj[u] = adj[u] || []).push([v, w]);
-      (adj[v] = adj[v] || []).push([u, w]);
-    }
-    const dist = { [a]: 0 },
+      ja = City.join(from),
+      jb = City.join(to),
+      straight = { pts: [from.slice(), to.slice()], cost: City.ground(from, to), ids: [], run: [] };
+    if (d(from, to) <= ja.d && d(from, to) <= jb.d) return straight;
+    const adj = {},
+      wOf = (a, b, kind) => d(a, b) * (ROAD_COST[kind] ?? 1),
+      link = (u, v, w) => {
+        (adj[u] = adj[u] || []).push([v, w]);
+        (adj[v] = adj[v] || []).push([u, w]);
+      };
+    for (const [u, v, kind] of ROADS.edges) link(u, v, wOf(N[u], N[v], kind));
+    // the two joins as nodes '<a' / '>b' on their edges (sorted before every node id: ties stay as before)
+    const A = '<a',
+      B = '>b',
+      P = { [A]: ja.q, [B]: jb.q };
+    link(A, ja.u, wOf(ja.q, N[ja.u], ja.kind));
+    link(A, ja.v, wOf(ja.q, N[ja.v], ja.kind));
+    link(B, jb.u, wOf(jb.q, N[jb.u], jb.kind));
+    link(B, jb.v, wOf(jb.q, N[jb.v], jb.kind));
+    const same = (ja.u === jb.u && ja.v === jb.v) || (ja.u === jb.v && ja.v === jb.u);
+    if (same) link(A, B, wOf(ja.q, jb.q, ja.kind));
+    const at = id => P[id] || N[id],
+      all = [A, B, ...ids],
+      dist = { [A]: 0 },
       prev = {},
       done = new Set();
     for (;;) {
       let u = null;
-      for (const id of ids) if (!done.has(id) && dist[id] != null && (u === null || dist[id] < dist[u])) u = id;
-      if (u === null || u === b) break;
+      for (const id of all) if (!done.has(id) && dist[id] != null && (u === null || dist[id] < dist[u])) u = id;
+      if (u === null || u === B) break;
       done.add(u);
       for (const [v, w] of adj[u] || []) {
         const nd = dist[u] + w;
         if (dist[v] == null || nd < dist[v] - 1e-9 || (Math.abs(nd - dist[v]) <= 1e-9 && u < prev[v])) ((dist[v] = nd), (prev[v] = u));
       }
     }
-    if (dist[b] == null) return straight; // (not connected: cannot happen with ROADS as shipped)
-    const cost = Math.min(straight.cost, City.ground(from, N[a]) + dist[b] + City.ground(N[b], to));
-    const path = [];
-    for (let id = b; id !== undefined; id = prev[id]) path.unshift(id);
-    const pts = [from, ...path.map(id => N[id]), to].filter((p, i, A) => !i || p[0] !== A[i - 1][0] || p[1] !== A[i - 1][1]);
-    return { pts: pts.map(p => p.slice()), cost, ids: path };
+    if (dist[B] == null) return straight; // (not connected: cannot happen with ROADS as shipped)
+    const cost = Math.min(straight.cost, City.ground(from, ja.q) + dist[B] + City.ground(jb.q, to));
+    const chain = [];
+    for (let id = B; id !== undefined; id = prev[id]) chain.unshift(id);
+    const kinds = City.edgeKinds(),
+      edgeOf = (x, y) => {
+        if (!P[x] && !P[y]) return { kind: kinds[`${x}|${y}`], u: x, v: y };
+        const J = P[x] ? (x === A ? ja : jb) : y === A ? ja : jb;
+        return { kind: J.kind, u: J.u, v: J.v };
+      },
+      run = [];
+    for (let i = 1; i < chain.length; i++) {
+      const a = at(chain[i - 1]),
+        b = at(chain[i]);
+      if (d(a, b) > 1e-9) run.push({ a: a.slice(), b: b.slice(), ...edgeOf(chain[i - 1], chain[i]) });
+    }
+    const pts = [from, ...chain.map(at), to].filter((p, i, Q) => !i || d(p, Q[i - 1]) > 1e-9);
+    return { pts: pts.map(p => p.slice()), cost, ids: chain.filter(id => !P[id]), run };
   },
   /**
-   * The route from `from` to `to` as legs of ground (spec §4.33, T-309): [{ kind, cost }] — each road edge walked (its ROADS kind;
+   * The route from `from` to `to` as legs of ground (spec §4.33, T-309): [{ kind, cost }] — each road piece walked (its ROADS kind;
    * an edge at the Thousand Steps node: 'steps') and the cross-country legs to / from the network ('ground'), with its travel cost.
    */
   legs(from, to) {
     const P = City.path(from, to),
-      N = ROADS.nodes,
-      kinds = City.edgeKinds(),
       out = [];
-    if (!P.ids.length) return [{ kind: 'ground', cost: City.ground(from, to) }];
-    out.push({ kind: 'ground', cost: City.ground(from, N[P.ids[0]]) });
-    for (let i = 1; i < P.ids.length; i++) {
-      const a = P.ids[i - 1],
-        b = P.ids[i],
-        k = a === 'steps' || b === 'steps' ? 'steps' : kinds[`${a}|${b}`] || 'ground';
-      out.push({ kind: k, cost: Math.hypot(N[b][0] - N[a][0], N[b][1] - N[a][1]) * (ROAD_COST[kinds[`${a}|${b}`]] ?? 1) });
-    }
-    out.push({ kind: 'ground', cost: City.ground(N[P.ids[P.ids.length - 1]], to) });
+    if (!P.run.length) return [{ kind: 'ground', cost: City.ground(from, to) }];
+    out.push({ kind: 'ground', cost: City.ground(from, P.run[0].a) });
+    for (const q of P.run)
+      out.push({
+        kind: q.u === 'steps' || q.v === 'steps' ? 'steps' : q.kind || 'ground',
+        cost: Math.hypot(q.b[0] - q.a[0], q.b[1] - q.a[1]) * (ROAD_COST[q.kind] ?? 1)
+      });
+    out.push({ kind: 'ground', cost: City.ground(P.run[P.run.length - 1].b, to) });
     return out.filter(l => l.cost > 0);
   },
   /** ROADS edge kinds by 'u|v' (both ways), built once. */

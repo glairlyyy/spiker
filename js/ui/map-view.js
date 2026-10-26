@@ -98,9 +98,13 @@ const MapView = {
     p.textContent = 'Loading…';
     el.append(p);
   },
-  /** Your avatar walks back to where the rules have you (a WASD walk that didn't become a travel). */
+  /** Your avatar walks back to where the rules have you (a WASD walk that didn't become a travel) — by the road (City.route). */
   home() {
-    if (MapView.m3 && MapView.m3.home) MapView.m3.home();
+    const m3 = MapView.m3;
+    if (!m3 || !m3.home) return;
+    const w = m3.youPos ? m3.youPos() : null,
+      at = RUN && City.pos(RUN);
+    m3.home(w && at ? City.route([w[0] / MAP_UNIT_M, w[2] / MAP_UNIT_M], at) : null);
   },
   mount(el, model, on) {
     model = MapView.routed(model);

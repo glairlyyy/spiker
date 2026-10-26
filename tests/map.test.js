@@ -91,8 +91,14 @@ test('career: world layout — roads, routes, lots, landmarks', () => {
     Object.values(N).every(p => g.City.onLand(p)),
     'every node is on land'
   );
-  // City.route: ends at the given points, interior only along edges; straight when both ends are closer to each other than to a node
-  const edge = (a, b) => g.ROADS.edges.some(([x, y]) => (at(N[x], a) && at(N[y], b)) || (at(N[x], b) && at(N[y], a)));
+  // City.route: ends at the given points, interior only along edges (the joins: on one); straight when both ends are closer to each other than to the road
+  const onSeg = (p, A, B) => {
+      const dx = B[0] - A[0],
+        dy = B[1] - A[1],
+        t = Math.max(0, Math.min(1, ((p[0] - A[0]) * dx + (p[1] - A[1]) * dy) / (dx * dx + dy * dy || 1)));
+      return Math.hypot(p[0] - A[0] - t * dx, p[1] - A[1] - t * dy) < 1e-6;
+    },
+    edge = (a, b) => g.ROADS.edges.some(([x, y]) => onSeg(a, N[x], N[y]) && onSeg(b, N[x], N[y]));
   for (const [from, to] of [
     [g.CITY.airport, g.CITY.hq[4]],
     [
@@ -167,6 +173,80 @@ test('career: world layout — roads, routes, lots, landmarks', () => {
     'every place and HQ has a landmark kind'
   );
   assert(JSON.parse(JSON.stringify(M)).land.lots.length === L.length, 'serialisable');
+});
+
+test('map: walks follow the drawn roads — joined at the nearest road point, every point within the road, the cost what is walked (2026-10-26)', () => {
+  const g = load(21),
+    N = g.ROADS.nodes,
+    M = g.MAP_UNIT_M,
+    HW = { main: 1.6, street: 1.2, dirt: 1.1, path: 0.45, boardwalk: 1.3, overpass: 2.7 }, // half widths (m) as town3d draws them
+    segD = (p, A, B) => {
+      const dx = B[0] - A[0],
+        dy = B[1] - A[1],
+        t = Math.max(0, Math.min(1, ((p[0] - A[0]) * dx + (p[1] - A[1]) * dy) / (dx * dx + dy * dy || 1)));
+      return Math.hypot(p[0] - A[0] - t * dx, p[1] - A[1] - t * dy);
+    },
+    within = p => g.ROADS.edges.some(([a, b, k]) => segD(p, N[a], N[b]) * M <= HW[k] + 1e-6),
+    dd = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  let x = 5;
+  const rnd = () => (x = (x * 1103515245 + 12345) % 2147483648) / 2147483648,
+    pts = [];
+  while (pts.length < 40) {
+    const p = [Math.round(rnd() * g.CITY.w), Math.round(rnd() * g.CITY.h)];
+    if (g.City.onLand(p)) pts.push(p);
+  }
+  // the join = the nearest point on any road but the overpass (checked against a fine sampling of every edge)
+  for (const p of pts.slice(0, 12)) {
+    const J = g.City.join(p);
+    let best = Infinity;
+    for (const [a, b, k] of g.ROADS.edges) {
+      if (k === 'overpass') continue;
+      for (let i = 0; i <= 200; i++)
+        best = Math.min(best, dd(p, [N[a][0] + ((N[b][0] - N[a][0]) * i) / 200, N[a][1] + ((N[b][1] - N[a][1]) * i) / 200]));
+    }
+    assert(
+      J.d <= best + 1e-6 && J.d >= best - dd(N[J.u], N[J.v]) / 200,
+      `the join is the nearest road point (${J.d.toFixed(2)} vs ${best.toFixed(2)})`
+    );
+    assert(J.d <= Math.min(...Object.values(N).map(q => dd(p, q))) + 1e-9, 'never farther than the nearest node');
+  }
+  // every trip: from → its join (straight, that distance) → along the roads → the join → to; every point between within a road
+  const trips = [
+    [N.airport, N.harbor],
+    [N.acaGym, N['venue:hall']],
+    [N.hq0, N.hq5],
+    [N.dojo, N.trail],
+    ...pts.slice(0, 30).map((p, i) => [p, i % 3 ? pts[(i + 7) % pts.length] : N[Object.keys(N)[(i * 7) % Object.keys(N).length]]])
+  ];
+  for (const [a, b] of trips) {
+    const P = g.City.path(a, b),
+      r = P.pts;
+    if (r.length === 2 && !P.run.length) {
+      assert(
+        dd(a, b) <= g.City.join(a).d && dd(a, b) <= g.City.join(b).d,
+        'straight only when the ends are nearer each other than to the road'
+      );
+      continue;
+    }
+    const ja = g.City.join(a),
+      jb = g.City.join(b);
+    assert(dd(r[1], ja.q) < 1e-6 || dd(a, ja.q) < 1e-6, 'onto the road at the join');
+    assert(dd(r[r.length - 2], jb.q) < 1e-6 || dd(b, jb.q) < 1e-6, 'off it at the join');
+    const inner = r.slice(dd(a, ja.q) < 1e-6 ? 0 : 1, dd(b, jb.q) < 1e-6 ? r.length : -1);
+    for (let i = 1; i < inner.length; i++)
+      for (let s = 0; s <= 20; s++) {
+        const q = [
+          inner[i - 1][0] + ((inner[i][0] - inner[i - 1][0]) * s) / 20,
+          inner[i - 1][1] + ((inner[i][1] - inner[i - 1][1]) * s) / 20
+        ];
+        assert(within(q), `a route point off the drawn road: ${q.map(Math.round)} (${a} → ${b})`);
+      }
+    // the rules count what is walked: the legs (ground to / from the joins + the road pieces) = the route's cost unless cross-country is cheaper
+    const legs = g.City.legs(a, b).reduce((s, l) => s + l.cost, 0);
+    assert(Math.abs(legs - P.cost) < 1e-6 || P.cost < legs, 'the legs sum to the cost (or cross-country is cheaper)');
+  }
+  // a place's node joins at itself: place-to-place trips are unchanged by the joins
+  eq(g.City.join(N.harbor).d, 0, 'a place stands on its road');
 });
 
 test('career: town layout — districts, beach, overpass, frozen borders', () => {

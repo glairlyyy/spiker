@@ -1142,8 +1142,16 @@ and adds the Run + Stretch rows inside it (`stretchAt(run, p, pre)`: picker + or
 
 ### Running a trip (T-309)
 
-`City.path` also returns the road node ids; `City.legs(from, to)` turns the route into ground legs `{ kind, cost }` (ROADS edge kinds;
-an edge at the `steps` node = 'steps'; to / from the network = 'ground'). `City.runPlan(run, p)` = `RUN_GROUND[kind]` gains per
+`City.path` also returns the road node ids and `run` (the road pieces walked: `{ a, b, kind, u, v }`); `City.legs(from, to)` turns the route into ground legs `{ kind, cost }` (ROADS edge kinds;
+an edge at the `steps` node = 'steps'; to / from the network = 'ground').
+**Joins (2026-10-26, walks follow the drawn roads)**: each end of `City.path` joins the network at `City.join(p)` = the nearest point on any ROADS
+edge but the overpass (`City.joinEdges`), entered into Dijkstra as two virtual nodes on their edges (`'<a'` / `'>b'`, linked to both ends
+of their edge; one edge: also straight along it); pts = [from, join, …nodes…, join, to]; straight only when the ends are nearer each other than
+to the road. Places stand on their nodes (join = the node), so place-to-place trips are unchanged. `wheelTrip` rides `run`. Display: avatar3d
+`setTarget` keeps the route's first point when the walk starts elsewhere (out of a door: door → node → road, not door → the second node);
+`deck(model.land.roads)` (map3d update) chains the overpass as town3d's `buildOverpass` does (`deckChains`) and a walk / ride span along it
+lifts the figure by `deckLift` (DECK ramp; `lift()`, added to map3d `youPos` and mapcam3d's street target); `MapView.home()` walks back from
+a refused WASD stop by `City.route`. `City.runPlan(run, p)` = `RUN_GROUND[kind]` gains per
 TRIP_DAY of each leg's travel cost, stamina `RUN_GROUND.sta` (× HOURS.staK) per trip day; `City.noRun` (no move, injured, too tired → walk only).
 `City.travelTo(run, p, 'run')` spends the running hours (÷ RUN_PACE), logs a 'Run' block and calls `Training.runTrip` (the gains × `Training.mul`
 of the `DAY_ORDERS.run` key × DAY_GAIN; no fail roll). Since §4.41 the gains are × HOURS.unit × HOURS.run and the stamina × HOURS.staK. UI: `runBtn` (career-panels.js) beside Walk on place cards and inside

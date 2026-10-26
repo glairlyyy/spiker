@@ -597,6 +597,7 @@ export function create(onIdle) {
       }
       const at = m.you && m.you.at;
       if (!at || !avatar) return;
+      avatar.deck(m.land && m.land.roads); // (the overpass: a walk along it climbs the deck)
       const key = at.join(','),
         tail = m.you.inside || [], // arriving inside (spec §4.40): on from the door to where you stand in the place
         head = m.you.exit || []; // …and out of the one you leave
@@ -726,7 +727,7 @@ export function create(onIdle) {
     youPos() {
       if (!avatar) return [0, 0, 0];
       const [x, z] = avatar.pos();
-      return [x, terrain ? terrain.heightAt(x, z) : 0, z];
+      return [x, (terrain ? terrain.heightAt(x, z) : 0) + avatar.lift(), z];
     },
     /** QA: the interiors' state ({ shown, places, cut, alpha, street, stations }), or null until the module has loaded. */
     interiors: () => interiors && { ...interiors.info(), street: +st.toFixed(3), stations: interiors.stations() },
@@ -749,9 +750,9 @@ export function create(onIdle) {
       seen = cur.you.at.join(',');
       C.land();
     },
-    /** Take you back to the shown position (a WASD walk the rules refused). */
-    home() {
-      if (avatar && cur && cur.you && cur.you.at) avatar.setTarget(cur.you.at, null, { tail: cur.you.inside || [] });
+    /** Take you back to the shown position (a WASD walk the rules refused) — along `route` (map points: MapView's road back) when given. */
+    home(route) {
+      if (avatar && cur && cur.you && cur.you.at) avatar.setTarget(cur.you.at, route || null, { tail: cur.you.inside || [] });
     },
     /** The frame's numbers for the perf overlay (PerfHUD): fps, ms, JS ms (update, draw submit, labels), calls, tris, render scale, VRMs, blocks. */
     perf() {

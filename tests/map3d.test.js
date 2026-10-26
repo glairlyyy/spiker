@@ -819,6 +819,82 @@ test('map3d: transport — buses and the ferry on their timetable, stops and pie
   A.dispose();
 });
 
+// ---------- 2026-10-26: walks follow the drawn roads (out of the door onto the road's first point; up the overpass deck) ----------
+test('map3d: the avatar walks the road from its first point when it starts elsewhere (out of a door), and climbs the overpass deck as drawn', () => {
+  const THREE = require('three'),
+    { createAvatar, deckChains, deckLift } = require('../js/map3d/avatar3d.mjs'),
+    { DECK } = require('../js/map3d/town3d.mjs');
+  // inside at [0, 20], the door at [0, 10], the road: its node [10, 10] → [10, 60]: never the diagonal door → [10, 60]
+  const A = createAvatar(new THREE.Scene());
+  A.snap([0, 20]);
+  A.setTarget(
+    [10, 60],
+    [
+      [10, 10],
+      [10, 60]
+    ],
+    { head: [[0, 10]] }
+  );
+  let off = 0;
+  for (let i = 0; i < 400 && A.busy(); i++) {
+    A.tick(0.05, () => 0);
+    const [x, z] = A.pos().map(v => v * 2); // (world m → map units)
+    if (!(Math.abs(x) < 1e-6 || Math.abs(z - 10) < 1e-6 || Math.abs(x - 10) < 1e-6)) off++;
+  }
+  eq(off, 0, 'every step on the door leg, the door → node leg or the road');
+  eq(A.pos().join(','), '5,30', 'arrived');
+  // the deck: chained like town3d's buildOverpass, 0 at its ends, DECK.up (+ 0.25) along the middle, only on its spans
+  const roads = [
+      {
+        kind: 'main',
+        pts: [
+          [0, 0],
+          [100, 0]
+        ]
+      },
+      {
+        kind: 'overpass',
+        pts: [
+          [100, 0],
+          [300, 0]
+        ]
+      },
+      {
+        kind: 'overpass',
+        pts: [
+          [300, 0],
+          [500, 0]
+        ]
+      }
+    ],
+    C = deckChains(roads),
+    W = p => [p[0] / 2, p[1] / 2];
+  eq(C.length, 1, 'one chain');
+  eq(C[0].L, 200, '200 m long');
+  eq(deckLift(C, W([100, 0]), W([300, 0]), 50, 0), 0, 'at its end: the ground');
+  eq(deckLift(C, W([100, 0]), W([300, 0]), 150, 0), DECK.up + 0.25, 'along the middle: the deck');
+  eq(deckLift(C, W([300, 0]), W([100, 0]), 150, 0), DECK.up + 0.25, 'either way along it');
+  eq(deckLift(C, W([0, 0]), W([100, 0]), 30, 0), 0, 'another road: none');
+  const B = createAvatar(new THREE.Scene());
+  B.deck(roads);
+  B.snap([0, 0]);
+  B.setTarget(
+    [500, 0],
+    [
+      [0, 0],
+      [100, 0],
+      [300, 0],
+      [500, 0]
+    ]
+  );
+  let top = 0;
+  for (let i = 0; i < 400 && B.busy(); i++) (B.tick(0.05, () => 0), (top = Math.max(top, B.lift())));
+  assert(top > DECK.up, `the walk climbs onto the deck (${top.toFixed(2)} m)`);
+  eq(B.lift(), 0, 'and down at its end');
+  A.dispose();
+  B.dispose();
+});
+
 // ---------- T-364: street level streams the near blocks (spec §4.37 6 Streaming) ----------
 test('map3d streaming: the block grid, and the manager prepares the near blocks across frames, shows the ready part (walking never waits; an action prepares with the larger budget)', () => {
   const { blockGrid, createStream, STREAM } = require('../js/map3d/stream3d.mjs'),
