@@ -31,9 +31,12 @@ import {
   dress,
   wholeVRM,
   releaseVRM,
+  warmVRM,
   MODEL_URL,
   MAIN_URL
 } from '../render3d/players3d.mjs';
+import { LOOK_CTX } from './look3d.mjs';
+import { smoothDt } from './mapcam3d.mjs';
 import { STAND, READY, locoPose, mix } from '../render3d/poses3d.mjs';
 import { BLOCK, SIT, shadowPart, setOutline } from './people3d.mjs';
 import { toWorld, clamp, wrap, smooth } from './geo3d.mjs';
@@ -304,8 +307,12 @@ export function createAvatar(scene, opts = {}) {
       if (dead) return releaseVRM(p.vrm);
       if (opts.kit) dress(p.vrm, opts.kit);
       p.base = p.scale;
-      pend = p;
-      adopt();
+      // (pacing 2026-10-27: textures uploaded and programs compiled before the model replaces the capsule)
+      return warmVRM(p.root, LOOK_CTX).then(() => {
+        if (dead) return releaseVRM(p.vrm);
+        pend = p;
+        adopt();
+      });
     })
     .catch(e => console.warn('3D map: the player model failed to load — keeping the marker.', e && e.message ? e.message : e));
 
@@ -425,6 +432,9 @@ export function createAvatar(scene, opts = {}) {
     /** Drawn and posed this frame (the last tick's LOD): the perf overlay's VRM count. */
     drawn: () => !!pl && pl.root.visible,
     tick(dt, heightAt, view = null) {
+      // (at street level: one long frame's time spread over the next few — no jerk; the map keeps the raw time)
+      if (view && S.life > 0) dt = smoothDt(S.dts || (S.dts = {}), dt);
+      else if (S.dts) S.dts.debt = 0;
       const W = S.walk;
       if (!S.drive) S.drv += dt;
       lift = 0; // (set below while a walk / ride runs along the overpass)

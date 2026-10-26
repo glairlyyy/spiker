@@ -1408,8 +1408,8 @@ test('map3d: street view polish (2026-10-26) — a tight night glow, props dropp
   assert(GLOW.hemi < LOOK.hemi[1], 'a darker night sky light at street level');
   const night = GRADE[0];
   assert(night.lift[2] <= 0.05 && night.con >= 1.1, 'night: deep darks (a small blue lift), more contrast — not milky');
-  // the painted sky never keeps an old hour: a jump re-bakes the whole cube at once, a moved haze re-bakes it
-  assert(PSKY.jump > PSKY.moved && PSKY.jump <= 0.05 && PSKY.hazed > 0 && PSKY.hazed < 0.1, 'sky re-bake triggers');
+  // the painted sky is a dome drawn each frame from the hour's keys (2026-10-27): no bake to keep an old hour
+  assert(PSKY.drift > 0 && PSKY.jump === undefined && PSKY.n === undefined, 'no cube bake settings left');
   // props: never dithered; dropped whole at the lens or across the camera → you line (not its last metre)
   const sh = () => ({
       uniforms: {},
@@ -1632,4 +1632,101 @@ test('map3d: Auto on a laptop GPU (owner 2026-10-26) — one post pass, the fade
   );
   const av = fs.readFileSync(require.resolve('../js/map3d/avatar3d.mjs'), 'utf8');
   assert(/setOutline\(pl\.root, !view \|\| view\.outline !== false\)/.test(av), 'avatars: outlines by the view (you: always)');
+});
+
+test('map3d: pacing B (owner 2026-10-27) — no reallocation for the render scale, throttled sky / shadows, warmed figures, tilt', () => {
+  const fs = require('fs'),
+    THREE = require('three'),
+    L = require('../js/map3d/look3d.mjs'),
+    C = require('../js/map3d/mapcam3d.mjs'),
+    src = fs.readFileSync(require.resolve('../js/map3d/look3d.mjs'), 'utf8');
+  // the dynamic resolution is a viewport inside the full-size targets: any factor keeps the target, only the drawn part changes
+  const V = L.viewScale(1600, 900, 0.55);
+  eq(`${V.w}x${V.h}`, '880x495', 'the drawn part');
+  assert(Math.abs(V.u - 0.55) < 1e-9 && Math.abs(V.v - 0.55) < 1e-9, 'its share (the Finish / high pass read it)');
+  eq(L.viewScale(1600, 900, 1).w, 1600, 'factor 1: the whole target');
+  assert(
+    /const fxaaSize = \(\) => \{[\s\S]*r\.viewport\.set\(0, 0, V\.w, V\.h\)/.test(src) &&
+      /if \(on && composer\) fxaaSize\(\);\s*else resize\(w, h\);/.test(src),
+    'a scale step on the detailed look sets viewports, not sizes'
+  );
+  assert(/t\.width !== Math\.round\(w \* pr\)/.test(src), 'the targets re-size only when the canvas / setting does');
+  // …and it steps with hysteresis: two slow seconds down, three quick ones up, never under the floor
+  const D = L.LOOK.dyn,
+    S = { res: 1 };
+  S.res = L.resStep(S, 40, 0.7, false, D);
+  eq(S.res, 1, 'one slow second: hold');
+  S.res = L.resStep(S, 40, 0.7, false, D);
+  eq(S.res, 0.95, 'two: a step down');
+  S.res = L.resStep(S, 10, 0.7, false, D);
+  S.res = L.resStep(S, 10, 0.7, false, D);
+  eq(S.res, 0.95, 'two quick: hold');
+  S.res = L.resStep(S, 10, 0.7, false, D);
+  eq(S.res, 1, 'three: back up');
+  eq(L.resStep({ res: 0.8 }, 90, 0.7, true, D), 0.7, 'dire: at once, to the floor');
+  // the sky: the env cube is baked a face a frame into one target, PMREM into the same env target; the street sky is a dome
+  assert(L.LOOK.sky.every >= 1 && L.LOOK.sky.moved >= 0.03, 'env bakes: at most every second, after ~7 game minutes');
+  assert(/pmrem\.fromCubemap\(envCube\.texture, envRT\)/.test(src) && !/fromScene\(/.test(src), 'no target made per bake');
+  assert(
+    !/CubeCamera\(0\.1, 100/.test(src) && /p\.w \* 0\.999999, p\.w/.test(src),
+    'the painted sky: a dome at the far plane, no cube camera'
+  );
+  // shadows: due only on a change (sun turned, target moved a texel, box / size, a caster signature, dirty, max age)
+  const G = { ...L.SHADOW_GATE, dirty: false },
+    last = { dir: [0, 1, 0], tgt: [0, 0, 0], box: 40, size: 2048, sig: 5 },
+    cur = (o = {}) => ({ dir: [0, 1, 0], tgt: [0, 0, 0], box: 40, size: 2048, sig: 5, age: 0.1, ...o });
+  assert(!L.shadowDue(G, last, cur()), 'nothing changed: skipped');
+  assert(L.shadowDue(G, last, cur({ sig: 6 })), 'a caster moved');
+  assert(L.shadowDue(G, last, cur({ tgt: [0.04, 0, 0] })), 'the target moved a texel');
+  assert(
+    !L.shadowDue(G, last, cur({ dir: [0.001, 1, 0] })) && L.shadowDue(G, last, cur({ dir: [0.01, 1, 0] })),
+    'the sun: past its threshold only'
+  );
+  assert(
+    L.shadowDue(G, last, cur({ age: G.max })) && L.shadowDue({ ...G, dirty: true }, last, cur()) && L.shadowDue(G, null, cur()),
+    'max age, dirty, first'
+  );
+  assert(L.shadowDue(G, last, cur({ size: 1024 })) && L.shadowDue(G, last, cur({ box: 41 })), 'box / map size');
+  // the target snaps to whole texels across the light: a small walk moves it in texel steps, the same spot gives the same target
+  const Ld = new THREE.Vector3(0.5, 0.8, 0.3).normalize(),
+    a = L.snapTarget(new THREE.Vector3(10.013, 0, 5.002), Ld, 0.04),
+    // (a, b, c below: b = a nudged well under half a texel)
+    b = L.snapTarget(a.clone().add(new THREE.Vector3(0.006, 0, -0.004)), Ld, 0.04),
+    c = L.snapTarget(a.clone(), Ld, 0.04);
+  assert(a.distanceTo(b) < 1e-9, 'a sub-texel move: the same target');
+  assert(a.distanceTo(c) < 1e-9, 'stable (snapping twice changes nothing)');
+  const dv = a.clone().sub(new THREE.Vector3(10.013, 0, 5.002)),
+    dl = dv.dot(Ld);
+  assert(
+    dv.addScaledVector(Ld, -dl).length() <= 0.04 * 0.75 && Math.abs(dl) <= 0.5 + 1e-9,
+    'within a texel across the light (½ m along it)'
+  );
+  // figures are warmed (textures uploaded, programs compiled) before they show
+  const P3 = fs.readFileSync(require.resolve('../js/map3d/people3d.mjs'), 'utf8'),
+    A3 = fs.readFileSync(require.resolve('../js/map3d/avatar3d.mjs'), 'utf8');
+  assert(
+    /warmVRM\(pl\.root, LOOK_CTX\)\.then\(\(\) => \(slot\.warm = true\)\)/.test(P3) && /q\.id === null && q\.warm/.test(P3),
+    'people: a slot takes a person once warm'
+  );
+  assert(/return warmVRM\(p\.root, LOOK_CTX\)\.then/.test(A3), 'you / story figures: warmed before adopt');
+  // smoothed frame time: a hitch is paid out over the next frames, the total kept
+  const T = {};
+  let sum = 0;
+  for (let i = 0; i < 60; i++) sum += C.smoothDt(T, 1 / 60);
+  const out = [C.smoothDt(T, 0.1)];
+  for (let i = 0; i < 30; i++) out.push(C.smoothDt(T, 1 / 60));
+  assert(out[0] < 0.03, `the long frame is not one jump (${out[0].toFixed(3)} s)`);
+  const tot = out.reduce((x, y) => x + y, 0);
+  assert(Math.abs(tot + sum - (60 / 60 + 0.1 + 30 / 60)) < 1e-9, 'no time lost');
+  // the street tilt: clamped −10° … +35°, the framing unchanged at 0, the camera never under the ground
+  eq(C.clampTilt(1), C.TILT.max, 'up: clamped');
+  eq(C.clampTilt(-1), C.TILT.min, 'down: clamped');
+  assert(Math.abs(C.TILT.max - (35 * Math.PI) / 180) < 1e-9 && Math.abs(C.TILT.min + (10 * Math.PI) / 180) < 1e-9, '−10° … +35°');
+  const p0 = C.tiltPose(C.STREET.pitch, 0, 1);
+  assert(p0.orbit === C.STREET.pitch && p0.near === 1 && p0.lensK === 1, 'no tilt: the framing as before');
+  const pu = C.tiltPose(C.STREET.pitch, 9, 1);
+  assert(pu.aim > 0.35 && pu.near === C.TILT.near && pu.lensK === 0, 'looking up: the sky, closer, no lens shift');
+  eq(C.tiltPose(C.STREET.pitch, 0.5, 0).orbit, C.STREET.pitch, 'off street level: no tilt');
+  eq(C.overGround(-3, 2), 2 + C.STREET.ground, 'under the terrain: lifted over it');
+  eq(C.overGround(5, 2), 5, 'over it: kept');
 });

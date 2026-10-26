@@ -153,6 +153,67 @@ export function releaseVRM(vrm) {
   });
 }
 
+/**
+ * Warm a figure before it is first drawn (pacing, owner 2026-10-27): every texture its materials use uploaded now
+ * (renderer.initTexture) and its programs compiled for the buffer it will draw into (renderer.compileAsync: the driver links in
+ * parallel where KHR_parallel_shader_compile exists) — so the frame that shows it pays neither. ctx = { renderer, scene, cam,
+ * target() } (the map's look3d LOOK_CTX); no renderer → resolves at once (matches keep their own path).
+ */
+export function warmVRM(root, ctx) {
+  const r = ctx && ctx.renderer;
+  if (!r || !root) return Promise.resolve(false);
+  const seen = new Set(),
+    list = [],
+    up = t => {
+      if (!t || !t.isTexture || seen.has(t) || !(t.image && (t.image.width > 0 || t.image.videoWidth > 0))) return;
+      seen.add(t);
+      list.push(t);
+    };
+  root.traverse(o => {
+    if (!o.material) return;
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+      for (const k in m) up(m[k]);
+      if (m.uniforms) for (const k in m.uniforms) up(m.uniforms[k] && m.uniforms[k].value);
+    }
+  });
+  // one texture upload per idle slice (a 2048² atlas is several ms), then the programs in a slice of their own
+  return new Promise(done => {
+    const next = () => {
+      if (list.length) {
+        try {
+          r.initTexture(list.shift());
+        } catch (e) {
+          /* (uploaded on first draw as before) */
+        }
+        return idle(next);
+      }
+      if (!r.compileAsync || !ctx.scene || !ctx.cam) return done(true);
+      const prev = r.getRenderTarget(),
+        rt = ctx.target ? ctx.target() : null,
+        vis = root.visible;
+      let p;
+      try {
+        if (rt) r.setRenderTarget(rt);
+        root.visible = true; // (compile lists lights with traverseVisible; the figure itself by traverse — shown or not)
+        p = r.compileAsync(root, ctx.cam, ctx.scene);
+      } catch (e) {
+        p = null;
+      } finally {
+        root.visible = vis;
+        r.setRenderTarget(prev);
+      }
+      if (!p) return done(false);
+      p.then(
+        () => done(true),
+        () => done(false)
+      );
+    };
+    idle(next);
+  });
+}
+const idleP = () => new Promise(ok => idle(ok));
+/** Run fn in an idle moment (between frames; ≤ 300 ms later), else on the next task. */
+const idle = fn => (typeof requestIdleCallback === 'function' ? requestIdleCallback(() => fn(), { timeout: 300 }) : setTimeout(fn, 0));
 /** Team kit, hair, skin and eye colour on the shared model (the shirt texture is white, so colours multiply cleanly). */
 export function dress(vrm, kit) {
   const col = c => new THREE.Color(c);
@@ -265,9 +326,13 @@ export async function makeVRM(buf, height) {
   }
   const vrm = gltf.userData.vrm;
   if (!vrm) throw new Error('not a VRM model');
+  // (pacing 2026-10-27: the heavy synchronous steps each in an idle moment of their own — not all in one frame)
+  await idleP();
   if (vrm.meta && vrm.meta.metaVersion === '0') VRMUtils.rotateVRM0(vrm); // VRM 0.x faces −Z: turn it like a VRM 1 model
   VRMUtils.removeUnnecessaryVertices(gltf.scene);
+  await idleP();
   if (VRMUtils.combineSkeletons) VRMUtils.combineSkeletons(gltf.scene);
+  await idleP();
   const meshes = [];
   vrm.scene.traverse(o => {
     if (o.isMesh) {
@@ -426,7 +491,8 @@ export function smoothBones(pl, dt, k) {
     if (!node) continue;
     const prev = pl.prev.get(n);
     if (prev && a < 1) node.quaternion.copy(prev.slerp(node.quaternion, a));
-    pl.prev.set(n, node.quaternion.clone());
+    if (prev) prev.copy(node.quaternion);
+    else pl.prev.set(n, node.quaternion.clone()); // (once per bone: no allocation a frame)
   }
 }
 

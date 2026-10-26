@@ -826,8 +826,9 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   setting's floor, like r3d `adaptRes`; under ~15 fps steps of 0.15 down to `rescue` 0.45 — what keeps headless swiftshader QA
   moving). Dev / QA: `setView({ x, z, d })`, `holdClock(tod | null)`, `bench(n)` (ms a frame, waited for). `renderer.info.autoReset` is off: `draw()` resets it, so `info()` counts the whole frame.
 - **Sky**: three's `Sky` (Preetham; its sun disc removed — the directional light is the sun) at the clock's real sun (`tod`,
-  under the horizon at night), baked to `scene.environment` with PMREM when the sun has moved (≥ `LOOK.sky.moved`, ≤ every
-  0.25 s); `environmentIntensity` by the sun's height. The map camera never sees the sky: it is the light and the reflections.
+  under the horizon at night), drawn into `envCube` (a `WebGLCubeRenderTarget` made once, `envCam` CubeCamera) one face a frame
+  (all six on the first bake), then `pmrem.fromCubemap(envCube.texture, envRT)` into the same env target (no allocation) when the
+  sun has moved (≥ `LOOK.sky.moved` 0.03 rad, ≤ every `every` 1 s; `info().gpuB.envBakes`); `environmentIntensity` by the sun's height. The map camera never sees the sky: it is the light and the reflections.
   `skyAt` still drives the sun, the hemisphere (× `LOOK.hemi`) and the night `lit`.
 - **Terrain**: the same mesh; `buildTerrain` adds `gnd` (sand, rock, field rows, wet), `gdir` (rows' direction; none = contour
   rows), `gpav` (paving) per vertex, and `shore` (RGBA bytes per vertex: height −6…+2 m, distance out to sea 0…60 m). The
@@ -847,7 +848,33 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
 - **Resolution**: `look3d` `basePR()` = min(dpr, 2) within the setting's pixel budget (`GFX[gfx].px3d`, as r3d `syncSize`), × the
   dynamic factor `dyn.res` (`adapt`, every look incl. Fast; floors `LOOK.dyn.floor` / `rescue`). High never lowers `res`: it
   sheds instead (`dyn.shed` 1 = GTAO off, 2 = the 2048 shadow map), one step a slow second, back one after `LOOK.dyn.back` quick seconds.
-  `info()` adds `scale` (budget × res) and `shed`.
+  `info()` adds `scale` (budget × res) and `shed`. **No reallocation** (pacing, owner 2026-10-27): on the detailed look the canvas and the post's
+  targets stay at `basePR()`; `res` is a viewport — `fxaaSize()` sets both composer targets' `viewport` / `scissor` (+ `scissorTest`)
+  to `viewScale(W, H, res)` (pure), `VS` (uVs: the share) into the Finish pass (`fsTap` reads `min(p · uVs, uVc)`, FXAA's `resolution`
+  = one scene texel) and the bloom's high-pass vertex shader (`vUv = uv · uVs`: the bloom targets keep the whole picture), `VIEW_PX.k`
+  = res for screen-size shaders (layers3d's night points). `sizeAll` re-sizes only when the canvas or the setting changes
+  (`info().gpuB.allocs`). Fast still scales the canvas. Steps: `resStep` (pure) — `LOOK.dyn.downN` 2 slow / `upN` 3 quick seconds in
+  a row; the measure is the GPU's ms (timer query) when the browser has it, else the frame EMA (a 60-Hz vsync interval never read
+  "quick" before). `LOOK_CTX` { renderer, scene, cam, target() } (set by richLook) for warming figures.
+- **Shadow gating** (pacing 2026-10-27): look `step` snaps the sun's target to whole shadow texels across the light and 1 m along it
+  (`snapTarget`, pure; the sun re-placed from it), so a walk moves the shadow camera in texel steps (no swimming edges). `render(timed)`
+  updates the world matrices itself, then `shadowGate()` → `renderer.shadowMap.needsUpdate` with `autoUpdate` off for that render only
+  (`scene.matrixWorldAutoUpdate` off meanwhile; both restored): due (`shadowDue`, pure, `SHADOW_GATE`) when the sun turned `sun`
+  0.002 rad, the snapped target / box / map size changed, a caster's signature changed, `dirty`, or `max` 2 s passed. Casters: the
+  visible `castShadow` meshes, re-listed every `scan` 0.5 s or when the scene's children / geometry count changes; per frame each
+  one inside the shadow box (its bounds on the light's right / up axes; instanced meshes always) adds world matrix, instance-matrix
+  version and count, geometry id / position / index version / draw range, every 5th bone (skinned) and its parents' visibility. The
+  probe's timed draws (`render(false)`) and the Fast look's plain render update every frame as before. `info().gpuB` { allocs,
+  envBakes, shUpd, shSkip, casters }.
+- **Figures warmed** (pacing 2026-10-27): players3d `warmVRM(root, ctx)` → `renderer.initTexture` on every material texture (own fields
+  and MToon uniforms; one per idle slice, `requestIdleCallback` ≤ 300 ms, else a task) and then `renderer.compileAsync(root, cam, scene)`
+  in a slice of its own, with the post's target bound (the programs for the buffer they
+  draw into; KHR_parallel_shader_compile where present). people3d dresses a new pool slot once at build (the grey hair / iris
+  textures made then) and warms it; a slot takes a person only once `warm`. avatar3d warms you / a story figure before `adopt`.
+  `makeVRM` runs its heavy synchronous steps (rotateVRM0 + removeUnnecessaryVertices, combineSkeletons, the rest) each after an idle
+  wait (`idleP`): a figure's load no longer lands in one frame. `smoothBones` reuses its quaternions (no allocation a pose). **Smoothed dt**: mapcam3d `smoothDt(S, dt)` (pure) pays a long
+  frame's time out over the next frames (≤ 1.25 × the running mean + 1 ms each, the total kept; > 0.2 s backlog at once) — the
+  camera's `step` and the avatars' `tick` (given a view) at street level only (s > 0; the map keeps the raw time).
 - **VRM level of detail**: map3d builds `lodView` { frustum (last frame's camera), cam, px = ch ÷ 2 tan(fov / 2), shadows } and
   passes it to every avatar's `tick` (you and the story figures; VRM meshes have `frustumCulled = false`, so the test is the
   avatar's own sphere): off screen → `root.visible = false`, no pose; by height on screen (`AV_LOD`): < 24 px posed every 4th frame,
@@ -966,6 +993,12 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
 - **District** — every district (T-361): `MapView.zone()` adds `model.street = MapView.ZONE` (`{ all: true }`: all the land);
   mapcam3d `zoneOf` → `{ all: true }` (`zoneDist` −∞, `inZone` true) — a capsule `{ a, b, r }` (map units) still works (tests). WASD's
   lot grid then holds every lot and facility (built once per lots array / zone).
+- **Tilt** (owner 2026-10-27) — mapcam3d `tilt` (rad, + = up; `TILT` −10° … +35°, `clampTilt`): a right / middle drag's vertical (any
+  drag at s > 0.5; up = look up, `TILT.drag` rad/px), Z / PageUp, X / PageDown (`TILT_KEYS`, `TILT.key` rad/s). `tiltPose(pitch, t, s)`
+  (pure) → orbit = pitch − t·s (the camera's angle over your middle), near (looking up the distance × → `TILT.near` 0.6), lensK (the lens
+  shift eases off looking up). The camera is kept `STREET.ground` 0.6 m over the terrain (`overGround`, pure); held there while looking
+  up, it looks where the unheld camera would. Walking with no tilt input for `TILT.idle` 3 s it eases back (`back`); standing it stays.
+  s = 0 resets it. `tilt()` / `setTilt(v)` (QA).
 - **Camera path** — mapcam3d `streetPose(d)` (pure, tested): above `DIST[0]` (25 m) today's view; below it s = smoothstep((25 − d) /
   (25 − `STREET.d1` 7.2)), pitch 55° → `STREET.pitch` 12°, the target rising to your middle (`STREET.head` 0.95 m) and pulled onto your
   avatar (k by s), so at d1 the camera is ~7 m behind, ~2.4 m above the ground (eye level). T-369: the lens widens 40° → 50°
@@ -1046,12 +1079,14 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   0 on Fast and the map.
 - **Dusk and night (T-373, spec §4.44)** — look3d. Sky: `PSKY` keys (on `GRADE`'s times; `hor` = the grade's haze) → `paintAt(tod, out)`
   (zenith / horizon gradient, cloud lit / shade tones, sun glow, cover, stars + a painted moon at `SKY.moon`); `PSKY_FRAG` on a
-  BackSide sphere baked into a `WebGLCubeRenderTarget` (`PSKY.n` 256, half float) by a `CubeCamera`'s six cameras — all six on the first
-  bake and a jump of the hour > `PSKY.jump` (all six at once: no seam), then one face a frame when the hour moved `PSKY.moved`, the clouds
-  drifted (`drift`) or the fog colour moved `hazed`, at most every `every` s; the lowest band takes `scene.fog.color` (map3d sets it
-  from `look.haze(tod)`, this frame's hour) so the haze meets it; colours × `PSKY.gain` (day → night by `lit`). Clouds: a code-made two-octave noise
-  texture projected on a plane overhead, crisp edge, shaded middle, lit toward the sun. `look.envTex()` returns the painted cube while
-  `paintOn` (Auto / High, st > 0.1), else the PMREM; the PMREM still lights. Glow: `STREET_FX.uFdGlow` × every patched material's
+  sphere drawn as a dome every frame (owner 2026-10-27: no cube bakes in play): vertex `p.xyww` (the far plane, rotation only — the
+  lens shift is in the projection), `renderOrder` 1e9 with depthTest on / depthWrite off (the last opaque draw: only the pixels nothing
+  covered are shaded), `onBeforeRender` empties its draw range under an `overrideMaterial` (AO's normal pass); shown while `paintOn`;
+  uniforms each frame from `paintAt` (no allocation), the clouds' `uOff` drifting continuously (`PSKY.drift`); stars a soft round
+  dot per cell; the lowest band takes `scene.fog.color` (map3d sets it from `look.haze(tod)`, this frame's hour) so the haze meets it; colours × `PSKY.gain` (day → night by `lit`). Clouds: a code-made two-octave noise
+  texture projected on a plane overhead, crisp edge, shaded middle, lit toward the sun (uploaded at once: `initTex`). `look.envTex()`
+  returns null while `paintOn` (Auto / High, st > 0.1: map3d's background colour is cleared, the dome draws over), else the PMREM; the
+  PMREM still lights. Glow: `STREET_FX.uFdGlow` × every patched material's
   `totalEmissiveRadiance` (streetMat, before `aomap_fragment`) = 1 + sg·max(0, `GLOW.k`·smooth(`GLOW.lit`, lit) / lit − 1), sg =
   smooth(0.3, 0.9, st) on Auto / High — lit panes, signs (blades too), rooms, far windows reach ~`k` in the HDR buffer; the bloom's
   threshold → `GLOW.thr` (above any lit surface), strength / radius by sg, its mip weights → `GLOW.mips` (the wide mips nearly off:

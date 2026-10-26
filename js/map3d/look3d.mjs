@@ -84,13 +84,26 @@ export const LOOK = {
   samples: 4, // MSAA samples of the post's render target (the canvas's own antialias is bypassed)
   env: 0.3, // the sky's light on materials at noon (× the sun's height; none at night)
   hemi: [0.7, 1.6], // the clock's hemisphere light × this by day → at night (by day the sky adds the rest)
-  sky: { turbidity: 5, rayleigh: 1.4, mie: 0.004, g: 0.8, every: 0.25, moved: 0.015 },
+  // (pacing 2026-10-27: re-baked at most every `every` s when the sun moved `moved` rad (~7 game minutes) — the cube's six faces
+  // one a frame into a target made once, then one PMREM pass into the same env target: no allocation, no 6-face frame)
+  sky: { turbidity: 5, rayleigh: 1.4, mie: 0.004, g: 0.8, every: 1, moved: 0.03 },
   bloom: { strength: 0.85, radius: 0.5, day: 3, night: 0.8 }, // threshold from day (nothing blooms) to night
   shadow: { radius: 3, box: [40, 360], k: 0.85, map: 2048, mapHi: 4096 },
   // dynamic resolution: ms (frame-time average) to step down / up; far too slow (`dire`, < ~15 fps) steps faster to `rescue`.
   // Performance (owner, 2026-10-25): every setting (Fast too) is capped to its pixel budget (GFX px3d, as in matches) before
   // the factor; High keeps its resolution and sheds instead (`shed`: 1 = no AO, 2 = the 2048 shadow map), back after `back` quick s.
-  dyn: { floor: { auto: 0.7, high: 1, fast: 0.55 }, slow: 24, quick: 15, dire: 66, rescue: { auto: 0.45, high: 1, fast: 0.45 }, back: 5 },
+  // Pacing (2026-10-27): the detailed look never reallocates for the factor — the post's targets stay at the full size and the scene
+  // draws into a scaled viewport (`viewScale`); a step needs `downN` slow / `upN` quick ticks in a row (the GPU's ms when timed).
+  dyn: {
+    floor: { auto: 0.7, high: 1, fast: 0.55 },
+    slow: 24,
+    quick: 15,
+    dire: 66,
+    rescue: { auto: 0.45, high: 1, fast: 0.45 },
+    back: 5,
+    downN: 2,
+    upN: 3
+  },
   sea: { deep: '#0d3b5e', mid: '#176b8a', shallow: '#3fb2ad', foam: '#f4f8f6', wave: 0.32 },
   detail: 256 // generated texture size (px)
 };
@@ -310,7 +323,9 @@ export function gradeAt(tod, out) {
  * Street level's painted sky (T-373, spec §4.44) by time of day (the grade's keys and times; wrapping): zen / hor = the gradient
  * (hor = the grade's haze: the skyline's haze meets it), cloud / shade = the clouds' lit and shaded tones, sun = the glow round
  * the sun, cover (0–1), star (the stars and the moon). Colours are the display intent before the tone mapping; `gain` × them.
- * Baked into a small cube (`n` px a face, one face a frame while it re-bakes, at most every `every` s) — no per-frame cost.
+ * Drawn as a sky dome (owner 2026-10-27: "add a sky render — it can be just an image"): one full-screen-at-most pass behind
+ * everything (depth = the far plane: only the sky's own pixels are shaded), its colours the hour's keys blended each frame,
+ * the clouds a tiling noise image drifting by UV offset (`drift`) — no cube camera, no bakes during play.
  */
 export const PSKY = (() => {
   const night = { zen: '#070c26', hor: GRADE[0].haze, cloud: '#34406e', shade: '#161e40', sun: '#000000', cover: 0.36, star: 1 },
@@ -319,12 +334,7 @@ export const PSKY = (() => {
     dusk = { zen: '#3a5aa6', hor: GRADE[4].haze, cloud: '#ffcaa0', shade: '#a2628c', sun: '#ff8448', cover: 0.42, star: 0 },
     glow = { zen: '#22245c', hor: GRADE[5].haze, cloud: '#d8869f', shade: '#4a376c', sun: '#c0506a', cover: 0.4, star: 0.35 };
   return {
-    n: 256,
-    every: 1,
-    moved: 0.001, // re-bake when the time of day moved this far (or the clouds drifted)
-    drift: 0.0008, // the clouds' drift (texture units a second of map time)
-    jump: 0.02, // the hour moved this far at once (~30 min: a skip, a fast-forward's end): re-bake the whole cube in one frame
-    hazed: 0.01, // re-bake when the haze colour (the fog's) moved this far (sum of |Δrgb|)
+    drift: 0.0008, // the clouds' drift (texture units a second of map time; continuous)
     gain: { day: 0.62, night: 0.3 }, // (night: the exposure rises with the lights — the sky stays dark)
     keys: [
       { t: GRADE[0].t, ...night },
@@ -368,8 +378,9 @@ void main() {
   float sd = max(dot(d, uSun), 0.0);
   c += uSunC * (0.22 * pow(sd, 4.0) + 0.45 * pow(sd, 40.0)) * smoothstep(-0.12, 0.04, h);
   if (uStar > 0.0) { // stars and a painted moon
-    vec3 sc = floor(d * 150.0);
-    c += vec3(0.5, 0.55, 0.65) * uStar * step(0.998, pkH(sc)) * (0.35 + 0.65 * pkH(sc + 1.7)) * smoothstep(0.08, 0.35, h);
+    vec3 sc = floor(d * 150.0), sf = fract(d * 150.0) - 0.5; // (drawn per pixel: a soft round dot in its cell, not a square)
+    c += vec3(0.5, 0.55, 0.65) * uStar * step(0.998, pkH(sc)) * (0.35 + 0.65 * pkH(sc + 1.7)) * smoothstep(0.08, 0.35, h)
+      * 1.4 * (1.0 - smoothstep(0.3, 0.5, length(sf)));
     float md = dot(d, uMoon);
     c += vec3(0.16, 0.2, 0.34) * uStar * pow(max(md, 0.0), 220.0);
     c = mix(c, vec3(0.92, 0.9, 0.78), uStar * smoothstep(0.99925, 0.9995, md));
@@ -415,15 +426,17 @@ export const FinishShader = {
     uLift: { value: new THREE.Vector3() },
     uSat: { value: 1 },
     uCon: { value: 1 },
-    uK: { value: 0 }
+    uK: { value: 0 },
+    uVs: { value: new THREE.Vector2(1, 1) }, // (the scene's viewport in its target: the dynamic resolution, no reallocation)
+    uVc: { value: new THREE.Vector2(1, 1) } // (the last texel centre inside it: taps never read past the drawn part)
   },
   vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: `precision highp float;
-  uniform sampler2D tDiffuse, tBloom; uniform vec2 resolution; uniform float uBloom, uAA, uSat, uCon, uK; uniform vec3 uGain, uLift;
+  uniform sampler2D tDiffuse, tBloom; uniform vec2 resolution, uVs, uVc; uniform float uBloom, uAA, uSat, uCon, uK; uniform vec3 uGain, uLift;
   varying vec2 vUv;
   #include <tonemapping_pars_fragment>
   vec4 fsTap(vec2 p) {
-    vec4 c = texture2D(tDiffuse, p);
+    vec4 c = texture2D(tDiffuse, min(p * uVs, uVc));
     if (uBloom > 0.0) c.rgb += uBloom * texture2D(tBloom, p).rgb;
     #ifdef ACES_FILMIC_TONE_MAPPING
     c.rgb = ACESFilmicToneMapping(c.rgb);
@@ -478,6 +491,71 @@ export const AUTO = {
 export function basePixelRatio(dpr, gfx, w, h, Q) {
   const d = Math.min(dpr || 1, gfx === 'auto' ? AUTO.dpr : 2);
   return Q && Q.px3d ? d * Math.min(1, Math.sqrt(Q.px3d / Math.max(1, w * h * d * d))) : d;
+}
+/**
+ * The scaled viewport (pure, tested): a W × H target drawn at factor k → { w, h (px drawn), u, v (their share of the target), k }.
+ */
+export function viewScale(W, H, k) {
+  const w = Math.max(1, Math.min(W, Math.round(W * k))),
+    h = Math.max(1, Math.min(H, Math.round(H * k)));
+  return { w, h, u: w / W, v: h / H, k: Math.min(1, k) };
+}
+/** The dynamic factor now drawn (the scene's pixels per canvas pixel): screen-size shaders (the night layer's points) × it. */
+export const VIEW_PX = { k: 1 };
+/**
+ * One second's step of the dynamic resolution (pure, tested): ms = the measured frame (GPU ms when timed); down 0.05 after
+ * `downN` slow ticks in a row (dire: 0.15 at once), up 0.05 after `upN` quick ones; never under `floor`. S keeps the counts.
+ */
+export function resStep(S, ms, floor, dire, D = LOOK.dyn) {
+  let r = S.res;
+  if (ms > D.slow) ((S.upC = 0), (S.downC = (S.downC || 0) + 1));
+  else if (ms < D.quick) ((S.downC = 0), (S.upC = (S.upC || 0) + 1));
+  else S.downC = S.upC = 0;
+  if (r > floor && (dire || S.downC >= D.downN)) ((r = Math.max(floor, +(r - (dire ? 0.15 : 0.05)).toFixed(2))), (S.downC = 0));
+  else if (r < 1 && S.upC >= D.upN) ((r = Math.min(1, +(r + 0.05).toFixed(2))), (S.upC = 0));
+  return Math.max(r, floor);
+}
+/**
+ * Shadow-map updates (pacing, owner 2026-10-27): the map is re-drawn only when it would change — the sun turned `sun` rad, the
+ * shadow camera moved (its target snapped to whole shadow texels, so a walk moves it in texel steps and the edges don't swim),
+ * its box or map size changed, a shadow caster moved / showed / hid / was re-meshed (look's caster scan), `dirty` was set from
+ * outside, or `max` s passed. `n` = updates / skips so far (the perf numbers). The perf probe's timed draws always update.
+ */
+export const SHADOW_GATE = { dirty: true, sun: 0.002, max: 2, scan: 0.5, n: { upd: 0, skip: 0 } };
+/** Due (pure, tested): G the gate, L the last update's { dir, tgt, box, size, sig, age }, c this frame's (age = s since). */
+export function shadowDue(G, L, c) {
+  if (G.dirty || !L) return true;
+  if (c.age >= G.max || c.box !== L.box || c.size !== L.size || c.sig !== L.sig) return true;
+  if (c.tgt[0] !== L.tgt[0] || c.tgt[1] !== L.tgt[1] || c.tgt[2] !== L.tgt[2]) return true;
+  const d = c.dir,
+    e = L.dir;
+  return Math.hypot(d[0] - e[0], d[1] - e[1], d[2] - e[2]) > G.sun;
+}
+/**
+ * The shadow camera's target snapped to whole texels in the light's own frame (pure, tested): t (Vector3, changed in place) on
+ * the plane across the light direction L (unit, sun − target) rounded to `texel` m on its right / up axes (three's lookAt basis),
+ * and to `along` m along L (an orthographic map: that moves only its depth range).
+ */
+export function snapTarget(t, L, texel, along = 1) {
+  let rx = L.z,
+    rz = -L.x; // (right = up × L, up = +y; up' = L × right below)
+  const rl = Math.hypot(rx, rz) || 1;
+  rx /= rl;
+  rz /= rl;
+  const vx = L.y * rz,
+    vy = L.z * rx - L.x * rz,
+    vz = -L.y * rx,
+    vl = Math.hypot(vx, vy, vz) || 1,
+    a = t.x * rx + t.z * rz,
+    b = (t.x * vx + t.y * vy + t.z * vz) / vl,
+    c = t.x * L.x + t.y * L.y + t.z * L.z,
+    da = Math.round(a / texel) * texel - a,
+    db = Math.round(b / texel) * texel - b,
+    dc = Math.round(c / along) * along - c; // (along the light: only the depth range moves — coarse steps)
+  t.x += rx * da + (vx / vl) * db + L.x * dc;
+  t.y += (vy / vl) * db + L.y * dc;
+  t.z += rz * da + (vz / vl) * db + L.z * dc;
+  return t;
 }
 /** A fresh ladder state. */
 export const autoState = () => ({ step: 0, over: 0, under: 0, back: AUTO.back, t: 0, upAt: -1e9 });
@@ -710,6 +788,8 @@ export function streetMat(m) {
   };
   return true;
 }
+/** The map's renderer context for warming figures before they show (players3d warmVRM): set by richLook, cleared on dispose. */
+export const LOOK_CTX = { renderer: null, scene: null, cam: null, target: null };
 export function richLook(renderer, scene, cam, sun) {
   const U = { t: { value: 0 } }; // shared time uniform (s)
   let tex = null; // made on first use (the detailed look only)
@@ -874,34 +954,55 @@ export function richLook(renderer, scene, cam, sun) {
   sea.receiveShadow = true;
   sea.visible = false;
   scene.add(sea);
-  // ---- the sky (environment light and reflections)
+  // ---- the sky (environment light and reflections): three's Sky into a cube target made once, one face a frame, then one PMREM
+  // pass into the same env target (pacing 2026-10-27: fromScene allocated a new target every bake and drew six faces at once)
   const sky = new Sky(),
     skyScene = new THREE.Scene(),
     pmrem = new THREE.PMREMGenerator(renderer),
-    envDir = new THREE.Vector3(0, -1, 0);
+    envDir = new THREE.Vector3(0, -1, 0),
+    envCube = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType, generateMipmaps: false }),
+    envCam = new THREE.CubeCamera(1, 400, envCube);
   sky.material.fragmentShader = sky.material.fragmentShader.replace('vSunE * 19000.0', 'vSunE * 0.0'); // no sun disc: the light is the sun
   sky.scale.setScalar(100);
   sky.material.uniforms.turbidity.value = LOOK.sky.turbidity;
   sky.material.uniforms.rayleigh.value = LOOK.sky.rayleigh;
   sky.material.uniforms.mieCoefficient.value = LOOK.sky.mie;
   sky.material.uniforms.mieDirectionalG.value = LOOK.sky.g;
-  skyScene.add(sky);
+  skyScene.add(sky, envCam);
+  envCam.updateMatrixWorld();
   let envRT = null,
-    envAge = 99;
+    envAge = 99,
+    envFace = 6, // (< 6: a bake in progress, the next face to draw)
+    envBakes = 0;
+  const envFaces = n => {
+    const C = envCam;
+    if (C.coordinateSystem !== renderer.coordinateSystem) ((C.coordinateSystem = renderer.coordinateSystem), C.updateCoordinateSystem());
+    const rt0 = renderer.getRenderTarget(),
+      f0 = renderer.getActiveCubeFace(),
+      m0 = renderer.getActiveMipmapLevel();
+    for (const last = Math.min(6, envFace + n); envFace < last; envFace++) {
+      renderer.setRenderTarget(envCube, envFace);
+      renderer.render(skyScene, C.children[envFace]);
+    }
+    renderer.setRenderTarget(rt0, f0, m0);
+    if (envFace < 6) return;
+    envRT = pmrem.fromCubemap(envCube.texture, envRT); // (the same target after the first: no allocation)
+    envBakes++;
+    if (on) scene.environment = envRT.texture;
+  };
   const bakeSky = (dt, dir) => {
     envAge += dt;
+    if (envFace < 6) return envFaces(1);
     if (envRT && (envAge < LOOK.sky.every || dir.distanceTo(envDir) < LOOK.sky.moved)) return;
     sky.material.uniforms.sunPosition.value.copy(dir);
-    const rt = pmrem.fromScene(skyScene, 0, 1, 400);
-    if (envRT) envRT.dispose();
-    envRT = rt;
     envDir.copy(dir);
     envAge = 0;
-    if (on) scene.environment = rt.texture;
+    envFace = 0;
+    envFaces(envRT ? 1 : 6); // (the first bake at once; later ones a face a frame — the sun moved a few game minutes)
   };
-  // ---- street level's painted sky (T-373): the gradient and clouds by the hour, baked into a small cube (the background)
+  // ---- street level's painted sky (T-373; a dome since 2026-10-27): the gradient and clouds by the hour, drawn behind everything
   const P = { zen: new THREE.Color(), hor: new THREE.Color(), cloud: new THREE.Color(), shade: new THREE.Color(), sun: new THREE.Color() };
-  let pk = null; // { rt, cam, scene, mat, tex, face, tod, off, age, haze } once street level first shows it
+  let pk = null; // { mesh, mat, tex, ms } once street level first shows it
   const paintMake = () => {
     const n = 256,
       a = tileNoise(n, 5, 5, 21, 0.5),
@@ -909,12 +1010,10 @@ export function richLook(renderer, scene, cam, sun) {
       bytes = new Uint8Array(n * n * 4);
     for (let i = 0; i < n * n; i++) bytes.set([a[i] * 255, b[i] * 255, 0, 255], i * 4);
     const tex = dataTex(bytes, n),
-      rt = new THREE.WebGLCubeRenderTarget(PSKY.n, { type: THREE.HalfFloatType, generateMipmaps: false }),
-      cube = new THREE.CubeCamera(0.1, 100, rt),
       mat = new THREE.ShaderMaterial({
-        side: THREE.BackSide,
+        side: THREE.BackSide, // (seen from inside)
         depthWrite: false,
-        depthTest: false,
+        depthTest: true, // (at the far plane: only the pixels nothing else covered are shaded)
         uniforms: {
           ...Object.fromEntries(
             ['uZen', 'uHor', 'uHaze', 'uCl', 'uSh', 'uSunC', 'uSun', 'uMoon'].map(k => [k, { value: new THREE.Vector3() }])
@@ -925,62 +1024,50 @@ export function richLook(renderer, scene, cam, sun) {
           tCl: { value: tex }
         },
         vertexShader:
-          'varying vec3 vDir; void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+          'varying vec3 vDir; void main() { vDir = position; vec4 p = projectionMatrix * mat4(mat3(modelViewMatrix)) * vec4(position, 1.0); gl_Position = vec4(p.xy, p.w * 0.999999, p.w); }', // (just inside the far plane: behind everything, never clipped)
         fragmentShader: PSKY_FRAG
       }),
-      sc = new THREE.Scene();
-    sc.add(new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), mat), cube);
-    cube.updateMatrixWorld();
-    return { rt, cube, scene: sc, mat, tex, face: 6, tod: -1, off: 0, age: 99, ms: 0 };
+      mesh = new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), mat);
+    mat.userData.noStreetFx = true;
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 1e9; // (the last opaque draw: depth-tested against the scene)
+    mesh.userData.shared = true;
+    mesh.visible = false;
+    // (AO's normal / depth pass draws the scene with an override material: the sky stays out of it)
+    mesh.onBeforeRender = (r, sc, c, g) => g.setDrawRange(0, sc.overrideMaterial ? 0 : Infinity);
+    scene.add(mesh);
+    initTex(tex);
+    return { mesh, mat, tex, ms: 0 };
   };
-  /** Street level's sky each frame (Auto / High): new colours when the hour moved / the clouds drifted, then one cube face a frame. */
+  /** Street level's sky each frame (Auto / High): the hour's colours (paintAt) and the clouds' drift — uniforms only. */
   const paintStep = (dt, tod, sunDir, lit) => {
     if (!pk) pk = paintMake();
-    pk.age += dt;
-    pk.off += dt * PSKY.drift;
-    const dT = Math.abs(tod - pk.tod),
-      first = pk.tod < 0 || Math.min(dT, 1 - dT) > PSKY.jump; // (a jump in the hour: all six faces at once, no seam between hours)
-    // (polish 2026-10-26: also when the haze it meets moved — the fog colour follows the hour a frame late, so a jump in the hour
-    // used to bake the old hour's haze into the low sky until the clouds next drifted)
-    const fog = scene.fog ? scene.fog.color : P.hor,
-      hz = pk.mat.uniforms.uHaze.value,
-      hazed = Math.abs(fog.r - hz.x) + Math.abs(fog.g - hz.y) + Math.abs(fog.b - hz.z) > PSKY.hazed;
-    if (pk.face >= 6 && (first || (pk.age >= PSKY.every && (Math.abs(tod - pk.tod) > PSKY.moved || pk.off > 0.004 || hazed)))) {
-      const u = pk.mat.uniforms,
-        g = lerp(PSKY.gain.day, PSKY.gain.night, lit),
-        v3 = (k, c, s = g) => u[k].value.set(c.r * s, c.g * s, c.b * s);
-      paintAt(tod, P);
-      v3('uZen', P.zen);
-      v3('uHor', P.hor);
-      v3('uCl', P.cloud);
-      v3('uSh', P.shade);
-      v3('uSunC', P.sun);
-      u.uHaze.value.set(fog.r, fog.g, fog.b);
-      u.uSun.value.copy(sunDir);
-      u.uMoon.value.copy(SKY.moon);
-      u.uCover.value = P.cover;
-      u.uStar.value = P.star;
-      u.uOff.value.x += pk.off;
-      u.uOff.value.y += pk.off * 0.35;
-      pk.off = 0;
-      pk.tod = tod;
-      pk.age = 0;
-      pk.face = 0;
+    const u = pk.mat.uniforms,
+      g = lerp(PSKY.gain.day, PSKY.gain.night, lit),
+      v3 = (k, c, s = g) => u[k].value.set(c.r * s, c.g * s, c.b * s),
+      fog = scene.fog ? scene.fog.color : null;
+    paintAt(tod, P);
+    v3('uZen', P.zen);
+    v3('uHor', P.hor);
+    v3('uCl', P.cloud);
+    v3('uSh', P.shade);
+    v3('uSunC', P.sun);
+    if (fog) u.uHaze.value.set(fog.r, fog.g, fog.b);
+    else u.uHaze.value.set(P.hor.r, P.hor.g, P.hor.b);
+    u.uSun.value.copy(sunDir);
+    u.uMoon.value.copy(SKY.moon);
+    u.uCover.value = P.cover;
+    u.uStar.value = P.star;
+    u.uOff.value.x = (u.uOff.value.x + dt * PSKY.drift) % 64;
+    u.uOff.value.y = (u.uOff.value.y + dt * PSKY.drift * 0.35) % 64;
+  };
+  /** Upload a code-made texture now (load time), not in the frame that first draws it. */
+  const initTex = t => {
+    try {
+      if (renderer.initTexture) renderer.initTexture(t);
+    } catch (e) {
+      /* (uploaded on first use as before) */
     }
-    if (pk.face >= 6) return;
-    const C = pk.cube;
-    if (C.coordinateSystem !== renderer.coordinateSystem) ((C.coordinateSystem = renderer.coordinateSystem), C.updateCoordinateSystem());
-    const rt0 = renderer.getRenderTarget(),
-      tm = renderer.toneMapping;
-    renderer.toneMapping = THREE.NoToneMapping;
-    // the first bake draws all six faces; later ones one a frame (a face differs from its neighbours by a minute or two)
-    for (const last = first ? 6 : pk.face + 1; pk.face < last; pk.face++) {
-      renderer.setRenderTarget(pk.rt, pk.face);
-      renderer.render(pk.scene, C.children[pk.face]);
-    }
-    renderer.setRenderTarget(rt0);
-    renderer.toneMapping = tm;
-    pk.bakes = (pk.bakes || 0) + 1;
   };
   let paintOn = false;
   // ---- post (owner 2026-10-26, one pass): render → (GTAO) → bloom (its mips only) → Finish (tone map + sRGB + FXAA + grade + the
@@ -1051,16 +1138,42 @@ export function richLook(renderer, scene, cam, sun) {
     composer.addPass(new RenderPass(scene, cam));
     bloom = new UnrealBloomPass(new THREE.Vector2(w, h), LOOK.bloom.strength, LOOK.bloom.radius, LOOK.bloom.day);
     bloom.render = bloomRender;
+    // (its high pass reads the scene's scaled viewport: the bloom's own targets keep the whole picture)
+    const HP = bloom.materialHighPassFilter;
+    HP.uniforms.uVs = VS;
+    HP.vertexShader = 'uniform vec2 uVs;\n' + HP.vertexShader.replace('vUv = uv;', 'vUv = uv * uVs;');
     bloom.useMips = bloom.nMips;
     bloom.enabled = false;
     composer.addPass(bloom);
     finish = new ShaderPass(FinishShader);
     finish.material.toneMapped = false; // (it tone maps itself: three adds nothing)
+    finish.material.uniforms.uVs = VS;
     composer.addPass(finish);
     fxaaSize();
   };
-  const fxaaSize = () =>
-    finish && finish.material.uniforms.resolution.value.set(1 / Math.max(1, Math.round(w * pr)), 1 / Math.max(1, Math.round(h * pr)));
+  /**
+   * The dynamic resolution on the detailed look (pacing, owner 2026-10-27): the post's targets keep the full size; the scene draws
+   * into the lower-left `viewScale` part of them (each target's viewport + scissor), the bloom's high pass and the Finish pass read
+   * that part (uVs) — a step changes uniforms and viewports, never a target (no allocation, no re-made framebuffer).
+   */
+  const VS = { value: new THREE.Vector2(1, 1) };
+  let vsK = 1;
+  const fxaaSize = () => {
+    if (!composer) return;
+    const t = composer.renderTarget1,
+      V = viewScale(t.width, t.height, on ? dyn.res : 1);
+    vsK = V.k;
+    VS.value.set(V.u, V.v);
+    for (const r of [composer.renderTarget1, composer.renderTarget2]) {
+      r.viewport.set(0, 0, V.w, V.h);
+      r.scissor.set(0, 0, V.w, V.h);
+      r.scissorTest = V.k < 1;
+    }
+    const F = finish.material.uniforms;
+    F.resolution.value.set(1 / V.w, 1 / V.h); // (FXAA steps one scene texel)
+    F.uVc.value.set((V.w - 0.5) / t.width, (V.h - 0.5) / t.height);
+    VIEW_PX.k = V.k;
+  };
   /** The scene buffer's MSAA (Auto steps it off where FXAA smooths): the targets re-made on their next use. */
   const setMsaa = n => {
     if (!composer || msaa === n) return;
@@ -1085,10 +1198,17 @@ export function richLook(renderer, scene, cam, sun) {
       .catch(() => {});
   };
   const sizeAll = () => {
-    renderer.setPixelRatio(pr);
-    renderer.setSize(w, h, false);
-    if (composer) (composer.setPixelRatio(pr), composer.setSize(w, h), fxaaSize());
+    if (renderer.getPixelRatio() !== pr) renderer.setPixelRatio(pr);
+    const sz = renderer.getSize(_sz);
+    if (sz.x !== w || sz.y !== h || renderer.domElement.width !== Math.floor(w * pr)) renderer.setSize(w, h, false);
+    if (composer) {
+      const t = composer.renderTarget1;
+      if (t.width !== Math.round(w * pr) || t.height !== Math.round(h * pr)) (composer.setPixelRatio(pr), composer.setSize(w, h), allocs++);
+      fxaaSize();
+    }
   };
+  const _sz = new THREE.Vector2();
+  let allocs = 0; // (the post's targets re-sized: the canvas or the setting changed — never the dynamic factor)
   const GR = { gain: new THREE.Vector3(1, 1, 1), lift: new THREE.Vector3(), sat: 1, con: 1, haze: new THREE.Color() };
   const SKYDIR = new THREE.Vector3();
   // the GPU's time for the frame (EXT_disjoint_timer_query_webgl2 when the browser has it): Auto's ladder reads it (else the frame)
@@ -1121,7 +1241,8 @@ export function richLook(renderer, scene, cam, sun) {
     if (dyn.t < 1) return;
     const tick = Math.min(2, dyn.t);
     dyn.t = 0;
-    const r0 = dyn.res;
+    const r0 = dyn.res,
+      m = on && gpuT.ext && dyn.gpu !== null ? dyn.gpu : dyn.ema; // (the GPU's ms when timed: a vsync-capped interval says nothing about the pixels)
     dyn.quick = dyn.ema < D.quick ? dyn.quick + 1 : 0;
     if (gfx === 'high' && on) {
       if (dyn.ema > D.slow && dyn.shed < 2) ((dyn.shed += 1), (dyn.quick = 0));
@@ -1130,10 +1251,11 @@ export function richLook(renderer, scene, cam, sun) {
     if (gfx === 'auto' && on) autoStep(dyn.A, dyn.gpu !== null && gpuT.ext ? dyn.gpu : dyn.ema, tick);
     else if (dyn.A.step || dyn.A.t) dyn.A = autoState();
     const floor = dire ? D.rescue[gfx] || D.rescue.auto : gfx === 'auto' && on ? autoAt(dyn.A.step).floor : D.floor[gfx] || D.floor.auto;
-    if (dyn.ema > D.slow && dyn.res > floor) dyn.res = Math.max(floor, +(dyn.res - (dire ? 0.15 : 0.05)).toFixed(2));
-    else if (dyn.ema < D.quick && dyn.res < 1) dyn.res = Math.min(1, +(dyn.res + 0.05).toFixed(2));
-    if (dyn.res < floor) dyn.res = floor;
-    if (dyn.res !== r0) resize(w, h);
+    dyn.res = resStep(dyn, m, floor, dire, D);
+    if (dyn.res === r0) return;
+    // (the detailed look: a viewport step, no target re-made)
+    if (on && composer) fxaaSize();
+    else resize(w, h);
   };
   const postInfo = () => {
     const P = composer.passes.filter(p => p.enabled),
@@ -1146,10 +1268,168 @@ export function richLook(renderer, scene, cam, sun) {
       grade: grade.enabled
     };
   };
+  // ---- shadow-map gating (SHADOW_GATE): the casters (castShadow meshes) listed every `scan` s / when the scene changed; each
+  // frame a signature of those inside the shadow box (world matrix, instances, geometry versions, bones, visibility)
+  const SH = {
+    prev: new Float64Array(0),
+    why: null,
+    q: 0.02,
+    L: new THREE.Vector3(),
+    box: 0,
+    size: 0,
+    age: 99,
+    scanT: 99,
+    list: [],
+    kids: -1,
+    geos: -1,
+    last: null,
+    R: new THREE.Vector3(),
+    U: new THREE.Vector3()
+  };
+  const scanCasters = () => {
+    SH.list.length = 0;
+    scene.traverseVisible(o => o.isMesh && o.castShadow && o !== sea && SH.list.push(o));
+    SH.prev.fill(NaN);
+    SH.scans = (SH.scans || 0) + 1;
+    SH.scanT = 0;
+    SH.kids = scene.children.length;
+    SH.geos = renderer.info.memory.geometries;
+  };
+  const _cv = new THREE.Vector3();
+  const casterSig = (o, tx, ty, tz, lim) => {
+    if (!o.visible) return 1;
+    for (let p = o.parent, i = 0; p && i < 5; p = p.parent, i++) if (!p.visible) return 2;
+    const e = o.matrixWorld.elements,
+      g = o.geometry;
+    if (!o.isInstancedMesh) {
+      // outside the shadow box (its right / up extent round the target): it can't change the map
+      let r = 3;
+      if (!o.isSkinnedMesh && g) {
+        if (!g.boundingSphere) g.computeBoundingSphere();
+        _cv.copy(g.boundingSphere.center).applyMatrix4(o.matrixWorld);
+        r =
+          g.boundingSphere.radius *
+          Math.max(Math.abs(e[0]) + Math.abs(e[1]) + Math.abs(e[2]), Math.abs(e[4]) + Math.abs(e[5]) + Math.abs(e[6]));
+      } else _cv.set(e[12], e[13], e[14]);
+      const dx = _cv.x - tx,
+        dy = _cv.y - ty,
+        dz = _cv.z - tz;
+      if (Math.abs(dx * SH.R.x + dz * SH.R.z) > lim + r || Math.abs(dx * SH.U.x + dy * SH.U.y + dz * SH.U.z) > lim + r) return 3;
+    }
+    // (quantised: a move under half a shadow texel, a turn under ~0.5°, can't change the map — an idle figure's breathing doesn't redraw it)
+    const q = SH.q,
+      Q = x => Math.round(x / q),
+      A = x => Math.round(x * 100);
+    let h =
+      Q(e[12]) * 1.31 +
+      Q(e[13]) * 1.77 +
+      Q(e[14]) * 0.73 +
+      A(e[0]) * 0.39 +
+      A(e[2]) * 0.91 +
+      A(e[5]) * 0.57 +
+      A(e[8]) * 0.29 +
+      A(e[10]) * 0.17;
+    if (o.isInstancedMesh) h += instSig(o, tx, ty, tz, lim);
+    if (g) {
+      h += g.id * 0.0031 + (g.attributes.position ? g.attributes.position.version * 0.0019 : 0) + (g.index ? g.index.version * 0.0023 : 0);
+      if (g.drawRange.count !== Infinity) h += g.drawRange.count * 0.001 + g.drawRange.start * 0.0007;
+    }
+    if (o.isSkinnedMesh && o.skeleton) {
+      const B = o.skeleton.bones;
+      for (let i = 0; i < B.length; i += 5) {
+        const m = B[i].matrixWorld.elements;
+        h += Q(m[12]) * 0.7 + Q(m[13]) * 1.1 + Q(m[14]) * 0.9;
+      }
+    }
+    return h;
+  };
+  // an instanced caster: its instances inside the box, quantised (position to half a texel, turn / scale and the per-instance
+  // attributes — the figures' limbs — to 1 / 100), cached by the buffers' versions: a crowd far off or holding still changes nothing
+  const instC = new WeakMap();
+  const instSig = (o, tx, ty, tz, lim) => {
+    const g = o.geometry,
+      A = [];
+    let v = o.instanceMatrix.version * 7 + o.count * 13 + tx * 0.11 + ty * 0.13 + tz * 0.17;
+    for (const k in g.attributes) {
+      const a = g.attributes[k];
+      if (a.isInstancedBufferAttribute) (A.push(a), (v += a.version * 3.1));
+    }
+    const c = instC.get(o);
+    if (c && c.v === v) return c.h;
+    const m = o.instanceMatrix.array,
+      q = SH.q,
+      rx = SH.R.x,
+      rz = SH.R.z,
+      ux = SH.U.x,
+      uy = SH.U.y,
+      uz = SH.U.z;
+    let h = o.count * 0.007;
+    for (let i = 0; i < o.count; i++) {
+      const j = i * 16,
+        dx = m[j + 12] - tx,
+        dy = m[j + 13] - ty,
+        dz = m[j + 14] - tz;
+      if (Math.abs(dx * rx + dz * rz) > lim + 4 || Math.abs(dx * ux + dy * uy + dz * uz) > lim + 4) continue;
+      const w = 1 + (i % 29) * 0.031;
+      h += w * (Math.round(m[j + 12] / q) * 1.3 + Math.round(m[j + 13] / q) * 1.7 + Math.round(m[j + 14] / q) * 0.7);
+      h += w * (Math.round(m[j] * 100) * 0.3 + Math.round(m[j + 2] * 100) * 0.9 + Math.round(m[j + 5] * 100) * 0.5);
+      for (const a of A) for (let k = 0; k < a.itemSize; k++) h += w * Math.round(a.array[i * a.itemSize + k] * 100) * (0.21 + k * 0.1);
+    }
+    instC.set(o, { v, h });
+    return h;
+  };
+  const SHC = { dir: [0, 0, 0], tgt: [0, 0, 0], box: 0, size: 0, sig: 0, age: 0 };
+  /** This frame's shadow update due? (after the world matrices are updated) */
+  const shadowGate = () => {
+    if (SH.scanT >= SHADOW_GATE.scan || scene.children.length !== SH.kids || renderer.info.memory.geometries !== SH.geos) scanCasters();
+    const L = SH.L,
+      t = sun.target.position;
+    SH.R.set(L.z, 0, -L.x).normalize();
+    SH.U.set(L.y * SH.R.z, L.z * SH.R.x - L.x * SH.R.z, -L.y * SH.R.x).normalize();
+    let sig = 0;
+    if (SH.prev.length < SH.list.length) SH.prev = new Float64Array(SH.list.length * 2);
+    SH.why = null;
+    for (let i = 0; i < SH.list.length; i++) {
+      const o = SH.list[i],
+        h = casterSig(o, t.x, t.y, t.z, SH.box);
+      if (SH.prev[i] !== h && !SH.why)
+        SH.why = `${o.isSkinnedMesh ? 'skinned' : o.isInstancedMesh ? 'instanced' : 'mesh'} ${o.name || (o.parent && o.parent.name) || o.geometry.type}`;
+      SH.prev[i] = h;
+      sig += h * (1 + (i % 17) * 0.0617);
+    }
+    SHC.dir[0] = L.x;
+    SHC.dir[1] = L.y;
+    SHC.dir[2] = L.z;
+    SHC.tgt[0] = t.x;
+    SHC.tgt[1] = t.y;
+    SHC.tgt[2] = t.z;
+    SHC.box = SH.box;
+    SHC.size = SH.size;
+    SHC.sig = sig;
+    SHC.age = SH.age;
+    const due = !sun.shadow.map || shadowDue(SHADOW_GATE, SH.last, SHC);
+    if (due) {
+      const P = SH.last || (SH.last = { dir: [0, 0, 0], tgt: [0, 0, 0] });
+      P.dir[0] = L.x;
+      P.dir[1] = L.y;
+      P.dir[2] = L.z;
+      P.tgt[0] = t.x;
+      P.tgt[1] = t.y;
+      P.tgt[2] = t.z;
+      P.box = SH.box;
+      P.size = SH.size;
+      P.sig = sig;
+      SH.age = 0;
+      SHADOW_GATE.dirty = false;
+      SHADOW_GATE.n.upd++;
+    } else SHADOW_GATE.n.skip++;
+    return due;
+  };
+  Object.assign(LOOK_CTX, { renderer, scene, cam, target: () => (on && composer ? composer.readBuffer : null) });
   const resize = (cw, ch) => {
     w = Math.max(1, cw);
     h = Math.max(1, ch);
-    pr = basePR() * dyn.res;
+    pr = on && composer ? basePR() : basePR() * dyn.res; // (the detailed look scales its viewport instead: fxaaSize)
     sizeAll();
   };
   return {
@@ -1194,10 +1474,10 @@ export function richLook(renderer, scene, cam, sun) {
         Object.assign(sc, { left: -SHADOW_BOX, right: SHADOW_BOX, top: SHADOW_BOX, bottom: -SHADOW_BOX, near: 1, far: 500 });
         sc.updateProjectionMatrix();
         sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
-        pr = basePR() * dyn.res;
-        sizeAll();
       }
+      resize(w, h); // (the detailed look: the canvas at the base ratio, the factor as a viewport; Fast: the canvas × the factor)
       if (sun.shadow.map) (sun.shadow.map.dispose(), (sun.shadow.map = null));
+      SH.last = null;
       scene.traverse(o => {
         const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
         for (const m of ms) m.needsUpdate = true;
@@ -1223,6 +1503,7 @@ export function richLook(renderer, scene, cam, sun) {
       STREET_FX.uFdGlow.value = 1 + sg * Math.max(0, gw - 1);
       STREET_U.st.value = sg;
       paintOn = on && st > 0.1;
+      if (pk) pk.mesh.visible = paintOn;
       if (!on) return;
       const G = finish.material.uniforms,
         Q = autoAt(gfx === 'auto' ? dyn.A.step : 0),
@@ -1264,10 +1545,15 @@ export function richLook(renderer, scene, cam, sun) {
         sun.shadow.mapSize.set(size, size);
         if (sun.shadow.map) (sun.shadow.map.dispose(), (sun.shadow.map = null));
       }
-      sun.position
-        .sub(sun.target.position)
-        .setLength(box * 2 + 200)
-        .add(sun.target.position);
+      // (pacing 2026-10-27: the target on whole shadow texels — SHADOW_GATE — then the sun the same way out from it)
+      SH.L.copy(sun.position).sub(sun.target.position).normalize();
+      snapTarget(sun.target.position, SH.L, (2 * box) / size);
+      sun.position.copy(sun.target.position).addScaledVector(SH.L, box * 2 + 200);
+      SH.box = box;
+      SH.size = size;
+      SH.q = box / size; // (half a shadow texel, m)
+      SH.age += dt;
+      SH.scanT += dt;
       wantAO(gfx === 'high' && dyn.shed < 1);
       hi = gfx === 'high';
     },
@@ -1279,26 +1565,49 @@ export function richLook(renderer, scene, cam, sun) {
       F.toneMappingExposure.value = renderer.toneMappingExposure;
       F.uAA.value = fxaa.enabled ? 1 : 0;
       F.uK.value = grade.enabled ? gradeK : 0;
-      if (timed && gpuT.ext && gpuT.q.length < 4) {
-        const q = gl.createQuery();
-        gl.beginQuery(gpuT.ext.TIME_ELAPSED_EXT, q);
-        try {
-          composer.render();
-        } finally {
-          gl.endQuery(gpuT.ext.TIME_ELAPSED_EXT);
-          gpuT.q.push(q);
-        }
-      } else composer.render();
+      // the shadow map only when due (SHADOW_GATE); the world matrices updated here once, so the gate sees this frame's
+      const SM = renderer.shadowMap,
+        gate = timed && SM.enabled && sun.castShadow;
+      if (gate) {
+        scene.updateMatrixWorld();
+        SM.autoUpdate = false;
+        SM.needsUpdate = shadowGate();
+        scene.matrixWorldAutoUpdate = false;
+      }
+      try {
+        if (timed && gpuT.ext && gpuT.q.length < 4) {
+          const q = gl.createQuery();
+          gl.beginQuery(gpuT.ext.TIME_ELAPSED_EXT, q);
+          try {
+            composer.render();
+          } finally {
+            gl.endQuery(gpuT.ext.TIME_ELAPSED_EXT);
+            gpuT.q.push(q);
+          }
+        } else composer.render();
+      } finally {
+        if (gate) ((SM.autoUpdate = true), (scene.matrixWorldAutoUpdate = true));
+      }
       if (gpuT.q.length) gpuPoll();
     },
     info: () => ({
       look: on ? (hi ? 'high' : 'detailed') : 'fast',
       res: dyn.res,
-      scale: +(pr / Math.min(devicePixelRatio || 1, 2)).toFixed(2), // the render scale: budget × the dynamic factor
+      scale: +((pr * (on && composer ? vsK : 1)) / Math.min(devicePixelRatio || 1, 2)).toFixed(2), // the render scale: budget × the dynamic factor
+      // (pacing 2026-10-27: the post's target re-sizes, env bakes, shadow updates / skips so far, casters listed)
+      gpuB: {
+        allocs,
+        envBakes,
+        shUpd: SHADOW_GATE.n.upd,
+        shSkip: SHADOW_GATE.n.skip,
+        casters: SH.list.length,
+        scans: SH.scans || 0,
+        why: SH.why
+      },
       ao: !!(gtao && gtao.enabled),
       aa: !!(fxaa && fxaa.enabled && on),
       grade: !!(grade && grade.enabled && on),
-      sky: paintOn && pk ? { bakes: pk.bakes || 0, tod: +pk.tod.toFixed(4), ms: +pk.ms.toFixed(3) } : null,
+      sky: paintOn && pk ? { bakes: envBakes, dome: true, ms: +pk.ms.toFixed(3) } : null, // (bakes: the env cube's — the dome bakes none)
       bloom: !!(bloom && bloom.enabled && on),
       shed: dyn.shed,
       // the passes drawn after the scene (full = full-size ones: the Finish pass, + AO on High) and Auto's ladder
@@ -1309,21 +1618,23 @@ export function richLook(renderer, scene, cam, sun) {
           : null
     }),
     /** Dev (the perf probe, map3d): the post passes and the dynamic resolution's state, to switch off for a measured draw. */
-    parts: () => ({ bloom, grade, fxaa, gtao, dyn }),
+    parts: () => ({ bloom, grade, fxaa, gtao, dyn, dome: pk ? pk.mesh : null }), // (dome: street level's sky — its visible to mask it)
     /** The scene's render target (precompiles: the materials' programs for the buffer they draw into). */
     target: () => (on && composer ? composer.readBuffer : null),
     /** The grade's haze colour at time of day `t` (default: the last step's) — street level's distance haze, every look. */
     haze: t => (t === undefined ? GR.haze : gradeAt(t, GR).haze),
-    /** Street level's background: the painted sky (T-373; Auto / High), else the baked one (PMREM). */
-    envTex: () => (paintOn && pk ? pk.rt.texture : envRT ? envRT.texture : null),
+    /** Street level's background: null while the painted sky's dome draws it (T-373; Auto / High), else the baked one (PMREM). */
+    envTex: () => (paintOn && pk ? null : envRT ? envRT.texture : null),
     dispose() {
+      if (LOOK_CTX.renderer === renderer) Object.assign(LOOK_CTX, { renderer: null, scene: null, cam: null, target: null });
       if (composer) {
         for (const p of composer.passes) p.dispose && p.dispose();
         composer.renderTarget1.dispose();
         composer.renderTarget2.dispose();
       }
       if (envRT) envRT.dispose();
-      if (pk) (pk.rt.dispose(), pk.tex.dispose(), pk.mat.dispose(), pk.scene.children[0].geometry.dispose());
+      envCube.dispose();
+      if (pk) (scene.remove(pk.mesh), pk.tex.dispose(), pk.mat.dispose(), pk.mesh.geometry.dispose());
       pmrem.dispose();
       sky.geometry.dispose();
       sky.material.dispose();

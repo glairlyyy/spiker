@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { KIT, FOOTPRINT, unit, facade, lampSpots, STREET, mesher, detailMats, lampPost, floodTower, NIGHT_U, rgb } from './kit3d.mjs';
 import { MAP_M, clamp, fogFactor, ribbon, bannerArrays, smooth } from './geo3d.mjs';
-import { STREET_U } from './look3d.mjs';
+import { STREET_U, VIEW_PX } from './look3d.mjs';
 
 /**
  * The night lights (spec §4.37 2, T-332): warm windows on the town's lots, street lamps along the main roads and streets,
@@ -280,8 +280,8 @@ export function nightLayer(scene, heightAt) {
     set(lit, scale, pr) {
       const on = lit > 0.01;
       glowMat.uniforms.lit.value = lit;
-      glowMat.uniforms.scale.value = scale;
-      glowMat.uniforms.pr.value = pr;
+      glowMat.uniforms.scale.value = scale * VIEW_PX.k; // (the detailed look's dynamic resolution is a viewport: its pixels, not the canvas's)
+      glowMat.uniforms.pr.value = pr * VIEW_PX.k;
       NIGHT_U.value = lit; // the lit panes (kit3d glass)
       const S = NIGHT.street,
         st = STREET_U.st.value;
