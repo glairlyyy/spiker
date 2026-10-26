@@ -191,12 +191,14 @@ const MapView = {
     }
     if (box.parentNode !== document.body) document.body.appendChild(box);
     const html = `<div style="display:flex;gap:10px;align-items:center">${t.face}<div><b>${esc(t.name)}</b><br>${esc(t.club)}<br>${esc(t.doing)}</div></div>`;
-    if (box.dataset.k !== `${id}|${t.doing}`) ((box.innerHTML = html), (box.dataset.k = `${id}|${t.doing}`));
-    box.style.whiteSpace = 'normal';
-    box.style.display = 'block';
-    const b = box.getBoundingClientRect();
-    box.style.left = `${clamp(x + 14, 8, innerWidth - b.width - 8)}px`;
-    box.style.top = `${Math.max(8, y - b.height - 12)}px`;
+    if (box.dataset.k !== `${id}|${t.doing}`) ((box.innerHTML = html), (box.dataset.k = `${id}|${t.doing}`), (box._wh = null));
+    if (box.style.display !== 'block') ((box.style.whiteSpace = 'normal'), (box.style.display = 'block'), (box._wh = null));
+    if (!box._wh) {
+      const b = box.getBoundingClientRect(); // (measured once per content: the pointer's moves only write — no layout per move)
+      box._wh = [b.width, b.height];
+    }
+    box.style.left = `${clamp(x + 14, 8, innerWidth - box._wh[0] - 8)}px`;
+    box.style.top = `${Math.max(8, y - box._wh[1] - 12)}px`;
   },
   /** A click / right-click on a named figure: the figure menu (not for someone of a club you haven't scouted; no menu → their card). */
   person(id) {
@@ -205,12 +207,12 @@ const MapView = {
     if (!f || f.g === 'grey') return;
     figOpen(id);
   },
-  /** A named figure's point on the page (client px), or null when it isn't on screen (hidden at home, off the canvas). */
-  figureAt(id) {
+  /** A named figure's point on the page (client px), or null when it isn't on screen (hidden at home, off the canvas); r: the canvas's box if known (no layout read). */
+  figureAt(id, r = null) {
     const s = MapView.m3 && MapView.m3.figureAt ? MapView.m3.figureAt(id) : null,
-      c = s && MapView.el && MapView.el.querySelector('canvas');
-    if (!c) return null;
-    const r = c.getBoundingClientRect();
+      c = s && !r && MapView.el && MapView.el.querySelector('canvas');
+    if (!s || (!r && !c)) return null;
+    r = r || c.getBoundingClientRect();
     return s[0] < 0 || s[1] < 0 || s[0] > r.width || s[1] > r.height ? null : [r.left + s[0], r.top + s[1]];
   },
   /** The ring under a figure's feet (the menu's person), or none (null). */
@@ -323,9 +325,20 @@ const MapView = {
   },
   /** The running clock's own save (every CLOCK.save game hours): off the frame, when the page is idle (within 1 s; performance). */
   saveSoon() {
-    if (MapView.CLK.saving) return;
-    MapView.CLK.saving = true;
-    const go = () => ((MapView.CLK.saving = false), RUN && Run.save(RUN));
+    const K = MapView.CLK;
+    if (K.saving) return;
+    K.saving = true;
+    const t0 = typeof performance !== 'undefined' ? performance.now() : 0,
+      go = d => {
+        // (an idle slice too short for the save's usual time: wait for a longer one, within the 1 s)
+        if (d && d.timeRemaining && !d.didTimeout && d.timeRemaining() < (K.saveMs || 2) && performance.now() - t0 < 1000)
+          return void requestIdleCallback(go, { timeout: Math.max(1, 1000 - (performance.now() - t0)) });
+        K.saving = false;
+        if (!RUN) return;
+        const a = typeof performance !== 'undefined' ? performance.now() : 0;
+        Run.save(RUN);
+        if (a) K.saveMs = (K.saveMs || 0) * 0.7 + (performance.now() - a) * 0.3;
+      };
     if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 1000 });
     else setTimeout(go, 0);
   },
@@ -369,16 +382,148 @@ const PerfHUD = {
   opt: null, // dev / QA: { warm, frames, only: [item ids] } for Measure (the UI smoke's short probe)
   restored: null, // the last probe: { ok, off: [what differs from before] }
   SPIKES: { keep: 20, k: 2, abs: 50, n: 120 },
+  /** Frame pacing (owner 2026-10-27: "60 fps steady but it stutters"): the last `win` ms of frame intervals (≤ n); a hitch = a frame
+   * over k × the median and over abs ms. */
+  PACE: { win: 60000, n: 7200, k: 1.5, abs: 25 },
+  pq: null, // the pacing ring { a, h, n, sum }
+  pc: null, // the last pace() of the ring (1 Hz)
+  pt: 0,
+  ruleMs: 0, // the page's rules step of the last frame (ms)
+  lo: null, // the Long Animation Frames observer ('n/a': none in this browser)
+  loaf: [], // the last LoAF summaries (loafOf), newest last
+  loafN: 0,
+  rows: null, // the overlay's rows { shape, box, b: value cells, v: their last html }
+  measured: false, // H.text is a Measure's report (Copy keeps it once; later copies are fresh pacing reports)
   toggle(v = !PerfHUD.on) {
-    PerfHUD.on = !!v;
-    store.set(KEYS.perf, PerfHUD.on ? '1' : '0');
-    if (!PerfHUD.on) PerfHUD.cancel();
-    if (!PerfHUD.on && PerfHUD.el) (PerfHUD.el.remove(), (PerfHUD.el = null));
+    const H = PerfHUD;
+    H.on = !!v;
+    store.set(KEYS.perf, H.on ? '1' : '0');
+    H.pq = H.pc = null;
+    if (!H.on) H.cancel();
+    if (!H.on && H.el) (H.el.remove(), (H.el = null));
+    H.loafWatch(H.on);
   },
   /** The page's rules step this frame (the running clock, the popups' placement): ms. */
   rule(ms) {
     PerfHUD.rules += (ms - PerfHUD.rules) * 0.1;
     PerfHUD.peakR = Math.max(PerfHUD.peakR, ms);
+    PerfHUD.ruleMs = ms;
+  },
+  /** One frame interval into the pacing ring (no allocation per frame). */
+  paceAdd(iv) {
+    const H = PerfHUD,
+      C = H.PACE,
+      P = H.pq || (H.pq = { a: new Float64Array(C.n), h: 0, n: 0, sum: 0 });
+    if (!(iv > 0)) return;
+    if (P.n === C.n) P.sum -= P.a[P.h];
+    else P.n++;
+    P.a[P.h] = iv;
+    P.sum += iv;
+    P.h = (P.h + 1) % C.n;
+    while (P.sum > C.win && P.n > 1) ((P.sum -= P.a[(P.h - P.n + C.n) % C.n]), P.n--);
+  },
+  /** The ring's intervals, oldest first. */
+  paceVals() {
+    const P = PerfHUD.pq,
+      C = PerfHUD.PACE;
+    if (!P) return [];
+    const o = new Array(P.n);
+    for (let i = 0; i < P.n; i++) o[i] = P.a[(P.h - P.n + i + C.n) % C.n];
+    return o;
+  },
+  /**
+   * Pacing of frame intervals ivs (ms; pure): nearest-rank p50 / p95 / p99, max, the 1 % low (fps of the mean of the worst 1 % of
+   * frames — CapFrameX's "1 % low average"), the frame-time spread (sd), hitches (> k × the median and > abs ms) and their rate a
+   * minute of frames. null for no frames.
+   */
+  pace(ivs, k = PerfHUD.PACE.k, abs = PerfHUD.PACE.abs) {
+    const n = ivs.length;
+    if (!n) return null;
+    const s = Float64Array.from(ivs).sort(),
+      q = p => s[Math.min(n - 1, Math.max(0, Math.ceil(p * n) - 1))],
+      med = q(0.5),
+      w = Math.max(1, Math.ceil(n * 0.01));
+    let tot = 0,
+      sq = 0,
+      worst = 0,
+      hit = 0;
+    for (const v of ivs) ((tot += v), (sq += v * v), v > k * med && v > abs && hit++);
+    for (let i = n - w; i < n; i++) worst += s[i];
+    const mean = tot / n;
+    return {
+      n,
+      ms: tot,
+      fps: 1000 / mean,
+      p50: med,
+      p95: q(0.95),
+      p99: q(0.99),
+      max: s[n - 1],
+      low1: 1000 / (worst / w),
+      sd: Math.sqrt(Math.max(0, sq / n - mean * mean)),
+      hitches: hit,
+      perMin: (hit * 60000) / tot
+    };
+  },
+  /** The pacing line (overlay and report). */
+  paceText(c, long = false) {
+    if (!c) return long ? 'no frames yet' : '–';
+    const f = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : '–');
+    return long
+      ? `${f(c.ms / 1000, 0)} s · ${c.n} frames · ${f(c.fps, 0)} fps · frame ms p50 ${f(c.p50)} / p95 ${f(c.p95)} / p99 ${f(c.p99)} / max ${f(c.max)} · sd ${f(c.sd)} · 1% low ${f(c.low1, 0)} fps · hitches ${c.hitches} (${f(c.perMin)}/min; > ${PerfHUD.PACE.k}× median and > ${PerfHUD.PACE.abs} ms)`
+      : `${f(c.p50)} / ${f(c.p95)} / ${f(c.p99)} / ${f(c.max, 0)}`;
+  },
+  /** Long Animation Frames (Chrome 123+; frames over 50 ms): what ran in them — script, function, style & layout, forced layout. */
+  loafWatch(on) {
+    const H = PerfHUD;
+    if (!on) return void (H.lo && H.lo !== 'n/a' && (H.lo.disconnect(), (H.lo = null)));
+    if (H.lo || typeof PerformanceObserver === 'undefined') return;
+    try {
+      if (!(PerformanceObserver.supportedEntryTypes || []).includes('long-animation-frame')) return void (H.lo = 'n/a');
+      H.lo = new PerformanceObserver(l => H.loafs(l.getEntries()));
+      H.lo.observe({ type: 'long-animation-frame', buffered: false });
+    } catch (e) {
+      H.lo = 'n/a';
+    }
+  },
+  /** A LoAF entry → { t0, t1, ms, block, style (style + layout ms at the frame's end), forced (scripts' forced style + layout ms), js, top }. */
+  loafOf(e) {
+    const t1 = e.startTime + e.duration,
+      sc = [...(e.scripts || [])].sort((a, b) => b.duration - a.duration);
+    let forced = 0,
+      js = 0;
+    for (const x of sc) ((forced += x.forcedStyleAndLayoutDuration || 0), (js += x.duration || 0));
+    return {
+      t0: e.startTime,
+      t1,
+      ms: e.duration,
+      block: e.blockingDuration || 0,
+      style: e.styleAndLayoutStart ? Math.max(0, t1 - e.styleAndLayoutStart) : 0,
+      forced,
+      js,
+      top: sc.slice(0, 2).map(x => {
+        const u = String(x.sourceURL || '')
+          .split('/')
+          .pop()
+          .split('?')[0];
+        return `${x.sourceFunctionName || x.invoker || '?'}${u ? ` (${u})` : ''} ${(x.duration || 0).toFixed(0)}${x.forcedStyleAndLayoutDuration > 0.5 ? ` forced ${x.forcedStyleAndLayoutDuration.toFixed(1)}` : ''}`;
+      })
+    };
+  },
+  loafText: L =>
+    `LoAF ${L.ms.toFixed(0)} ms: JS ${L.js.toFixed(1)} · style+layout ${L.style.toFixed(1)}${L.forced > 0.05 ? ` · forced ${L.forced.toFixed(1)}` : ''}${L.top.length ? ` · ${L.top.join(', ')}` : ''}`,
+  /** New LoAF entries: kept (last 20) and given to the spike whose frame they overlap. */
+  loafs(es) {
+    const H = PerfHUD;
+    for (const e of es) {
+      const L = H.loafOf(e);
+      H.loafN++;
+      H.loaf.push(L);
+      if (H.loaf.length > 20) H.loaf.shift();
+      for (let i = H.spikes.length - 1; i >= Math.max(0, H.spikes.length - 4); i--) {
+        const s = H.spikes[i];
+        if (!s.lf && s.at && L.t0 < s.at[1] && L.t1 > s.at[0]) s.lf = H.loafText(L);
+      }
+    }
   },
   /** Something the page did between two frames (a render, a save): kept for the next frame's spike record. */
   note(s) {
@@ -423,15 +568,19 @@ const PerfHUD = {
       if (H.ivs.length > S.n) H.ivs.shift();
       if (++H.medN >= 30 || H.ivs.length < 30) ((H.medN = 0), (H.med = PerfHUD.median(H.ivs)));
     }
-    const was = H.prev;
-    H.prev = { raw: p.raw || null, ev: p.ev || [] };
+    const was = H.prev,
+      now = performance.now();
+    H.prev = { raw: p.raw || null, ev: p.ev || [], ui: H.ruleMs };
     if (!was || H.probe || H.ivs.length < 10 || !(iv > S.abs || iv > S.k * H.med)) return void (H.evs = []);
     const r = was.raw,
-      js = r ? r.update + r.draw + (r.labels || 0) : null,
+      js = r ? r.update + r.draw + (r.labels || 0) + (was.ui || 0) : null,
       ev = [...was.ev, ...H.evs];
     if (!ev.length && js !== null && js < iv * 0.3) ev.push('gap: little JS in the frame (GC / browser / GPU stall)');
     H.evs = [];
-    H.spikes.push({ t: performance.now() / 1000, kind, ms: iv, med: H.med, js: r && { ...r }, ev });
+    const sp = { t: now / 1000, kind, ms: iv, med: H.med, js: r && { ...r, ui: was.ui || 0 }, ev, at: [now - iv - 4, now] },
+      L = H.loaf.find(x => x.t0 < sp.at[1] && x.t1 > sp.at[0]);
+    if (L) sp.lf = H.loafText(L);
+    H.spikes.push(sp);
     if (H.spikes.length > S.keep) H.spikes.shift();
   },
   frame(kind, p) {
@@ -441,7 +590,10 @@ const PerfHUD = {
     H.kind = kind;
     if (p.src) H.src = p.src;
     if (!H.hooked) H.hook();
+    if (!H.lo) H.loafWatch(true);
     H.spike(kind, p);
+    if (!H.probe) H.paceAdd(p.last || 0);
+    if (now - H.pt >= 1000) ((H.pt = now), (H.pc = H.pace(H.paceVals())));
     if (now - H.t < 250) return;
     H.t = now;
     H.last = { kind, p, rules: H.rules };
@@ -454,22 +606,43 @@ const PerfHUD = {
         <div class="phb"><button class="btn" data-a="m" onclick="PerfHUD.measure()">Measure <kbd>⇧F3</kbd></button><button class="btn" data-a="c" onclick="PerfHUD.copy()" disabled>Copy report</button></div>
         <div class="phst small"></div><textarea class="phr" readonly hidden spellcheck="false" aria-label="Perf report"></textarea></div>`;
       document.body.append(el);
+      H.rows = null;
       H.paint();
     }
     const f = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : '–'),
       k = v => (v >= 1e6 ? `${(v / 1e6).toFixed(2)}M` : v >= 1e3 ? `${Math.round(v / 1e3)}k` : String(v | 0)),
       slow = p.fps < 30 ? 'bad' : p.fps < 50 ? 'warn' : '',
       js = (kind === 'map' ? H.rules : 0) + p.update + p.draw + (p.labels || 0),
-      row = (a, b) => `<div><span>${a}</span><b>${b}</b></div>`;
-    el.firstChild.innerHTML = `<div class="ph">${kind === 'map' ? 'Map' : 'Match'} · ${esc(String(p.look || G.gfx))} <kbd>F3</kbd></div>
-      ${row('fps', `<i class="${slow}">${f(p.fps, 0)}</i> · ${f(p.ms)} ms · worst ${f(H.shown[0], 0)}`)}
-      ${row('JS ms', `${f(js)} = ${kind === 'map' ? `rules ${f(H.rules, 2)} · ` : ''}${kind === 'map' ? 'map' : 'update'} ${f(p.update)} · draw ${f(p.draw)}${kind === 'map' ? ` · tags ${f(p.labels, 2)}` : ''}`)}
-      ${kind === 'map' ? row('rules worst', `${f(H.shown[1])} ms`) : ''}
-      ${row('draws', `${p.calls} · ${k(p.tris)} tris`)}
-      ${row('scale', `${f(p.scale, 2)} · ${p.px ? p.px.join('×') : '–'}${p.ao !== undefined ? ` · AO ${p.ao ? 'on' : 'off'}` : ''}${p.shadow ? ` · sh ${p.shadow}` : ''}`)}
-      ${p.auto ? row('Auto', esc(String(p.auto))) : ''}
-      ${row('VRMs', `${p.vrm}${p.blocks !== null && p.blocks !== undefined ? ` · blocks ${p.blocks}` : ''}`)}
-      ${row('spikes', `${H.spikes.length} · median ${f(H.med)} ms`)}`;
+      c = H.pc,
+      R = [
+        ['', `${kind === 'map' ? 'Map' : 'Match'} · ${esc(String(p.look || G.gfx))} <kbd>F3</kbd>`],
+        ['fps', `<i class="${slow}">${f(p.fps, 0)}</i> · ${f(p.ms)} ms · worst ${f(H.shown[0], 0)}`],
+        ['p50/95/99/max', `${H.paceText(c)} ms`],
+        [
+          '1% low',
+          c ? `<i class="${c.perMin >= 6 ? 'bad' : c.perMin > 0 ? 'warn' : ''}">${f(c.low1, 0)} fps · ${f(c.perMin)} hitches/min</i>` : '–'
+        ],
+        [
+          'JS ms',
+          `${f(js)} = ${kind === 'map' ? `rules ${f(H.rules, 2)} · ` : ''}${kind === 'map' ? 'map' : 'update'} ${f(p.update)} · draw ${f(p.draw)}${kind === 'map' ? ` · tags ${f(p.labels, 2)}` : ''}`
+        ],
+        kind === 'map' ? ['rules worst', `${f(H.shown[1])} ms`] : null,
+        ['draws', `${p.calls} · ${k(p.tris)} tris`],
+        [
+          'scale',
+          `${f(p.scale, 2)} · ${p.px ? p.px.join('×') : '–'}${p.ao !== undefined ? ` · AO ${p.ao ? 'on' : 'off'}` : ''}${p.shadow ? ` · sh ${p.shadow}` : ''}`
+        ],
+        p.auto ? ['Auto', esc(String(p.auto))] : null,
+        ['VRMs', `${p.vrm}${p.blocks !== null && p.blocks !== undefined ? ` · blocks ${p.blocks}` : ''}`],
+        ['spikes', `${H.spikes.length} · median ${f(H.med)} ms${H.lo === 'n/a' ? '' : ` · LoAF ${H.loafN}`}`]
+      ].filter(Boolean),
+      shape = R.map(r => r[0]).join('|');
+    // (the rows are built once per shape; each 4 Hz redraw only rewrites the values that changed: no layout of the rest)
+    if (!H.rows || H.rows.shape !== shape || !H.rows.box.isConnected) {
+      el.firstChild.innerHTML = R.map(([a], i) => (i ? `<div><span>${a}</span><b></b></div>` : '<div class="ph"></div>')).join('');
+      H.rows = { shape, box: el.firstChild, b: [...el.firstChild.children].map((d, i) => (i ? d.lastChild : d)), v: [] };
+    }
+    R.forEach(([, v], i) => H.rows.v[i] !== v && ((H.rows.b[i].innerHTML = v), (H.rows.v[i] = v)));
     if (H.probe) H.paint();
   },
   /** The Measure panel's state: the status line, the buttons, the report. */
@@ -483,7 +656,7 @@ const PerfHUD = {
       c = el.querySelector('[data-a="c"]');
     if (st) st.textContent = H.status;
     if (m) m.disabled = !!H.probe;
-    if (c) c.disabled = !H.text;
+    if (c) c.disabled = !!H.probe;
     if (ta && ta.value !== H.text) ((ta.value = H.text), (ta.hidden = !H.text));
   },
   /** Run the probe on the renderer drawing now (o: { warm, frames } for tests). */
@@ -526,8 +699,11 @@ const PerfHUD = {
             res: PerfHUD.probeResult(D),
             js: js0,
             spikes: H.spikes,
-            restored: rs
+            restored: rs,
+            pace: H.pc,
+            loaf: H.loafSum()
           });
+          H.measured = true;
           H.status = `Done; ${rs}. Copy the report and paste it.`;
         }
         H.paint();
@@ -552,6 +728,9 @@ const PerfHUD = {
   copy() {
     const H = PerfHUD,
       ta = H.el && H.el.querySelector('.phr');
+    if (!H.text || !H.measured) H.text = H.report(); // (no Measure yet: the pacing, the spikes and the context)
+    H.measured = false;
+    H.paint();
     if (!H.text) return;
     const sel = () => ta && (ta.focus(), ta.select(), (H.status = 'Selected: press Ctrl+C to copy.'), H.paint());
     try {
@@ -561,6 +740,38 @@ const PerfHUD = {
     } catch (e) {
       sel();
     }
+  },
+  /** The report without a Measure (Copy any time): context, pacing, LoAF, JS split, spikes. */
+  report() {
+    const H = PerfHUD;
+    return PerfHUD.probeReport({
+      ctx: H.src ? H.ctx(H.src) : { kind: H.kind },
+      res: null,
+      js: H.last ? { ...H.last } : null,
+      spikes: H.spikes,
+      pace: H.pc || H.pace(H.paceVals()),
+      loaf: H.loafSum()
+    });
+  },
+  /** The kept LoAF entries summed: { n (since on), kept, ms, style, forced, top: [[script, ms]] } — or 'n/a'. */
+  loafSum() {
+    const H = PerfHUD;
+    if (H.lo === 'n/a' || !H.lo) return H.lo === 'n/a' ? 'n/a' : null;
+    const top = {},
+      S = { n: H.loafN, kept: H.loaf.length, ms: 0, style: 0, forced: 0, top: [] };
+    for (const L of H.loaf) {
+      S.ms += L.ms;
+      S.style += L.style;
+      S.forced += L.forced;
+      for (const t of L.top) {
+        const m = /^(.*) (\d+)(?: forced [\d.]+)?$/.exec(t);
+        if (m) top[m[1]] = (top[m[1]] || 0) + +m[2];
+      }
+    }
+    S.top = Object.entries(top)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3);
+    return S;
   },
   /** The report's context: device, canvas, look, view, place, time of day (the renderer's ctx() + the page's). */
   ctx(src) {
@@ -764,7 +975,7 @@ const PerfHUD = {
     return { key, base, b1: stat(b1), b2: stat(b2), frame, rows, na: D.na, warm: D.warm, frames: D.frames };
   },
   /** The plain-text report to paste (compact; one line per item). */
-  probeReport({ ctx = {}, gpu = null, res, js = null, spikes = [], restored = '', at = new Date() }) {
+  probeReport({ ctx = {}, gpu = null, res = null, js = null, spikes = [], restored = '', at = new Date(), pace = null, loaf = null }) {
     const f = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : '–'),
       k = v =>
         !Number.isFinite(v)
@@ -777,7 +988,7 @@ const PerfHUD = {
       sg = (v, s) => (v > 0 ? `-${s(v)}` : v < 0 ? `+${s(-v)}` : '0'),
       pad = (s, n) => (s.length >= n ? s : s + ' '.repeat(n - s.length)),
       lpad = (s, n) => (s.length >= n ? s : ' '.repeat(n - s.length) + s),
-      B = res.base,
+      B = res && res.base,
       L = [],
       C = ctx;
     const stamp = `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')} ${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
@@ -787,20 +998,29 @@ const PerfHUD = {
       `canvas   ${C.css ? C.css.join('×') : '–'} css · ${C.px ? C.px.join('×') : '–'} px · dpr ${f(C.dpr, 2)} · scale ${f(C.scale, 2)}${C.res !== undefined ? ` (dyn ${f(C.res, 2)})` : ''} · ${C.look || C.gfx || '–'}${C.auto ? ` · ${C.auto}` : ''}`
     );
     L.push(`view     ${C.view || '–'}${C.place ? ` · ${C.place}` : ''}${C.time ? ` · ${C.time}` : ''}${C.extra ? ` · ${C.extra}` : ''}`);
-    L.push(
-      `probe    ${res.rows.length + 2} configs × ${res.frames} frames (first ${res.warm} dropped) · ${res.key === 'gpu' ? `GPU ms (${gpu})` : 'draw + GPU sync ms (no GPU timer)'}${restored ? ` · ${restored}` : ''}`
-    );
-    const drift = res.b1.draw > 0 ? (100 * (res.b2.draw - res.b1.draw)) / res.b1.draw : 0;
-    L.push(
-      `base     frame ${f(res.frame)} ms = JS ${f(B.js)} + draw ${f(B.draw)}${Number.isFinite(B.gpu) ? ` (GPU ${f(B.gpu)})` : ''} · ${k(B.calls)} calls · ${k(B.tris)} tris · re-run drift ${drift >= 0 ? '+' : ''}${f(drift, 0)}%`
-    );
-    L.push('costs    (what switching it off saves, ms and % of the frame, ranked; + = off costs more; calls / tris − = fewer)');
-    res.rows.forEach((r, i) =>
+    L.push(`pacing   ${PerfHUD.paceText(pace, true)}`);
+    if (loaf)
       L.push(
-        ` ${lpad(String(i + 1), 2)} ${pad(r.label, 34)} ${lpad(`${r.save >= 0 ? '' : '+'}${f(Math.abs(r.save), 2)} ms`, 9)} ${lpad(`${r.save >= 0 ? '' : '+'}${f(Math.abs(r.pct), 0)}%`, 5)} ${lpad(sg(r.dCalls, k), 6)} calls ${lpad(sg(r.dTris, k), 7)} tris`
-      )
-    );
-    if (res.na.length) L.push(`n/a      ${res.na.map(r => `${r.label} (${r.why})`).join(' · ')}`);
+        loaf === 'n/a'
+          ? 'LoAF     n/a (no Long Animation Frames API in this browser)'
+          : `LoAF     ${loaf.n} frames > 50 ms since on · last ${loaf.kept}: ${f(loaf.ms, 0)} ms, style+layout ${f(loaf.style)} ms, forced ${f(loaf.forced)} ms${loaf.top.length ? ` · top ${loaf.top.map(([k2, v]) => `${k2} ${v}`).join(' · ')}` : ''}`
+      );
+    if (res) {
+      L.push(
+        `probe    ${res.rows.length + 2} configs × ${res.frames} frames (first ${res.warm} dropped) · ${res.key === 'gpu' ? `GPU ms (${gpu})` : 'draw + GPU sync ms (no GPU timer)'}${restored ? ` · ${restored}` : ''}`
+      );
+      const drift = res.b1.draw > 0 ? (100 * (res.b2.draw - res.b1.draw)) / res.b1.draw : 0;
+      L.push(
+        `base     frame ${f(res.frame)} ms = JS ${f(B.js)} + draw ${f(B.draw)}${Number.isFinite(B.gpu) ? ` (GPU ${f(B.gpu)})` : ''} · ${k(B.calls)} calls · ${k(B.tris)} tris · re-run drift ${drift >= 0 ? '+' : ''}${f(drift, 0)}%`
+      );
+      L.push('costs    (what switching it off saves, ms and % of the frame, ranked; + = off costs more; calls / tris − = fewer)');
+      res.rows.forEach((r, i) =>
+        L.push(
+          ` ${lpad(String(i + 1), 2)} ${pad(r.label, 34)} ${lpad(`${r.save >= 0 ? '' : '+'}${f(Math.abs(r.save), 2)} ms`, 9)} ${lpad(`${r.save >= 0 ? '' : '+'}${f(Math.abs(r.pct), 0)}%`, 5)} ${lpad(sg(r.dCalls, k), 6)} calls ${lpad(sg(r.dTris, k), 7)} tris`
+        )
+      );
+      if (res.na.length) L.push(`n/a      ${res.na.map(r => `${r.label} (${r.why})`).join(' · ')}`);
+    }
     if (js && js.p) {
       const p = js.p;
       L.push(
@@ -819,7 +1039,7 @@ const PerfHUD = {
     );
     for (const s of [...spikes].reverse())
       L.push(
-        ` ${lpad(f(s.t, 1), 7)}s ${lpad(f(s.ms, 0), 4)} / ${f(s.med, 0)}${s.kind === 'match' ? ' match' : ''}${s.js ? ` · JS ${f(s.js.update + s.js.draw + (s.js.labels || 0))}` : ''} · ${s.ev.length ? s.ev.join(' · ') : '–'}`
+        ` ${lpad(f(s.t, 1), 7)}s ${lpad(f(s.ms, 0), 4)} / ${f(s.med, 0)}${s.kind === 'match' ? ' match' : ''}${s.js ? ` · JS ${f(s.js.update + s.js.draw + (s.js.labels || 0))}${s.js.ui > 0.5 ? ` (ui ${f(s.js.ui)})` : ''}` : ''} · ${s.ev.length ? s.ev.join(' · ') : '–'}${s.lf ? ` · ${s.lf}` : ''}`
       );
     return L.join('\n');
   }

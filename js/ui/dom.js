@@ -323,3 +323,48 @@ const pop = (label, body, cls = '') =>
     if (e.key === 'Escape') for (const d of document.querySelectorAll('details.pop[open]')) d.open = false;
   });
 })();
+
+// ---- quiet updates (spec §4.39 pacing, owner 2026-10-27): change only what changed, off the frame -------------------------------
+/** Make node x (child of parent) match node y: text, attributes, then children by position; a different tag is replaced. */
+function patchNode(parent, x, y) {
+  if (x.nodeType !== y.nodeType || x.nodeName !== y.nodeName) return void parent.replaceChild(y, x);
+  if (x.nodeType === 3 || x.nodeType === 8) return void (x.data !== y.data && (x.data = y.data));
+  if (x.nodeType !== 1) return;
+  for (const a of [...x.attributes])
+    if (!y.hasAttribute(a.name) && !(a.name === 'open' && x.nodeName === 'DETAILS')) x.removeAttribute(a.name);
+  for (const a of y.attributes) if (x.getAttribute(a.name) !== a.value) x.setAttribute(a.name, a.value);
+  patchKids(x, y);
+}
+function patchKids(a, b) {
+  const B = [...b.childNodes];
+  B.forEach((y, i) => (a.childNodes[i] ? patchNode(a, a.childNodes[i], y) : a.appendChild(y)));
+  while (a.childNodes.length > B.length) a.removeChild(a.lastChild);
+}
+/** el's content becomes html, touching only the nodes that differ (no rebuild: no new layout of what stayed). */
+function patchHTML(el, html) {
+  const t = document.createElement('template');
+  t.innerHTML = html;
+  patchKids(el, t.content);
+}
+/** el itself becomes html's one element (attributes and children patched in place); anything else: outerHTML. */
+function patchOuter(el, html) {
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  const y = t.content.firstElementChild;
+  if (!y || t.content.childNodes.length !== 1 || !el.parentNode) return void (el.outerHTML = html);
+  patchNode(el.parentNode, el, y);
+}
+/** Run fn once when the page is idle (≤ ms later): one pending call per key (a newer request for the key replaces it). */
+const IDLE = {};
+function idleDo(key, fn, ms = 250) {
+  const had = key in IDLE;
+  IDLE[key] = fn;
+  if (had) return;
+  const go = () => {
+    const f = IDLE[key];
+    delete IDLE[key];
+    if (f) f();
+  };
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: ms });
+  else setTimeout(go, 0);
+}

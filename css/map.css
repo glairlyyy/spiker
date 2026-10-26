@@ -28,11 +28,13 @@
   inset: 0;
   overflow: hidden;
   pointer-events: none;
+  contain: strict; /* (its labels move every frame: their style / layout / paint stay inside it — spec §4.39 pacing) */
 }
 .maplay > * {
   position: absolute;
   left: 0;
   top: 0;
+  will-change: transform; /* moved by transform only (pins3d): composited, no repaint as the camera moves */
 }
 /* no pins (spec §4.40): the places are their buildings. The anchor over the selected one's roof (the popup stands beside it) */
 .manchor {

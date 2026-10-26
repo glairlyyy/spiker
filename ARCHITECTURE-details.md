@@ -876,7 +876,28 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   builds, stream / props preps and picks, sky bakes, render scale, street fx sweeps, updates, fog re-dims, people VRMs, slow `lap`
   sections) + `PerfHUD.note`s since (`hook()`: renderCareer, MapModel.build, Run.save wrapped while on). map3d's `lap(name)` splits
   the frame's JS (`secE` averages → the report's hot JS).
-- `MapView.saveSoon()`: the running clock's periodic save on `requestIdleCallback` (≤ 1 s), not in the frame.
+- `MapView.saveSoon()`: the running clock's periodic save on `requestIdleCallback` (≤ 1 s), not in the frame; an idle slice shorter
+  than the save's usual time (`CLK.saveMs`, EMA) waits for a longer one within the second.
+- **Pacing** (owner 2026-10-27: "60 fps steady but it stutters"): `PerfHUD.paceAdd(iv)` keeps the last `PACE.win` 60 s of frame
+  intervals in a ring (`pq`, Float64Array, no allocation a frame; not while measuring); `pace(ivs)` (pure) = nearest-rank p50 / p95 /
+  p99, max, sd, the 1 % low (fps of the mean of the worst 1 %), hitches (> `PACE.k` 1.5 × the median and > `abs` 25 ms) and their rate a
+  minute; `pc` = pace() of the ring once a second → the overlay's "p50/95/99/max" and "1% low" rows and the report's `pacing` line.
+  **LoAF**: `loafWatch(on)` observes `long-animation-frame` (Chrome 123+, frames > 50 ms; `lo` = 'n/a' elsewhere); `loafOf(e)` → { ms,
+  block, style (styleAndLayoutStart → end), forced (scripts' forcedStyleAndLayoutDuration), js, top 2 scripts "function (file) ms" };
+  a spike keeps `at` (its frame's window) and gets the overlapping entry as `lf` (whichever arrives first); `loafSum()` → the report's
+  LoAF line. Spikes also keep the page step's ms (`ruleMs` → `js.ui`). The overlay's rows are built once per shape (`rows`) and each
+  4 Hz redraw rewrites only the values that changed. Copy works without Measure (`report()`: context, pacing, LoAF, JS, spikes; a
+  Measure's report is copied once, then fresh ones).
+- **Quiet UI ticks** (spec §4.39 pacing): the page's frame step (`spotFollow`) reads no layout — the place popup's anchor point comes
+  from pins3d (`el._at` = [x, y, half width] canvas px, written by its tick), the hub / canvas boxes and `--rail` / `--tbar` from
+  `hubGeo(hub)` (cached until a ResizeObserver on the hub / #mapwrap fires or a new hub renders), a card's size from `cardWH` (cached
+  until its ResizeObserver fires; `spotPlace(true)` / `figRender` measure again after a content change); `styleSet` writes a style only
+  when it differs. `MapView.figureAt(id, rect)` takes the cached canvas box. pins3d writes transform / width / opacity only when their text
+  changed (`.maplay` `contain: strict`, its children `will-change: transform`). `clockRefresh()` (every ½ game h, a WASD stop) runs on
+  `idleDo` (dom.js: one pending call per key, `requestIdleCallback` ≤ 250 ms) and patches in place (`patchOuter` / `patchHTML`: text,
+  attributes and changed nodes only; a `<details>` keeps `open`) instead of outerHTML / innerHTML rebuilds; the match chip is removed,
+  not left as a hidden span. The hover tip measures once per content (`_wh`); the station prompt compares its last html (not
+  `el.innerHTML`) and writes left / top only when they change.
 - **Auto on a laptop GPU** (owner 2026-10-26: Radeon 610M, street level at night 51 ms, GPU-bound). Post: RenderPass → (GTAO, High) →
   bloom → `FinishShader` (one ShaderPass, `toneMapped = false`): per tap HDR + `uBloom` × the bloom's composite
   (`renderTargetsHorizontal[0]`) → ACES → sRGB, three's FXAA 3.11 body (`FX_BODY`, its taps through `fsTap`; `uAA` branch), then the

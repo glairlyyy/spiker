@@ -1,7 +1,8 @@
 // Map furniture for the 3D island: an HTML overlay projected onto the terrain every frame (the war borders are map3d's war layer,
 // spec §4.34). No pins (spec §4.40, T-351): the places are their buildings — the town layer picks and lights them; this overlay keeps
 //   - the hover tag over the facility under the pointer (`.mtag`: its name, the 1–3 body glyphs it trains best, the trip there),
-//   - an invisible anchor over the selected place (`.manchor`: the place popup stands beside it, career-map.js spotPlace),
+//   - an invisible anchor over the selected place (`.manchor`: the place popup stands beside it, career-map.js spotPlace — from
+//     the element's `_at` [x, y, half width] in canvas px, written here each tick: no layout read),
 //   - the picked-point flag, the story figures' names over their heads,
 //   - the region names, only far out (zoomed to the whole island: NAMES_AT), where a place is too small to hover.
 // Reads only MapModel fields; reports nothing (map3d turns facility clicks into pick(id)).
@@ -72,6 +73,7 @@ export function createFurniture(scene, heightAt, where = () => null) {
       it.off = true;
       it.el.style.display = 'none';
       it.vis = false;
+      it.el._at = null;
     } else Object.assign(it, w, { off: false });
     P.ver++;
   };
@@ -169,16 +171,28 @@ export function createFurniture(scene, heightAt, where = () => null) {
           it.el.style.display = show ? '' : 'none';
           it.vis = show;
         }
-        if (!show) continue;
-        const sx = (v.x * 0.5 + 0.5) * w;
+        if (!show) {
+          it.el._at = null;
+          continue;
+        }
+        // transform / opacity only (compositor properties), each written only when its text changed (spec §4.39 pacing)
+        const sx = (v.x * 0.5 + 0.5) * w,
+          sy = (-v.y * 0.5 + 0.5) * h + (it.dy || 0);
+        let hw = 0;
         if (it.r) {
           // the anchor spans the building's width on screen (the popup stands clear of it)
-          const e = V2.set(it.x + rx * it.r, it.y, it.z + rz * it.r).project(cam),
-            hw = Math.max(1, Math.abs((e.x * 0.5 + 0.5) * w - sx));
-          it.el.style.width = `${(2 * hw).toFixed(0)}px`;
+          const e = V2.set(it.x + rx * it.r, it.y, it.z + rz * it.r).project(cam);
+          hw = Math.max(1, Math.abs((e.x * 0.5 + 0.5) * w - sx));
+          const wd = `${(2 * hw).toFixed(0)}px`;
+          if (wd !== it.wd) it.el.style.width = it.wd = wd;
         }
-        it.el.style.transform = `translate(${sx.toFixed(1)}px, ${((-v.y * 0.5 + 0.5) * h + (it.dy || 0)).toFixed(1)}px) translate(-50%, -50%)`;
-        if (it.label) it.el.style.opacity = fade.toFixed(2);
+        it.el._at = [sx, sy, hw]; // (canvas px: the place popup's anchor without a layout read — career-map spotPlace)
+        const tf = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) translate(-50%, -50%)`;
+        if (tf !== it.tf) it.el.style.transform = it.tf = tf;
+        if (it.label) {
+          const op = fade.toFixed(2);
+          if (op !== it.op) it.el.style.opacity = it.op = op;
+        }
       }
     },
     dispose() {

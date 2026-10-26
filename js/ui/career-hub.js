@@ -400,24 +400,31 @@ function matchChip(run) {
   const held = City.hour(run) >= by - 1e-6;
   return `<span class="tchip ${held ? 'held' : ''}" id="tchip" ${tip(`A match you are made to play starts at ${City.hhmm(DAY.match)}; the walk there counts`)}>⚑ Match ${City.hhmm(DAY.match)} · ${held ? 'the clock waits' : `leave by ${City.hhmm(by)}`}</span>`;
 }
-/** The running clock moved on (MapView.tick, every CLOCK.save game hours): the rail's today, the open card's hours, the match chip. */
+/**
+ * The running clock moved on (MapView.tick, every CLOCK.save game hours; a WASD stop): the rail's today, the open card's hours, the
+ * match chip — when the page is idle, each patched in place (only the text / attributes that changed: no rebuild, spec §4.39 pacing).
+ */
 function clockRefresh() {
-  const run = RUN;
-  if (!run || !document.querySelector('.career.hub')) return;
-  const wk = document.querySelector('.wweek');
-  if (wk) wk.outerHTML = weekSection(run);
-  const g = document.querySelector('.hub .mapwalk');
-  if (g) {
-    const c = document.getElementById('tchip'),
-      html = matchChip(run);
-    if (c) c.outerHTML = html || '<span hidden></span>';
-    else if (html) g.insertAdjacentHTML('afterbegin', html);
-  }
-  const el = document.getElementById('spot');
-  if (el && CW.spot && el.classList.contains('open') && !el.matches(':hover') && !CW.lock) {
-    el.innerHTML = spotCard(run);
-    spotPlace();
-  }
+  idleDo('clock:week', () => {
+    const run = RUN,
+      wk = run && document.querySelector('.career.hub .wweek');
+    if (wk) patchOuter(wk, weekSection(run));
+    const g = run && document.querySelector('.hub .mapwalk');
+    if (g) {
+      const c = document.getElementById('tchip'),
+        html = matchChip(run);
+      if (c && !html) c.remove();
+      else if (c && c.outerHTML !== html) patchOuter(c, html);
+      else if (!c && html) g.insertAdjacentHTML('afterbegin', html);
+    }
+  });
+  idleDo('clock:spot', () => {
+    const el = RUN && document.querySelector('.career.hub #spot');
+    if (el && CW.spot && el.classList.contains('open') && !el.matches(':hover') && !CW.lock) {
+      patchHTML(el, spotCard(RUN));
+      spotPlace(true);
+    }
+  });
 }
 function railToggle() {
   CW.railMini = !CW.railMini;

@@ -2009,6 +2009,20 @@ the AI coach fills every slot you leave with the same function. Built and measur
     draws), the building's walls and roof draw once, not twice, and the station prompt no longer forces a page layout every frame.
     Measured headless at the gym (Auto): draw calls inside 317 → 254 (outside 145), VRM shadow meshes 67 → 36, a VRM 43 → 36
     calls; no shader compiles inside; the look is unchanged but for the station people beyond 4 (light figures).
+    **Frame pacing — the UI side (owner, 2026-10-27, RTX 5060 laptop: "it runs at 60 fps steady but it stutters most of the time")
+    [built 2026-10-27]**: the F3 overlay now shows pacing, not only the average — frame time p50 / p95 / p99 / max and the 1 % low
+    (fps of the worst 1 % of frames) over the last 60 s, and hitches a minute (a frame over 1.5× the median and over 25 ms); Copy report
+    works without Measure and carries a `pacing` line and a `LoAF` line (Chrome's Long Animation Frames: frames over 50 ms with the
+    script and function that ran, style & layout time and forced layout), and each spike keeps its LoAF and the page's own step. The
+    page's per-frame work no longer reads the layout: the place popup follows its building from the point the 3D overlay already
+    computed, the hub's boxes and the card's size are kept until they really change, styles are written only when they change, the
+    overlay's labels move by transform only (each written only when it moved). The clock's refresh (every ½ game hour: today's strip,
+    the match chip, the open card) waits for an idle moment and changes only the text that changed instead of rebuilding them; the
+    save waits for an idle slice long enough for it. Nothing redraws the whole hub while you walk or stand with the clock running.
+    Measured headless (swiftshader, a 60 s walk with a place card open, map and street level, ×1 and ×4): forced style recalcs in the
+    frame 50 of 53 frames (map ×1) and 53 of 56 (×4) → 2 a run (the first measure after a new hub); attribute writes a frame ~1.6 →
+    ~0.25; renderCareer / MapModel.build during the walk or standing: 0 (only the click that starts the walk); street level had none
+    before or after. On the owner's GPU the stutter's rest is the renderer's (agents A / B); the overlay's pacing rows and LoAF lines say which.
     **Walking at street level (owner, 2026-10-25: "why is there 'Loading…' every time I move with WASD? … it drops when I start spam
     moving") [built 2026-10-25]**: every WASD stop is a travel, and each moved the fog's lantern (it is lit round where you stand), so
     the whole island was re-dimmed — terrain, every building, every tree, the night lights rebuilt — ~130 ms a stop headless; the

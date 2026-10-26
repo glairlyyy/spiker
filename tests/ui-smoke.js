@@ -295,8 +295,14 @@ const step = async (name, fn) => {
     const ranked = r.text.split('\n').filter(l => /^ {1,2}\d+ /.test(l));
     if (ranked.length < 5) throw new Error(`${ranked.length} ranked entries: ${r.text.slice(0, 300)}`);
     if (!r.shown) throw new Error('the report is not in the textarea');
-    if (!/^device /m.test(r.text) || !/^base /m.test(r.text) || !/^spikes /m.test(r.text)) throw new Error('report sections missing');
+    if (!/^device /m.test(r.text) || !/^base /m.test(r.text) || !/^spikes /m.test(r.text) || !/^pacing /m.test(r.text))
+      throw new Error('report sections missing');
     await pg.$eval('.perfhud [data-a="c"]', b => b.click()); // (the clipboard may be refused headless: the text is selected instead)
+    // pacing (owner 2026-10-27): the overlay's p50/95/99/max and 1 % low rows; a later Copy = a fresh report without the probe
+    const q = await ev(() => (PerfHUD.copy(), { t: PerfHUD.text, hud: document.querySelector('.perfhud').textContent }));
+    if (!/^pacing +\d+ s · \d+ frames · /m.test(q.t) || /^probe /m.test(q.t) || !/^LoAF /m.test(q.t))
+      throw new Error(`the pacing report: ${q.t.slice(0, 400)}`);
+    if (!/p50\/95\/99\/max/.test(q.hud) || !/1% low/.test(q.hud)) throw new Error(`the overlay's pacing rows: ${q.hud.slice(0, 300)}`);
     const qa = process.env.PROBE_SHOT;
     if (qa) await pg.screenshot({ path: qa });
     if (process.env.PROBE_TXT) fs.writeFileSync(process.env.PROBE_TXT, r.text);

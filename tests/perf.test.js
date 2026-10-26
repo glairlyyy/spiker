@@ -168,3 +168,81 @@ test('perf spikes: a frame > 2× the median keeps the frame before it and what r
   for (let i = 0; i < 30; i++) (fr(16), fr(16), fr(16), fr(200));
   eq(H.spikes.length, 20, 'the last 20 kept');
 });
+
+test('perf pacing (owner 2026-10-27): percentiles, 1 % low, hitches > 1.5× the median and > 25 ms, the ring keeps 60 s', () => {
+  const [H] = perfHUD();
+  eq(H.pace([]), null, 'no frames');
+  const iv = [];
+  for (let i = 0; i < 990; i++) iv.push(16);
+  for (let i = 0; i < 6; i++) iv.push(24); // over 1.5× the median but under 25 ms: no hitch
+  iv.push(30, 40, 50, 100); // 4 hitches
+  const c = H.pace(iv);
+  eq(c.n, 1000, 'n');
+  eq(c.p50, 16, 'p50');
+  eq(c.p95, 16, 'p95');
+  eq(c.p99, 16, 'p99 (the 990th of 1000)');
+  eq(c.max, 100, 'max');
+  eq(c.hitches, 4, 'hitches');
+  assert(Math.abs(c.low1 - 1000 / ((24 * 6 + 30 + 40 + 50 + 100) / 10)) < 1e-9, `1 % low = fps of the mean of the worst 10: ${c.low1}`);
+  assert(Math.abs(c.perMin - (4 * 60000) / c.ms) < 1e-9, 'hitches a minute of frames');
+  assert(/^16\.0 \/ 16\.0 \/ 16\.0 \/ 100$/.test(H.paceText(c)), `overlay text: ${H.paceText(c)}`);
+  // the ring: 60 s of frames at most, oldest out first
+  for (let i = 0; i < 5000; i++) H.paceAdd(20);
+  const v = H.paceVals();
+  eq(v.length, 3000, '60 s of 20-ms frames');
+  H.paceAdd(50);
+  eq(H.paceVals().length, 2998, 'a long frame pushes out older ones (≤ 60 s)');
+  eq(H.paceVals()[2997], 50, 'newest last');
+});
+
+test('perf report: the pacing and LoAF lines without a Measure; a spike keeps its LoAF and the page step', () => {
+  const [H, env] = perfHUD();
+  H.loaf = [];
+  H.lo = {};
+  for (let i = 0; i < 40; i++) ((env.t += 16), H.rule(0.2), H.spike('map', { last: 16, raw: { update: 1, draw: 1, labels: 0 }, ev: [] }));
+  H.rule(3);
+  env.t += 16;
+  H.spike('map', { last: 16, raw: { update: 2, draw: 1, labels: 0 }, ev: [] });
+  env.t += 70;
+  H.spike('map', { last: 70, raw: { update: 1, draw: 1, labels: 0 }, ev: [] });
+  eq(H.spikes.length, 1, 'one spike');
+  H.loafs([
+    {
+      startTime: env.t - 66,
+      duration: 64,
+      blockingDuration: 14,
+      styleAndLayoutStart: env.t - 6,
+      scripts: [
+        { sourceFunctionName: 'spotFollow', sourceURL: 'http://x/js/ui/career-map.js', duration: 9, forcedStyleAndLayoutDuration: 3 }
+      ]
+    }
+  ]);
+  assert(
+    /^LoAF 64 ms: JS 9\.0 · style\+layout 4\.0 · forced 3\.0 · spotFollow \(career-map\.js\) 9 forced 3\.0$/.test(H.spikes[0].lf),
+    H.spikes[0].lf
+  );
+  const pace = H.pace([16, 16, 16, 70]),
+    txt = H.probeReport({ ctx: { kind: 'map' }, spikes: H.spikes, pace, loaf: H.loafSum() }),
+    L = txt.split('\n');
+  assert(
+    L.some(l =>
+      /^pacing +0 s · 4 frames · \d+ fps · frame ms p50 16\.0 \/ p95 70\.0 \/ p99 70\.0 \/ max 70\.0 · sd [\d.]+ · 1% low 14 fps · hitches 1 /.test(
+        l
+      )
+    ),
+    txt
+  );
+  assert(
+    L.some(l =>
+      /^LoAF +1 frames > 50 ms since on · last 1: 64 ms, style\+layout 4\.0 ms, forced 3\.0 ms · top spotFollow \(career-map\.js\) 9$/.test(
+        l
+      )
+    ),
+    txt
+  );
+  assert(
+    L.some(l => /70 \/ 16 · JS 3\.0 \(ui 3\.0\) · .* · LoAF 64 ms: JS 9\.0/.test(l)),
+    `the spike line: ${txt}`
+  );
+  assert(!/^probe/m.test(txt), 'no probe lines without a Measure');
+});
