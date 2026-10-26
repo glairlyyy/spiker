@@ -137,6 +137,7 @@ function startBeat(b) {
           q.jy = 0;
           q.jmode = null;
           q.fallMs = null;
+          q.stray = false;
         }
         A.ball.vis = false;
         A.trailPow = 0;
@@ -169,9 +170,25 @@ function startBeat(b) {
         startPose(d, a.pose, !!a.pc, b.dur);
         break;
       case 'jump':
+        a._skip = false;
+        if (b.acts.some(x => x !== a && x.k === 'jump' && x.p === a.p && x.when !== 'end' && b.acts.indexOf(x) > b.acts.indexOf(a))) {
+          a._skip = true; // two jumps for one player in a beat (a decoy's hop and their 'down'): the last one plays
+          break;
+        }
+        if (a.mode === 'down' && d.stray) {
+          a._skip = true; // already coming down (landStrays): the fall goes on — no second fall, no swing
+          d.stray = false;
+          if (d.fallMs == null) d.jmode = null;
+          break;
+        }
+        d.stray = false;
         d.jt = 0;
         d.jmode = { mode: a.mode, t0: jumpT0(a, b.dur), t1: a.t1 || 1, peak: a.peak || d.jy, start: d.jy, dur: b.dur };
-        if (leapWarp(a)) Object.assign(d.jmode, { warp: true, warpU: VFX.leap.warpMs / Math.max(1, b.dur) }); // (VFX.leap: the teleport jump)
+        if (leapWarp(a))
+          Object.assign(d.jmode, { warp: true, warpU: VFX.leap.warpMs / Math.max(1, b.dur) }); // (VFX.leap: the teleport jump)
+        else if (a.mode === 'up' && d.jy > 2 && b.dur > 0)
+          // up again while still in the air (a middle who bit on a fake, then blocks the real hit): feet down first, then up
+          d.jmode.t0 = Math.min(0.9, Math.max(d.jmode.t0, (Math.sqrt((2 * d.jy * UNIT_M.h) / FALL_G) * 1000) / b.dur + 0.04));
         d.fallMs = null;
         d.landMs = null;
         if (a.mode === 'down' && (d.pose === 'spike' || d.pose === 'serve')) {
@@ -528,7 +545,9 @@ function tweenJump(d, a, b, t) {
   }
   if (a.mode === 'up' && J.warp)
     d.jy = t < J.t0 ? 0 : J.peak * (1 - Math.pow(1 - clamp((t - J.t0) / J.warpU, 0, 1), 3)); // up in a flash
-  else if (a.mode === 'up') d.jy = J.peak * (1 - Math.pow(1 - l, 2));
+  else if (a.mode === 'up')
+    // still in the air from an earlier jump (start > 0): comes down under gravity first (t0 is after the touchdown) — no snap
+    d.jy = Math.max(t >= J.t0 ? J.peak * (1 - Math.pow(1 - l, 2)) : 0, J.start > 0 ? fallAt(J.start, t * b.dur) : 0);
   else if (a.mode === 'reup')
     d.jy = t < 0.4 ? J.start * (1 - Math.pow(t / 0.4, 2)) : J.peak * (1 - Math.pow(1 - l, 2)) * (t >= J.t0 ? 1 : 0);
   else if (a.mode === 'down') {
@@ -538,6 +557,8 @@ function tweenJump(d, a, b, t) {
     }
   } else d.jy = (a.peak || 0) * Math.sin(Math.PI * l);
 }
+/** Height (court h units) `ms` after a free fall from rest at height h0 started (FALL_G). */
+const fallAt = (h0, ms) => Math.max(0, h0 - (0.5 * FALL_G * Math.pow(ms / 1000, 2)) / UNIT_M.h);
 /** Move toward (x, z) no faster than a real sprint: a move the beat is too short for carries into the next beat. */
 const LAND_ABSORB = 120; // ms after a touchdown before a catch-up move starts
 const RUN_ACC = 16; // m/s² — a catch-up move builds up to a sprint (display only)
@@ -591,12 +612,49 @@ function endBeat(b) {
     d.z = d.sz = d.tz;
   }
   for (const a of b.acts) {
-    const d = a.k === 'jump' ? A.disp[a.p] : null;
+    const d = a.k === 'jump' && !a._skip ? A.disp[a.p] : null;
     if (d && a.mode !== 'up' && a.mode !== 'reup' && !(a.mode === 'down' && d.fallMs != null)) {
       d.jy = 0;
       d.jmode = null;
     }
     if (a.when === 'end') instant(a);
+  }
+  landStrays();
+}
+/** A beat that pauses the play for a moment of yours (a hesitation, spec §2.39; a card shown, §2.37): nobody hangs through it. */
+const pauseBeat = b => b.hes != null || b.acts.some(a => a.k === 'card');
+/**
+ * The mode of player `id`'s next jump after the current beat (the last of theirs in the first beat that has one), up to
+ * the next rally's reset; null: none, or a pause beat (pauseBeat) comes first.
+ */
+function nextJump(id) {
+  for (let i = A.bi + 1; i < (A.beats || []).length; i++) {
+    const b = A.beats[i];
+    if (pauseBeat(b)) return null;
+    let mode = null;
+    for (const a of b.acts) {
+      if (a.k === 'reset' && a.when !== 'end') return null;
+      if (a.k === 'jump' && a.p === id && a.when !== 'end') mode = a.mode;
+    }
+    if (mode) return mode;
+  }
+  return null;
+}
+/**
+ * End of a beat: a player left in the air by an 'up' jump with no 'down' of theirs coming next comes down now under
+ * gravity (owner, 2026-10-26: after a fake the decoy and the middle who jumped with them hung in the air to the end of the
+ * point, or through your hesitation — the engine sends them no 'down'). Display only: a later jump starts from the floor.
+ */
+function landStrays() {
+  for (const id in A.disp) {
+    const d = A.disp[id],
+      J = d.jmode;
+    if (!J || (J.mode !== 'up' && J.mode !== 'reup') || d.fallMs != null || !(d.jy > 0) || nextJump(id) === 'down') continue;
+    d.fallMs = 0; // free fall from here (stepPlayerTimers)
+    d.fallH = d.jy;
+    d.stray = true; // (a 'down' of theirs after all: startBeat lets this fall go on)
+    d.spkHold = false;
+    d.spkPend = null;
   }
 }
 

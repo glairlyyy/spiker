@@ -919,6 +919,49 @@ const step = async (name, fn) => {
     await ev(() => leaveMatch());
     return `${r[0]} vs ${r[1]}`;
   });
+  await step('Monster game: nobody floats after a fake (owner, 2026-10-26; seeded, 16 rallies of real playback)', async () => {
+    await ev(() => navigate('menu'));
+    await ev(() => {
+      TS.playAs = '';
+      RNG.seed(501); // (rally 15 of this game: a setter fake whose decoy and middle hung in the air to the point's end)
+      startMonster();
+    });
+    await pg.waitForFunction(() => typeof R3D !== 'undefined' && R3D && A && A.m && !A.hold, null, { timeout: 120000 });
+    const r = await ev(() => {
+      if (A.prep) prepStart();
+      A.hold = true;
+      const air = {};
+      let rally = 0,
+        fakes = 0,
+        beats = A.beats;
+      for (let f = 0; f < 120000 && rally < 16 && !A.m.over; f++) {
+        step(16);
+        if (A.beats !== beats) {
+          beats = A.beats;
+          rally++;
+          fakes += (beats || []).some(b => b.acts.some(a => a.t === 'Fake set!'));
+        }
+        const b = A.beats && A.beats[A.bi],
+          atReset = b && b._s && A.el < 20 && b.acts.some(a => a.k === 'reset');
+        for (const id in A.disp) {
+          const d = A.disp[id];
+          if (!(d.jy > 6)) {
+            delete air[id];
+            continue;
+          }
+          air[id] = (air[id] || 0) + (A.fdt || 0);
+          // the engine's longest hang (a block break over slow beats) is ~2.2 s from the take-off
+          if (air[id] > 2500 || atReset) throw new Error(`rally ${rally}: ${id} floats (${air[id] | 0} ms, jy ${d.jy | 0}, beat ${A.bi})`);
+        }
+      }
+      R3D.poseAll(0.016);
+      A.hold = false;
+      return { rally, fakes };
+    });
+    if (r.rally < 16 || !r.fakes) throw new Error(`not the case: ${JSON.stringify(r)}`);
+    await ev(() => leaveMatch());
+    return `${r.rally} rallies, ${r.fakes} with a fake`;
+  });
   await step('Monster game → result', async () => {
     await ev(() => navigate('menu'));
     await ev(() => {

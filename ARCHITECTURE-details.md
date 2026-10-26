@@ -376,6 +376,15 @@ Facing (actors3d `steer`, `longRun`): a fast (> 2.2 m/s), long (> 2 m left, or o
 the body to the run direction instead of backpedalling; blockers, setters and a hitter's short retreat to the run-up
 point keep facing the net.
 
+## Jumps and landings (playback)
+
+`d.jmode` (startBeat 'jump'; one jump act per player a beat — the last, earlier ones `_skip`) drives `tweenJump`; 'up' /
+'reup' keep their height past `endBeat`, a 'down' starts the free fall (`d.fallMs`, stepPlayerTimers, `FALL_G`). At every
+`endBeat`, `landStrays` drops anyone still up whose next jump act in the rally (`nextJump`, stopping at a `pauseBeat`: a
+hesitation or a card shown) isn't a 'down' — the setter fake's decoy and bitten middle get none from the engine; `d.stray`
+makes a later 'down' of theirs a no-op. An 'up' that starts in the air moves its take-off after the touchdown (`fallAt`).
+Tested in engine.test.js (`jumpHangs`: the real landStrays over seeded rallies).
+
 ## Pre-serve routine
 
 The serve type is picked before the reset, so the server walks straight to where the serve starts (the run-up start

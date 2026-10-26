@@ -308,6 +308,11 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     with them) as the ball reaches the setter ("Fake set!" there), and the set or the dump follows at once. It had its own
     slowed beat with the ball held at the setter's hands. The passer never runs in on screen (a passer the engine picked as
     the decoy is shown by the strongest other runner); the engine and its draws are unchanged.
+  - **Nobody floats after a fake** (owner, 2026-10-26: "sometimes a character floats in the air after a fake") **[built
+    2026-10-26]**: a player still up at the end of a beat with no landing of theirs coming next — the setter fake's decoy and
+    the middle who bit (the engine sends them no landing), or anyone hanging into a hesitation or a card shown — comes down
+    under gravity at once; one who jumps again before touching down (a bitten middle blocking the real hit) lands first, then
+    takes off. Display only; goldens unchanged.
 - §2.20 Cut-scenes (display only) **[built, owner 2026-10-08 – 10-09]**: a heroic tracked camera for a big point, picked from the
   rally's beats before they play. **Ace** — the ball in the server's hands as they bounce it, the feet on the run-up, a side
   view of the hit, riding the ball to the floor. **WS kill** — over the hitter's shoulder as the set goes up, low at the feet

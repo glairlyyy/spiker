@@ -27,8 +27,7 @@ test('engine: a human player (m.human) plays the same rallies as the sim flow, b
     let out = '',
       rallies = 0;
     // (your hesitation's beat, spec §2.39 T-367, is presentation only: the rally after it is the same)
-    while (!m.over && rallies++ < 400)
-      out += JSON.stringify(g.playRally(m).beats.filter(b => !(b.acts || []).some(a => a.k === 'hesit')));
+    while (!m.over && rallies++ < 400) out += JSON.stringify(g.playRally(m).beats.filter(b => !(b.acts || []).some(a => a.k === 'hesit')));
     return out + JSON.stringify([m.setScores, m.stat]);
   };
   assert(play(true) === play(false), 'm.human changes nothing in the engine (only the captain chips read it)');
@@ -1595,4 +1594,92 @@ test('fx: lightning Poly clamps t (NaN / < 0 / > 1) and bolt ends must be finite
   } finally {
     if (!had) delete globalThis.document;
   }
+});
+
+/**
+ * Jumps over a rally's beats as playback plays them (one jump per player a beat, the last; 'up' / 'reup' stay up past the
+ * beat's end, anything else ends grounded; a reset grounds everyone), with playback.js's real landStrays at each beat's end.
+ * Returns the hangs: { p, bi, ms (world time in the air after the take-off beat), stray (still up at the rally's end) }.
+ */
+function jumpHangs(beats, P) {
+  const A = { beats, bi: 0, disp: {} };
+  P.A = A;
+  const hangs = [],
+    up = {};
+  const down = id => {
+    if (up[id]) hangs.push(up[id]);
+    delete up[id];
+    const d = A.disp[id];
+    if (d) Object.assign(d, { jy: 0, jmode: null, fallMs: null });
+  };
+  beats.forEach((b, bi) => {
+    A.bi = bi;
+    if (b.acts.some(a => a.k === 'reset' && a.when !== 'end')) for (const id of Object.keys(A.disp)) down(id);
+    const last = {};
+    for (const a of b.acts) if (a.k === 'jump' && a.when !== 'end') last[a.p] = a;
+    for (const id in last) {
+      const a = last[id],
+        d = (A.disp[id] = A.disp[id] || { jy: 0 });
+      if (a.mode === 'down' && d.stray) d.stray = false;
+      else if (a.mode === 'up' || a.mode === 'reup') {
+        if (up[id]) hangs.push(up[id]);
+        Object.assign(d, { jy: a.peak || 50, jmode: { mode: a.mode }, fallMs: null, stray: false });
+        up[id] = { p: id, bi, ms: 0 };
+      } else down(id);
+    }
+    for (const id in up) if (up[id].bi < bi && !b.scene && !b.freeze) up[id].ms += b.dur || 0;
+    P.landStrays();
+    for (const id in up) if (A.disp[id].fallMs != null) down(id); // (comes down now: under half a second from the top)
+  });
+  for (const id in up) hangs.push({ ...up[id], stray: true });
+  return hangs;
+}
+/** playback.js in a bare context: the jump helpers (A swapped per rally). */
+function pbJumps() {
+  const vm = require('vm'),
+    ctx = { UNIT_M: { x: 0.0204, z: 12, h: 2.43 / 150 }, Z_UNITS: 1, Math };
+  vm.createContext(ctx);
+  vm.runInContext(
+    `${fs.readFileSync(path.join(__dirname, '..', 'js/render/playback.js'), 'utf8')}\n;globalThis.__p={landStrays,nextJump,set A(v){A=v}};var A;`,
+    ctx
+  );
+  return ctx.__p;
+}
+test('render: nobody floats after a fake — the decoy and the middle who bit come down (owner, 2026-10-26)', () => {
+  const g = load(1),
+    P = pbJumps();
+  // the found case: a setter fake (Monster, seed 100, rally 19) — the decoy and their middle get no 'down' from the engine
+  g.RNG.seed(100);
+  const T = g.mkMonsterTeams(),
+    m = g.newMatch(T[0], T[1], true);
+  for (let k = 0; k < 19; k++) g.playRally(m);
+  const beats = g.playRally(m).beats,
+    fb = beats.findIndex(b => b.acts.some(a => a.t === 'Fake set!')),
+    ups = beats[fb].acts.filter(a => a.k === 'jump' && a.mode === 'up').map(a => a.p),
+    downs = new Set(beats.slice(fb + 1).flatMap(b => b.acts.filter(a => a.k === 'jump').map(a => a.p)));
+  assert(fb >= 0 && ups.some(p => !downs.has(p)), 'the case: a fake jumper with no jump act after it');
+  const H = jumpHangs(beats, P);
+  for (const p of ups) {
+    const h = H.find(x => x.p === p && x.bi === fb);
+    assert(h && !h.stray && h.ms === 0, `${p} comes down right after the fake (${JSON.stringify(h)})`);
+  }
+  // the sweep: Monster, league and Dev deck matches full of fake cards — no hang past the engine's longest hang time
+  let n = 0,
+    fakes = 0;
+  const deck = Array(6).fill(['ifake', 'decoy']).flat();
+  for (const kind of ['monster', 'league', 'deck'])
+    for (let s = 0; s < 4; s++) {
+      g.RNG.seed(300 + s);
+      const T = kind === 'monster' ? g.mkMonsterTeams() : g.mkLeagueTeams(),
+        m = g.newMatch(T[s % T.length], T[(s + 1) % T.length], true, kind === 'deck' ? { cards: [{ by: 'you', deck }, { deck }] } : {});
+      while (!m.over) {
+        const beats = g.playRally(m).beats;
+        fakes += beats.some(b => b.acts.some(a => a.t === 'Fake set!'));
+        for (const h of jumpHangs(beats, P)) {
+          n++;
+          assert(!h.stray && h.ms <= 1300, `${kind} ${s}: ${h.p} hangs from beat ${h.bi} (${JSON.stringify(h)})`);
+        }
+      }
+    }
+  assert(n > 500 && fakes > 20, `jumps ${n}, rallies with a fake ${fakes}`);
 });
