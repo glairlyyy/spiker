@@ -146,7 +146,7 @@ function releaseScene(scene, renderer, sun) {
 }
 export function create(onIdle) {
   const canvas = document.createElement('canvas'),
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: true }),
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }),
     scene = new THREE.Scene(),
     cam = new THREE.PerspectiveCamera(40, 1, 1, 3000);
   const { sun, hemi, water } = lightScene(renderer, scene);
