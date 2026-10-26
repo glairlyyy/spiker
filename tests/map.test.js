@@ -161,7 +161,11 @@ test('career: world layout — roads, routes, lots, landmarks', () => {
     L.every(l => l.style && l.kind && Number.isFinite(l.rot) && l.size > 0),
     'lots are plain data'
   );
-  eq(M.land.roads.length, g.ROADS.edges.length, 'one road polyline per edge');
+  eq(
+    M.land.roads.length,
+    g.ROADS.edges.filter(e => e[3] !== 'via').length,
+    'one road polyline per edge (a via chain retraces one: not drawn)'
+  );
   assert(
     M.land.roads.every(r => r.kind && r.pts.length >= 2),
     'roads carry kind and points'
@@ -247,6 +251,55 @@ test('map: walks follow the drawn roads — joined at the nearest road point, ev
   }
   // a place's node joins at itself: place-to-place trips are unchanged by the joins
   eq(g.City.join(N.harbor).d, 0, 'a place stands on its road');
+});
+
+test('map: every building fronts a road — access lanes reach the lots, joined to the network, clear of the facilities (2026-10-26)', () => {
+  const g = load(22),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Lane', mode: { story: false } }),
+    N = g.ROADS.nodes,
+    M = g.MAP_UNIT_M,
+    m = g.MapModel.build(run),
+    roads = m.land.roads.filter(r => r.kind !== 'overpass'),
+    segD = (p, A, B) => {
+      const dx = B[0] - A[0],
+        dy = B[1] - A[1],
+        t = Math.max(0, Math.min(1, ((p[0] - A[0]) * dx + (p[1] - A[1]) * dy) / (dx * dx + dy * dy || 1)));
+      return Math.hypot(p[0] - A[0] - t * dx, p[1] - A[1] - t * dy);
+    },
+    dRoad = p => Math.min(...roads.map(r => segD(p, r.pts[0], r.pts[1])));
+  const lanes = g.ROADS.edges.filter(e => e[3] === 'lane'),
+    via = g.ROADS.edges.filter(e => e[3] === 'via');
+  assert(lanes.length > 100, `lanes built (${lanes.length})`);
+  assert(
+    !m.land.roads.some((r, i, A) => A.findIndex(q => JSON.stringify(q.pts) === JSON.stringify(r.pts)) !== i),
+    'no road drawn twice (via chains are not drawn)'
+  );
+  assert(
+    via.every(([a, b]) => g.ROADS.edges.some(e => !e[3] && segD(N[a], N[e[0]], N[e[1]]) < 0.2 && segD(N[b], N[e[0]], N[e[1]]) < 0.2)),
+    'a via chain retraces its edge'
+  );
+  assert(
+    lanes.every(([a, b]) => Math.hypot(N[a][0] - N[b][0], N[a][1] - N[b][1]) > 0.5),
+    'no zero-length lane'
+  );
+  // every lot within LANES.reach of a road (centre − half its size), every facility's door by its road
+  const far = m.land.lots.filter(l => dRoad(l.at) - l.size * 0.5 > g.LANES.reach);
+  eq(far.length, 0, 'every lot fronts a road');
+  for (const [id, f] of Object.entries(g.MapModel.facilities(run))) assert(dRoad(f.node) < 1, `${id}: its node on a road`);
+  // no lane through a facility's lot
+  for (const [a, b] of lanes)
+    for (let s = 0; s <= 1; s += 0.1) {
+      const p = [N[a][0] + (N[b][0] - N[a][0]) * s, N[a][1] + (N[b][1] - N[a][1]) * s];
+      for (const f of Object.values(g.MapModel.facilities(run))) {
+        const c = Math.cos(f.rot),
+          sn = Math.sin(f.rot),
+          dx = (p[0] - f.at[0]) * M,
+          dz = (p[1] - f.at[1]) * M;
+        assert(!(Math.abs(dx * c - dz * sn) < f.w / 2 && Math.abs(dx * sn + dz * c) < f.d / 2), `lane ${a}–${b} crosses a facility`);
+      }
+    }
+  // run-independent: another run, the same lanes
+  eq(JSON.stringify(load(23).ROADS.edges), JSON.stringify(g.ROADS.edges), 'the same lanes every load');
 });
 
 test('career: town layout — districts, beach, overpass, frozen borders', () => {
@@ -368,12 +421,12 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
     flat = g.ROADS.edges.filter(e => e[2] !== 'overpass');
   for (const l of L) by[g.City.regionAt(l.at)] = (by[g.City.regionAt(l.at)] || 0) + 1;
   for (const [r, n, lo, hi] of [
-    ['wei', 1119, 895, 1343], // (island × 4.5, owner 2026-10-23: the towns spread × 2, their lot grid × 1.6 — LOT_SPREAD)
-    ['wu', 462, 370, 554],
-    ['shu', 151, 121, 181],
-    ['outlaws', 103, 82, 124],
-    ['open', 272, 218, 326],
-    ['gloria', 48, 38, 58]
+    ['wei', 881, 705, 1057], // (island × 4.5, owner 2026-10-23: the towns spread × 2, their lot grid × 1.6 — LOT_SPREAD; 2026-10-26: the access lanes take every 5th row, lots front a road)
+    ['wu', 378, 302, 454],
+    ['shu', 125, 100, 150],
+    ['outlaws', 61, 49, 73],
+    ['open', 210, 168, 252],
+    ['gloria', 30, 24, 36]
   ])
     assert(by[r] >= lo && by[r] <= hi, `${r} has ${by[r]} lots (~${n})`);
   assert(

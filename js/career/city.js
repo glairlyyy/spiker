@@ -1015,6 +1015,20 @@ const City = {
     ids: r.ids.slice(),
     run: r.run.map(q => ({ ...q, a: q.a.slice(), b: q.b.slice() }))
   }),
+  /** The road graph: node id → [[neighbour, length × ROAD_COST]], built once. */
+  adj() {
+    if (!City._adj) {
+      const N = ROADS.nodes,
+        A = {};
+      for (const [u, v, kind] of ROADS.edges) {
+        const w = Math.hypot(N[u][0] - N[v][0], N[u][1] - N[v][1]) * (ROAD_COST[kind] ?? 1);
+        (A[u] = A[u] || []).push([v, w]);
+        (A[v] = A[v] || []).push([u, w]);
+      }
+      City._adj = A;
+    }
+    return City._adj;
+  },
   /** ROADS edges a walk joins at (all but the overpass: you get onto it at its ends), with their nodes; built once. */
   joinEdges() {
     if (!City._je) {
@@ -1028,6 +1042,10 @@ const City = {
    * u, v, kind, t (0 at u … 1 at v) }; ties go to the first edge in ROADS order. Pure.
    */
   join(p) {
+    const key = `${p[0]},${p[1]}`,
+      C = City._jc || (City._jc = new Map());
+    if (C.has(key)) return C.get(key);
+    if (C.size > 4000) C.clear();
     let best = null;
     for (const e of City.joinEdges()) {
       const dx = e.B[0] - e.A[0],
@@ -1037,23 +1055,23 @@ const City = {
         d = Math.hypot(p[0] - q[0], p[1] - q[1]);
       if (!best || d < best.d - 1e-9) best = { q, d, u: e.u, v: e.v, kind: e.kind, t };
     }
+    C.set(key, best);
     return best;
   },
   pathRaw(from, to) {
     const N = ROADS.nodes,
-      ids = Object.keys(N).sort(),
       d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]),
       ja = City.join(from),
       jb = City.join(to),
       straight = { pts: [from.slice(), to.slice()], cost: City.ground(from, to), ids: [], run: [] };
     if (d(from, to) <= ja.d && d(from, to) <= jb.d) return straight;
-    const adj = {},
+    const adj = City.adj(),
+      extra = {},
       wOf = (a, b, kind) => d(a, b) * (ROAD_COST[kind] ?? 1),
       link = (u, v, w) => {
-        (adj[u] = adj[u] || []).push([v, w]);
-        (adj[v] = adj[v] || []).push([u, w]);
+        (extra[u] = extra[u] || []).push([v, w]);
+        (extra[v] = extra[v] || []).push([u, w]);
       };
-    for (const [u, v, kind] of ROADS.edges) link(u, v, wOf(N[u], N[v], kind));
     // the two joins as nodes '<a' / '>b' on their edges (sorted before every node id: ties stay as before)
     const A = '<a',
       B = '>b',
@@ -1064,20 +1082,53 @@ const City = {
     link(B, jb.v, wOf(jb.q, N[jb.v], jb.kind));
     const same = (ja.u === jb.u && ja.v === jb.v) || (ja.u === jb.v && ja.v === jb.u);
     if (same) link(A, B, wOf(ja.q, jb.q, ja.kind));
+    // Dijkstra on a binary heap ordered by (distance, id): the same order as scanning the ids sorted (the joins first)
     const at = id => P[id] || N[id],
-      all = [A, B, ...ids],
       dist = { [A]: 0 },
       prev = {},
-      done = new Set();
-    for (;;) {
-      let u = null;
-      for (const id of all) if (!done.has(id) && dist[id] != null && (u === null || dist[id] < dist[u])) u = id;
-      if (u === null || u === B) break;
+      done = new Set(),
+      H = [[0, A]],
+      less = (x, y) => x[0] < y[0] || (x[0] === y[0] && x[1] < y[1]),
+      push = e => {
+        let i = H.push(e) - 1;
+        while (i && less(H[i], H[(i - 1) >> 1])) {
+          const j = (i - 1) >> 1;
+          [H[i], H[j]] = [H[j], H[i]];
+          i = j;
+        }
+      },
+      pop = () => {
+        const top = H[0],
+          last = H.pop();
+        if (H.length) {
+          H[0] = last;
+          for (let i = 0; ;) {
+            const l = 2 * i + 1,
+              r = l + 1;
+            let m = i;
+            if (l < H.length && less(H[l], H[m])) m = l;
+            if (r < H.length && less(H[r], H[m])) m = r;
+            if (m === i) break;
+            [H[i], H[m]] = [H[m], H[i]];
+            i = m;
+          }
+        }
+        return top;
+      };
+    while (H.length) {
+      const [du, u] = pop();
+      if (done.has(u) || du !== dist[u]) continue;
+      if (u === B) break;
       done.add(u);
-      for (const [v, w] of adj[u] || []) {
-        const nd = dist[u] + w;
-        if (dist[v] == null || nd < dist[v] - 1e-9 || (Math.abs(nd - dist[v]) <= 1e-9 && u < prev[v])) ((dist[v] = nd), (prev[v] = u));
-      }
+      for (const list of [adj[u], extra[u]])
+        for (const [v, w] of list || []) {
+          const nd = dist[u] + w;
+          if (dist[v] == null || nd < dist[v] - 1e-9 || (Math.abs(nd - dist[v]) <= 1e-9 && u < prev[v])) {
+            const better = dist[v] == null || nd < dist[v];
+            ((dist[v] = nd), (prev[v] = u));
+            if (better || !done.has(v)) push([nd, v]);
+          }
+        }
     }
     if (dist[B] == null) return straight; // (not connected: cannot happen with ROADS as shipped)
     const cost = Math.min(straight.cost, City.ground(from, ja.q) + dist[B] + City.ground(jb.q, to));

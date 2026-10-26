@@ -99,8 +99,8 @@ const MapModel = {
         add(pick(B.kinds, hstr(`${id}|k`)), p, id);
       }
     // street trees along Wei's main roads
-    for (const [a, b, kind] of ROADS.edges) {
-      if (kind !== 'main') continue;
+    for (const [a, b, kind, gen] of ROADS.edges) {
+      if (kind !== 'main' || gen) continue; // (a 'via' chain retraces a main road: its trees stand once)
       const A = RN[a],
         B = RN[b],
         L = Math.hypot(B[0] - A[0], B[1] - A[1]),
@@ -260,7 +260,9 @@ const MapModel = {
         text: `${REGIONS[id].name}${id === mine ? ' · home turf' : ''}`
       })),
       airport: CITY.airport,
-      roads: ROADS.edges.map(([a, b, kind]) => ({ kind, pts: [ROADS.nodes[a].slice(), ROADS.nodes[b].slice()] })),
+      roads: ROADS.edges
+        .filter(e => e[3] !== 'via')
+        .map(([a, b, kind]) => ({ kind, pts: [ROADS.nodes[a].slice(), ROADS.nodes[b].slice()] })), // (a 'via' chain retraces an edge: drawn once)
       dunes: CITY.dunes,
       districts: DISTRICTS.map(d => ({ id: d.id, region: d.region, style: d.style, poly: MapModel.districtPoly(d) })),
       ground: GROUND.map(q => ({
@@ -594,6 +596,7 @@ const MapModel = {
         City.onLand(p) &&
         City.regionAt(p) === reg &&
         near(p) >= size * 0.5 + 4 &&
+        near(p) - size * 0.5 <= LANES.reach && // (every building fronts a road: a lane reaches the rest, MapModel.laneData)
         places.every(q => Math.hypot(q[0] - p[0], q[1] - p[1]) >= MapModel.placeClear) &&
         !onFac(p, size * 0.5 + 3) &&
         venues.every(v => Math.hypot(v.at[0] - p[0], v.at[1] - p[1]) >= v.clear) &&
@@ -637,8 +640,8 @@ const MapModel = {
           add(p, th, size, d, id, w);
         }
     });
-    outer: for (const [ua, ub, kind] of ROADS.edges) {
-      if (kind === 'path' || kind === 'overpass' || kind === 'boardwalk') continue;
+    outer: for (const [ua, ub, kind, gen] of ROADS.edges) {
+      if (kind === 'path' || kind === 'overpass' || kind === 'boardwalk' || gen) continue; // (the road-side rows: the island's own roads)
       const a = N[ua],
         b = N[ub],
         L = Math.hypot(b[0] - a[0], b[1] - a[1]),
@@ -1139,3 +1142,256 @@ const MapModel = {
     return out;
   }
 };
+/**
+ * Access lanes (owner, 2026-10-26: "building placement should be alongside the road, or if a building is isolated, build a road to it").
+ * Run-independent, no randoms: for each district, the lot grid's candidates (MapModel.lots' grid — frame, density hash, size — before
+ * the run's places and facilities) farther than LANES.reach from every road get a lane: a street along their grid row (every
+ * LANES.every-th row is a lane in place of lots, so each lot row borders one; runs of lots up to LANES.join cells apart share it), cut
+ * where it would pass a place, an HQ, a home, a venue, the sea, the airport or kept ground; joined where it crosses a road and, when it
+ * crosses none, by a connector from its nearer end to the nearest road or lane built so far (stopping at the first road it meets).
+ * Returns { nodes: { id: [x, y] }, edges: [[a, b, kind, 'lane' | 'via']] }: 'lane' = the new streets and connectors; 'via' = an existing
+ * edge re-chained through the junctions on it (the original edge stays — the bus lines and traffic name it; MapModel.build doesn't draw
+ * the 'via' chain twice). Pure; ROADS takes them the first time anything reads it (addLanes below).
+ */
+MapModel.laneData = function (N = ROADS.nodes, E = ROADS.edges) {
+  const L = LANES,
+    nodes = {},
+    edges = [],
+    at = id => nodes[id] || N[id],
+    r1 = v => Math.round(v * 10) / 10,
+    segD = (p, a, b) => MapModel.segDist(p, a, b),
+    // the roads the lanes join: every drawn road but the overpass; the lanes join this list as they are built
+    roads = [],
+    BK = 64, // a bucket grid of the roads (map units)
+    bucket = new Map(),
+    key = (i, j) => i * 100003 + j,
+    index = r => {
+      roads.push(r);
+      const A = at(r.u),
+        B = at(r.v),
+        n = Math.ceil(Math.hypot(B[0] - A[0], B[1] - A[1]) / (BK / 2)) + 1;
+      for (let i = 0; i <= n; i++) {
+        const k = key(Math.floor((A[0] + ((B[0] - A[0]) * i) / n) / BK), Math.floor((A[1] + ((B[1] - A[1]) * i) / n) / BK));
+        if (!bucket.has(k)) bucket.set(k, new Set());
+        bucket.get(k).add(r);
+      }
+    },
+    /** The roads in the buckets within m cells of p. */
+    around = (p, m, out = new Set()) => {
+      const cx = Math.floor(p[0] / BK),
+        cy = Math.floor(p[1] / BK);
+      for (let i = cx - m; i <= cx + m; i++) for (let j = cy - m; j <= cy + m; j++) for (const q of bucket.get(key(i, j)) || []) out.add(q);
+      return out;
+    },
+    /** Is a road within r of p? */
+    near = (p, r) => {
+      for (const q of around(p, Math.ceil(r / BK))) if (segD(p, at(q.u), at(q.v)) <= r) return true;
+      return false;
+    },
+    /** The roads near segment a-b (its buckets and their neighbours). */
+    along = (a, b) => {
+      const out = new Set(),
+        n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / (BK / 2)) + 1;
+      for (let i = 0; i <= n; i++) around([a[0] + ((b[0] - a[0]) * i) / n, a[1] + ((b[1] - a[1]) * i) / n], 1, out);
+      return out;
+    },
+    // places, HQs, homes: a lane keeps clear of the facility lot each may stand on (any heading: its far corner from the node)
+    clearOf = fac => {
+      const S = FACILITY[fac];
+      return S ? Math.max(L.clear, (S.d + Math.hypot(S.w / 2, S.d / 2)) / MAP_UNIT_M + MapModel.facGap + 14 + 6) : L.clear;
+    },
+    places = [
+      ...Object.entries(SPOTS)
+        .filter(([, s]) => s.at)
+        .map(([id, s]) => ({ at: s.at, r: clearOf(FACILITY_OF[id]) })),
+      ...Object.values(HOME_AT).map(at => ({ at, r: clearOf(FACILITY_OF.home) })),
+      ...CITY.hq.map((at, i) => ({ at, r: clearOf(FACILITY_OF.hq[i]) })),
+      { at: CITY.ritual, r: L.clear },
+      { at: CITY.airport, r: L.clear }
+    ],
+    venues = Object.values(VENUES),
+    ok = p =>
+      City.onLand(p) &&
+      !MapModel.inAirport(p) &&
+      !MapModel.kept(p) &&
+      places.every(q => Math.hypot(q.at[0] - p[0], q.at[1] - p[1]) >= q.r) &&
+      venues.every(v => Math.hypot(v.at[0] - p[0], v.at[1] - p[1]) >= v.clear + L.clear * 0.5),
+    /** Segments a-b and c-d: the parameters (s along a-b, t along c-d) of their crossing, or null. */
+    cross = (a, b, c, d) => {
+      const rx = b[0] - a[0],
+        ry = b[1] - a[1],
+        sx = d[0] - c[0],
+        sy = d[1] - c[1],
+        den = rx * sy - ry * sx;
+      if (Math.abs(den) < 1e-9) return null;
+      const s = ((c[0] - a[0]) * sy - (c[1] - a[1]) * sx) / den,
+        t = ((c[0] - a[0]) * ry - (c[1] - a[1]) * rx) / den;
+      return s > 1e-6 && s < 1 - 1e-6 && t > 1e-6 && t < 1 - 1e-6 ? [s, t] : null;
+    };
+  for (const [u, v, kind] of E) if (kind !== 'overpass') index({ u, v, kind, base: true, cuts: [] });
+  const far = (a, b) => a !== b && Math.hypot(at(a)[0] - at(b)[0], at(a)[1] - at(b)[1]) > 0.5; // (no zero-length edges)
+  let n = 0;
+  const node = p => {
+    const id = `ln${n++}`;
+    nodes[id] = [r1(p[0]), r1(p[1])];
+    return id;
+  };
+  /** A junction at fraction t on road r (its end node near an end). */
+  const cut = (r, t, p) => {
+    const len = Math.hypot(at(r.v)[0] - at(r.u)[0], at(r.v)[1] - at(r.u)[1]);
+    if (t * len < 2) return r.u;
+    if ((1 - t) * len < 2) return r.v;
+    const hit = r.cuts.find(c => Math.abs(c.t - t) * len < 2);
+    if (hit) return hit.id;
+    const id = node(p);
+    r.cuts.push({ t, id });
+    return id;
+  };
+  /** Build one lane through pts (a straight row, ≥ 3 points). */
+  const lane = (pts, kind) => {
+    const A = pts[0],
+      B = pts[pts.length - 1],
+      hits = []; // [s along the lane, junction id]
+    for (const r of along(A, B)) {
+      const x = cross(A, B, at(r.u), at(r.v));
+      if (x) hits.push([x[0], cut(r, x[1], [A[0] + (B[0] - A[0]) * x[0], A[1] + (B[1] - A[1]) * x[0]])]);
+    }
+    let link = null;
+    if (!hits.length) {
+      // a connector from the nearer end to the nearest road / lane point (the buckets ring by ring)
+      let best = null;
+      for (let m = 1; m <= Math.ceil(L.reachMax / BK) + 1; m++) {
+        for (const e of [A, B])
+          for (const r of around(e, m)) {
+            const U = at(r.u),
+              V = at(r.v),
+              dx = V[0] - U[0],
+              dy = V[1] - U[1],
+              t = clamp(((e[0] - U[0]) * dx + (e[1] - U[1]) * dy) / (dx * dx + dy * dy || 1), 0, 1),
+              q = [U[0] + t * dx, U[1] + t * dy],
+              dd = Math.hypot(e[0] - q[0], e[1] - q[1]);
+            if (!best || dd < best.dd - 1e-9) best = { dd, r, t, q, e };
+          }
+        if (best && best.dd <= (m - 1) * BK) break; // (nothing in a further ring can be nearer)
+      }
+      if (!best || best.dd > L.reachMax) return false;
+      let stop = { s: 1, r: best.r, t: best.t };
+      for (const r of along(best.e, best.q)) {
+        if (r === best.r) continue;
+        const x = cross(best.e, best.q, at(r.u), at(r.v));
+        if (x && x[0] < stop.s) stop = { s: x[0], r, t: x[1] };
+      }
+      link = { e: best.e, q: [best.e[0] + (best.q[0] - best.e[0]) * stop.s, best.e[1] + (best.q[1] - best.e[1]) * stop.s], stop };
+    }
+    const ia = node(A),
+      ib = node(B),
+      chain = [[0, ia], ...hits.sort((p, q) => p[0] - q[0]), [1, ib]];
+    if (link) {
+      const j = cut(link.stop.r, link.stop.t, link.q),
+        from = link.e === A ? ia : ib;
+      if (far(from, j)) {
+        edges.push([from, j, kind, 'lane']);
+        index({ u: from, v: j, kind, base: false, cuts: [] });
+      } else chain[from === ia ? 0 : chain.length - 1][1] = j; // (the end stands on that road: it is the junction)
+    }
+    // points within half a unit are one node (a lane end on a junction: the junction)
+    const ids = [];
+    for (const [, id] of chain) {
+      const last = ids[ids.length - 1];
+      if (last === undefined || far(last, id)) ids.push(id);
+      else if (last === ia || last === ib) ids[ids.length - 1] = id;
+    }
+    for (const id of [ia, ib]) if (!ids.includes(id) && !edges.some(e => e[0] === id || e[1] === id)) delete nodes[id];
+    for (let i = 1; i < ids.length; i++) {
+      edges.push([ids[i - 1], ids[i], kind, 'lane']);
+      index({ u: ids[i - 1], v: ids[i], kind, base: false, cuts: [] });
+    }
+    return true;
+  };
+  DISTRICTS.forEach(d => {
+    const poly = MapModel.districtPoly(d),
+      xs = poly.map(q => q[0]),
+      ys = poly.map(q => q[1]),
+      box = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)],
+      c = [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2],
+      R = Math.max(box[2] - box[0], box[3] - box[1]) / 2,
+      // the lot grid's frame (as MapModel.lots: along the road nearest the middle)
+      base = roads.filter(r => r.base),
+      nr = base.reduce((m, r) => (segD(c, at(r.u), at(r.v)) < segD(c, at(m.u), at(m.v)) ? r : m), base[0]),
+      th = Math.atan2(at(nr.v)[1] - at(nr.u)[1], at(nr.v)[0] - at(nr.u)[0]),
+      ux = Math.cos(th),
+      uy = Math.sin(th),
+      g = d.gap,
+      k = Math.ceil(R / g) + 1,
+      P = (gi, gj) => [c[0] + ux * gi * g - uy * gj * g, c[1] + uy * gi * g + ux * gj * g],
+      kind = L.kind[d.beach ? 'beach' : d.region] || 'street',
+      thin = d.density * MapModel.thin * (MAJORS.includes(d.region) ? MapModel.thinMajor : 1),
+      big = (d.size * 1.15 * 1.3) / 2,
+      rows = new Map(); // lane row → the grid columns of the isolated lots beside it
+    for (let gj = -k; gj <= k; gj++)
+      for (let gi = -k; gi <= k; gi++) {
+        const p = P(gi, gj);
+        if (p[0] < box[0] || p[0] > box[2] || p[1] < box[1] || p[1] > box[3] || near(p, L.reach + big)) continue;
+        if (!inPoly(p, poly) || !!MapModel.onSand(p) !== !!d.beach) continue;
+        const id = `${d.id}|${gi}|${gj}`,
+          w = MapModel.wealth(d.region, p, id, d.id);
+        if (hstr(id) >= thin * (1.15 - 0.45 * w)) continue;
+        if (City.regionAt(p) !== d.region || !City.onLand(p) || MapModel.kept(p) || MapModel.inAirport(p)) continue;
+        const m = ((gj % L.every) + L.every) % L.every,
+          row = m === 0 ? gj : m <= L.every / 2 ? gj - m : gj + (L.every - m);
+        if (!rows.has(row)) rows.set(row, []);
+        rows.get(row).push(gi);
+      }
+    for (const [row, cols] of [...rows.entries()].sort((p, q) => p[0] - q[0])) {
+      cols.sort((p, q) => p - q);
+      const runs = [];
+      for (const gi of cols) {
+        const last = runs[runs.length - 1];
+        if (last && gi - last[1] <= L.join) last[1] = gi;
+        else runs.push([gi, gi]);
+      }
+      for (const [g0, g1] of runs) {
+        let piece = [];
+        const flush = () => {
+          if (piece.length >= 3) lane(piece, kind);
+          piece = [];
+        };
+        for (let s = g0 - 0.5; s <= g1 + 0.5 + 1e-9; s += 0.5) {
+          const p = P(s, row);
+          if (ok(p) && inPoly(p, poly) && City.regionAt(p) === d.region) piece.push(p);
+          else flush();
+        }
+        flush();
+      }
+    }
+  });
+  // the junctions cut into roads: a base edge re-chained through them ('via'); a lane cut later is replaced by its pieces
+  for (const r of roads) {
+    if (!r.cuts.length) continue;
+    const ids = [r.u, ...r.cuts.sort((p, q) => p.t - q.t).map(c => c.id), r.v];
+    if (!r.base) {
+      const i0 = edges.findIndex(e => e[3] === 'lane' && ((e[0] === r.u && e[1] === r.v) || (e[0] === r.v && e[1] === r.u)));
+      if (i0 >= 0) edges.splice(i0, 1);
+    }
+    for (let i = 1; i < ids.length; i++) if (far(ids[i - 1], ids[i])) edges.push([ids[i - 1], ids[i], r.kind, r.base ? 'via' : 'lane']);
+  }
+  return { nodes, edges };
+};
+/**
+ * ROADS takes the lanes the first time anything reads it (run-independent, built once; nothing reads ROADS while the scripts load):
+ * `nodes` / `edges` become getters over the same objects, so every reader — City's routes, MapModel's land, lots, nature — sees them.
+ */
+(function addLanes() {
+  const N0 = ROADS.nodes,
+    E0 = ROADS.edges;
+  let done = false;
+  const fill = () => {
+    if (done) return;
+    done = true;
+    const L = MapModel.laneData(N0, E0);
+    Object.assign(N0, L.nodes);
+    E0.push(...L.edges);
+  };
+  Object.defineProperty(ROADS, 'nodes', { get: () => (fill(), N0), enumerable: true });
+  Object.defineProperty(ROADS, 'edges', { get: () => (fill(), E0), enumerable: true });
+})();

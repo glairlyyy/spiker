@@ -1206,6 +1206,12 @@ the AI coach fills every slot you leave with the same function. Built and measur
     (not the nearest node, which could stand behind a building), follows the drawn roads junction to junction and leaves them at the
     nearest point to where it ends; out of a place's door it walks to its road first. Along the overpass you climb its deck as drawn
     (no more walking beneath it). The rules count the same way: the walk's cost is the leg to the road + the road + the leg off it.
+  - **Every building fronts a road** (owner, 2026-10-26: "building placement should be alongside the road, or if a building is
+    isolated, build a road to it") **[built 2026-10-26]**: a town's lots farther than 25 m from every road get an access lane — a street
+    (Shu, Outlaws: dirt; the beach: boardwalk) along their row of the lot grid (every 5th row is the lane), joined to the roads it
+    crosses or by a short connector to the nearest road; lanes keep clear of places, their facility lots and venues; a lot still beyond
+    25 m is not built. Places, HQs and venues already stood on their roads (doors ≤ 9 m) and did not move; trips between places are
+    unchanged (the lanes are side streets: no short cuts). Walks use the lanes like any road. ~1,690 lots (was ~2,100).
 - §4.18b Island scale (owner, 2026-10-03; × 1.5 again, owner 2026-10-05, T-225) **[built]**: the island is drawn at
   `MAP_SCALE` 2.25 (2385 × 1575 map units, ~1190 × 790 m) — more room between the same towns (they fill out a little:
   ~1,230 lots, was ~970, where roads and places had squeezed them); nature scatters on a wider grid (`NATURE.cell` 18).
