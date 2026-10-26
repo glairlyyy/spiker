@@ -7,7 +7,8 @@ import { MAP_M, clamp, lerp, smooth, inside, edgeDist, sideDist, hstr, vnoise } 
 const CELL = 2, // terrain grid cell (m)
   CHUNK = 96, // cells a side of a culled terrain chunk (T-350: ~190 m) = a streaming block (T-364)
   COARSE = 4, // a far chunk's cell (grid cells a side, street level: stream3d)
-  BEACH = 12; // beach slope width (m)
+  BEACH = 12, // beach slope width (m)
+  SMOOTH = 2; // street level's smooth normals: the slope's half stencil (cells; T-370)
 
 /** Ground tint per district style (blended in faintly: no extra draw call). */
 const DISTRICT_TINT = {
@@ -241,6 +242,7 @@ export function buildTerrain(model) {
     gnd = new Float32Array((nx + 1) * (nz + 1) * 4),
     gdir = new Float32Array((nx + 1) * (nz + 1) * 2),
     gpav = new Float32Array((nx + 1) * (nz + 1)), // paving slabs (Wei's districts, yards, quays)
+    gw = new Uint8Array((nx + 1) * (nz + 1)), // grass weight 0–255 (what the ground weights leave; T-370 street tufts)
     shore = new Uint8Array((nx + 1) * (nz + 1) * 4),
     grass = new THREE.Color(0x5d8a4a),
     rock = new THREE.Color(0x7d7a70),
@@ -392,6 +394,7 @@ export function buildTerrain(model) {
       col.set([c.r, c.g, c.b], k * 3);
       gnd.set([wS, wR, wF, wW], k * 4);
       gpav[k] = wP;
+      gw[k] = land ? Math.round(255 * clamp(1 - wS - wR - wF - wW - wP, 0, 1)) : 0; // (T-370: street level's tufts)
       gdir.set([dx, dz], k * 2);
       shore.set([Math.round(clamp((h + 6) / 8, 0, 1) * 255), land ? 0 : Math.round(clamp(d / 60, 0, 1) * 255), 0, 255], k * 4);
     }
@@ -424,6 +427,27 @@ export function buildTerrain(model) {
   geo.setAttribute('gpav', new THREE.BufferAttribute(gpav, 1));
   geo.setIndex(new THREE.BufferAttribute(idx, 1));
   geo.computeVertexNormals();
+  // street level's smooth normals (T-370): the slope over ±SMOOTH cells (a wider stencil than the triangles'), the detailed look
+  // blends to them near the camera — no facets where the 2 m grid bends; the Fast look keeps the triangles' normals
+  const nsm = new Int8Array((nx + 1) * (nz + 1) * 3),
+    Hc = (i, j) => H[clamp(j, 0, nz) * (nx + 1) + clamp(i, 0, nx)];
+  for (let j = 0; j <= nz; j++)
+    for (let i = 0; i <= nx; i++) {
+      let gx = 0,
+        gz = 0;
+      for (let o = -1; o <= 1; o++) {
+        gx += Hc(i + SMOOTH, j + o) - Hc(i - SMOOTH, j + o);
+        gz += Hc(i + o, j + SMOOTH) - Hc(i + o, j - SMOOTH);
+      }
+      const dx = gx / (3 * 2 * SMOOTH * sx),
+        dz = gz / (3 * 2 * SMOOTH * sz),
+        l = Math.hypot(dx, 1, dz),
+        k = (j * (nx + 1) + i) * 3;
+      nsm[k] = Math.round((-dx / l) * 127);
+      nsm[k + 1] = Math.round((1 / l) * 127);
+      nsm[k + 2] = Math.round((-dz / l) * 127);
+    }
+  geo.setAttribute('nsm', new THREE.BufferAttribute(nsm, 3, true));
   const heightAt = (x, z) => {
     const fx = clamp(x / sx, 0, nx - 0.001),
       fz = clamp(z / sz, 0, nz - 0.001),
@@ -434,6 +458,27 @@ export function buildTerrain(model) {
       g = (a, b) => H[b * (nx + 1) + a];
     return lerp(lerp(g(i, j), g(i + 1, j), u), lerp(g(i, j + 1), g(i + 1, j + 1), u), v);
   };
+  const col0 = col.slice(); // (the colours before the fog: `base`)
+  /** The grid cell under (x, z) and its corner weights: a bilinear read of a per-vertex array. */
+  const bil = (A, x, z, st = 1, o = 0) => {
+    const fx = clamp(x / sx, 0, nx - 0.001),
+      fz = clamp(z / sz, 0, nz - 0.001),
+      i = Math.floor(fx),
+      j = Math.floor(fz),
+      u = fx - i,
+      v = fz - j,
+      g = (a, b) => A[(b * (nx + 1) + a) * st + o];
+    return lerp(lerp(g(i, j), g(i + 1, j), u), lerp(g(i, j + 1), g(i + 1, j + 1), u), v);
+  };
+  /** Grass weight 0–1 at (x, z) (street level's tufts, T-370). */
+  const grassAt = (x, z) => bil(gw, x, z) / 255;
+  /** The ground's own colour (no fog) at (x, z) into out [r, g, b]. */
+  const colourAt = (x, z, out = [0, 0, 0]) => (
+    (out[0] = bil(col0, x, z, 3, 0)),
+    (out[1] = bil(col0, x, z, 3, 1)),
+    (out[2] = bil(col0, x, z, 3, 2)),
+    out
+  );
   // chunks (the island × 2, T-350): CHUNK × CHUNK cells each, sharing geo's attributes (one upload; the fog's colour writes reach
   // them all) with their own index and bounds, so the camera and the shadow pass cull what they don't see
   const chunks = [],
@@ -475,13 +520,15 @@ export function buildTerrain(model) {
     }
   return {
     geo,
+    grassAt,
+    colourAt,
     chunks,
     coarse,
     block: [CHUNK * sx, CHUNK * sz], // the streaming blocks = the chunks (stream3d, T-364)
     heightAt,
     W,
     D,
-    base: col.slice(),
+    base: col0,
     shore: { data: shore, w: nx + 1, h: nz + 1 }
   };
 }

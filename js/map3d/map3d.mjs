@@ -212,7 +212,7 @@ export function create(onIdle) {
     });
     life = createLife(scene, terrain.heightAt);
     veh = createVehicles(scene, terrain.heightAt);
-    nature = createNature(scene, terrain.heightAt);
+    nature = createNature(scene, terrain.heightAt, { grass: terrain.grassAt, colour: terrain.colourAt, clear: (x, z) => town.clear(x, z) }); // (T-370: the meadow)
     war = warLayer(scene, terrain.heightAt);
     night = nightLayer(scene, terrain.heightAt);
     // streaming (T-364): the blocks are the terrain's chunks; a far chunk draws its coarse index
@@ -504,6 +504,7 @@ export function create(onIdle) {
       C.step(dt);
       st = C.street();
       streamStep(dt);
+      nature.near(avatar.pos(), st); // (T-370: street level's grass round you)
       if (cur && st < STREAM.show && fogDrawn !== cur.fog) fogSync(cur); // (up from street level: the lantern catches up)
       streetLook();
       interStep(dt);
@@ -796,7 +797,12 @@ export function create(onIdle) {
       street: +st.toFixed(3),
       ring: town && town.ringInfo ? town.ringInfo() : null,
       stream: stream && stream.info(),
-      aspect: { canvas: +(cw / (ch || 1)).toFixed(3), cam: +cam.aspect.toFixed(3), proj: +(cam.projectionMatrix.elements[5] / cam.projectionMatrix.elements[0]).toFixed(3) }, // (= canvas: no stretch)
+      meadow: nature && nature.meadowInfo(),
+      aspect: {
+        canvas: +(cw / (ch || 1)).toFixed(3),
+        cam: +cam.aspect.toFixed(3),
+        proj: +(cam.projectionMatrix.elements[5] / cam.projectionMatrix.elements[0]).toFixed(3)
+      }, // (= canvas: no stretch)
       fx: { ms: +fxInfo.ms.toFixed(3), sweeps: fxInfo.sweeps } // (T-369: the street finish — JS ms a frame, scene sweeps so far)
     }),
     dispose() {

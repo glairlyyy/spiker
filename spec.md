@@ -2129,7 +2129,12 @@ the AI coach fills every slot you leave with the same function. Built and measur
     new per-frame JavaScript 0.06–0.16 ms; Fast unchanged. **[fixed 2026-10-26]** the street view no longer stretches: the picture keeps
     the window's proportions after the lens shift, a resize or a resolution change.
   - **Ground** (T-370): roads as asphalt with lane markings, curbs and pavements; grass with painted variation and tufts near
-    you; the near terrain smooth (no flat-shaded facets).
+    you; the near terrain smooth (no flat-shaded facets). **[built 2026-10-26]**: near you (Auto / High) the roads are painted
+    asphalt (soft mottling, tar seams), main roads get solid white edge lines besides the centre dashes and zebras, the pavements
+    are slabs and the lane paint is worn; dirt tracks and paths get a dirt grain; the lawn shows painted blade strokes with cool and
+    warm patches, and grass clumps stand on open grass within ~30 m of you (not on roads, pavements, lots or buildings); slopes are
+    shaded smooth near the camera. Far off and on Fast it all fades to today's look. Measured (headless, gym junction, Auto): draw
+    calls 156 → 158 (10:00), 171 → 173 (18:30), triangles 0.990 → 0.996 M; Fast unchanged.
   - **Buildings** (T-371): near facades with window frames, doors, awnings, shop signs and roof edges in the district palette;
     the far skyline as painted silhouettes instead of white boxes.
   - **Street life** (T-372): benches, bins, vending machines, parked bikes, signs, overhead wires and utility poles, ground

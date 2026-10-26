@@ -396,7 +396,55 @@ const richMat = (U, double) => {
   return m;
 };
 
-export function createNature(scene, heightAt) {
+/**
+ * Street level's meadow (T-370): painted grass clumps (the detailed tuft) on open grass near you, hashed per MEADOW.cell lattice
+ * point (no randoms) and cached per `tile` m (≤ `per` new tiles a frame); the instance set is rebuilt when you moved `step` m, those within `r` m, shrinking
+ * over the last `edge` m. Density by the ground's grass weight over `min`. One instanced draw, no shadow; Auto / High only.
+ */
+export const MEADOW = {
+  r: 30,
+  edge: 7,
+  cell: 1.15,
+  tile: 16,
+  step: 3,
+  max: 3200,
+  min: 0.35,
+  keep: 64,
+  per: 6,
+  dense: 0.6,
+  size: [0.45, 0.35]
+};
+/** A lattice point's 0–1 hashes (integer mix; display only). */
+const lh = (i, j, s) => {
+  let h = (Math.imul(i, 73856093) ^ Math.imul(j, 19349663) ^ Math.imul(s + 1, 83492791)) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 3266489909) >>> 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+};
+/**
+ * The meadow's clumps in tile (ti, tj): [x, z, yaw, size, r, g, b] each. grass(x, z) → 0–1, clear(x, z) → bool, colour(x, z, out).
+ */
+export function meadowTile(ti, tj, grass, clear, colour) {
+  const M = MEADOW,
+    n = Math.round(M.tile / M.cell),
+    cs = M.tile / n, // (the cell fitted to the tile)
+    out = [],
+    c = [0, 0, 0];
+  for (let j = 0; j < n; j++)
+    for (let i = 0; i < n; i++) {
+      const I = ti * n + i,
+        J = tj * n + j,
+        x = (I + 0.15 + 0.7 * lh(I, J, 1)) * cs,
+        z = (J + 0.15 + 0.7 * lh(I, J, 2)) * cs,
+        w = grass(x, z);
+      if (w <= M.min || lh(I, J, 3) > ((w - M.min) / (1 - M.min)) * M.dense || !clear(x, z)) continue;
+      colour(x, z, c);
+      const v = 0.8 + 0.35 * lh(I, J, 5);
+      out.push(x, z, lh(I, J, 4) * Math.PI * 2, M.size[0] + M.size[1] * lh(I, J, 6), c[0] * v * 1.15, c[1] * v * 1.1, c[2] * v * 0.9);
+    }
+  return out;
+}
+export function createNature(scene, heightAt, opts = {}) {
   const U = { t: { value: 0 } },
     shadowMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }),
     flat = () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }),
@@ -415,6 +463,75 @@ export function createNature(scene, heightAt) {
     far = {}, // shape → its far version (street level, built on first need)
     blk = null; // { ver, by: shape → block → [instance] }
   const farMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });
+  const md = { mesh: null, tiles: new Map(), at: null, n: 0, ms: 0 }; // street level's meadow (T-370)
+  const meadowHide = () => {
+    if (md.mesh) md.mesh.visible = false;
+    md.at = null;
+    md.n = 0;
+  };
+  /** Street level's meadow round you (world [x, z], avatar pos()) at street level st (shown at st ≥ 0.6, Auto / High). */
+  const meadow = (you, st) => {
+    if (low || st < 0.6 || !you || !opts.grass || !opts.clear) return meadowHide();
+    const M = MEADOW;
+    if (md.at && Math.hypot(you[0] - md.at[0], you[1] - md.at[1]) < M.step) return;
+    const t0 = performance.now();
+    if (!md.mesh) {
+      md.mesh = new THREE.InstancedMesh(HI.tuft(), richMat(U, true), M.max);
+      md.mesh.setColorAt(0, col.setRGB(1, 1, 1));
+      md.mesh.castShadow = false;
+      md.mesh.receiveShadow = true;
+      md.mesh.frustumCulled = false; // (its bounds = you ± r: always in front of the camera)
+      md.mesh.userData.meadow = true;
+      scene.add(md.mesh);
+    }
+    const m = md.mesh,
+      R = M.r,
+      t0i = Math.floor((you[0] - R) / M.tile),
+      t1i = Math.floor((you[0] + R) / M.tile),
+      t0j = Math.floor((you[1] - R) / M.tile),
+      t1j = Math.floor((you[1] + R) / M.tile),
+      cf = opts.colour || ((x, z, o) => ((o[0] = 0.4), (o[1] = 0.6), (o[2] = 0.3), o)),
+      q = new THREE.Quaternion(),
+      up = new THREE.Vector3(0, 1, 0),
+      m4 = new THREE.Matrix4(),
+      v = new THREE.Vector3(),
+      sc = new THREE.Vector3();
+    let n = 0,
+      fresh = 0; // tiles made this frame (≤ M.per: the rest next frame)
+    for (let tj = t0j; tj <= t1j && n < M.max; tj++)
+      for (let ti = t0i; ti <= t1i && n < M.max; ti++) {
+        const k = `${ti},${tj}`;
+        let T = md.tiles.get(k);
+        if (!T) {
+          if (fresh >= M.per) continue;
+          fresh++;
+          md.tiles.set(k, (T = meadowTile(ti, tj, opts.grass, opts.clear, cf)));
+        }
+        for (let a = 0; a < T.length && n < M.max; a += 7) {
+          const x = T[a],
+            z = T[a + 1],
+            d = Math.hypot(x - you[0], z - you[1]);
+          if (d > R) continue;
+          const s = T[a + 3] * Math.min(1, (R - d) / M.edge);
+          q.setFromAxisAngle(up, T[a + 2]);
+          m4.compose(v.set(x, heightAt(x, z) - 0.05, z), q, sc.set(s, s, s));
+          m.setMatrixAt(n, m4);
+          m.setColorAt(n, col.setRGB(T[a + 4], T[a + 5], T[a + 6]));
+          n++;
+        }
+      }
+    for (const k of md.tiles.keys()) {
+      const [i, j] = k.split(',').map(Number);
+      if (Math.hypot((i + 0.5) * M.tile - you[0], (j + 0.5) * M.tile - you[1]) > R + M.keep) md.tiles.delete(k);
+    }
+    m.count = n;
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    m.visible = n > 0;
+    md.at = fresh >= M.per ? null : [you[0], you[1]]; // (tiles still to make: again next frame)
+    md.n = n;
+    md.ms = +(performance.now() - t0).toFixed(2);
+  };
   /** An instanced mesh's full instance colours (its packed-away set when streaming packed it). */
   const fullCol = m => (m.userData.pack && m.userData.pack.c) || (m.instanceColor && m.instanceColor.array);
 
@@ -432,6 +549,9 @@ export function createNature(scene, heightAt) {
     far = {};
     blk = null;
     ver++;
+    if (md.mesh) (scene.remove(md.mesh), md.mesh.geometry.dispose(), md.mesh.material.dispose(), md.mesh.dispose(), (md.mesh = null));
+    md.tiles.clear();
+    md.at = null;
   };
   /** Instance tints × the fog's dimming (unexplored land is dim, like the terrain). */
   const recolor = fog => {
@@ -652,6 +772,10 @@ export function createNature(scene, heightAt) {
         }
       };
     },
+    /** Street level's meadow round you (map3d each frame after the camera; T-370). */
+    near: meadow,
+    /** The meadow (QA): clumps shown, tiles cached, ms of the last rebuild. */
+    meadowInfo: () => ({ on: !!(md.mesh && md.mesh.visible), n: md.n, tiles: md.tiles.size, ms: md.ms }),
     /** Instances drawn (QA). */
     count: () => Object.values(placed).reduce((n, l) => n + l.length, 0) + wild.length,
     dispose() {
