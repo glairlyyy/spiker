@@ -35,6 +35,7 @@ import {
 } from './kit3d.mjs';
 import { buildFacility } from './facility3d.mjs';
 import { pack, repack, ranges } from './stream3d.mjs';
+import { groundMat } from './look3d.mjs';
 
 const ROAD = {
     main: { w: 3.2, color: '#6d6e73' },
@@ -43,6 +44,7 @@ const ROAD = {
     path: { w: 0.9, color: '#b3a07a' },
     boardwalk: { w: 2.6, color: '#9a7b52' }
   },
+  ROAD_GK = { main: 1, street: 1, dirt: 4, path: 4 }, // (T-370) the painted ground per road kind (look3d groundMat; boardwalk: none)
   LIFT = 0.15, // roads sit this far above the terrain (m)
   STEP = 3, // road sample spacing (m)
   PLANK = 0.9, // boardwalk plank length (m): planks alternate two tones
@@ -51,6 +53,9 @@ const ROAD = {
 export const DECK = { up: 7, w: 5.4, thick: 0.9, rail: 0.8, ramp: 28, every: 20, step: 2 };
 
 const toM = ([x, y]) => [x * MAP_M, y * MAP_M];
+let RG = null;
+/** Street level's ring ground (kerbs, pavements, lane paint; T-370): one shared material, painted by look3d groundMat (never disposed). */
+const ringGroundMat = () => RG || (RG = groundMat(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 })));
 
 const GLASS = new THREE.Color('#8fbbe0'),
   STONE = new THREE.Color('#e4dfd0'),
@@ -187,9 +192,11 @@ export function createTown(scene, heightAt, opts = {}) {
   const buildRoads = list => {
     const pos = [],
       col = [],
-      quad = (a, b, c, d, color) => {
+      gk = [], // (T-370) street level's paint: kind, across −1…1, m to the nearer end, the half width for edge lines (look3d groundMat)
+      quad = (a, b, c, d, color, g) => {
         for (const v of [a, b, c, a, c, d]) pos.push(...v);
         for (let i = 0; i < 6; i++) col.push(color.r, color.g, color.b);
+        for (const j of [0, 1, 2, 0, 2, 3]) gk.push(...g[j]);
       };
     for (const r of list) {
       if (r.kind === 'overpass') continue;
@@ -204,6 +211,9 @@ export function createTown(scene, heightAt, opts = {}) {
         dz = (by - ay) / (L / MAP_M || 1),
         hw = spec.w / 2,
         lift = r.kind === 'boardwalk' ? 0.3 : LIFT,
+        gkind = ROAD_GK[r.kind] || 0,
+        ehw = r.kind === 'main' ? hw : 0,
+        gAt = (i, side) => [gkind, side, Math.min(i, n - i) * (L / n), ehw],
         edge = i => {
           const x = (ax + ((bx - ax) * i) / n) * MAP_M,
             z = (ay + ((by - ay) * i) / n) * MAP_M,
@@ -213,12 +223,22 @@ export function createTown(scene, heightAt, opts = {}) {
       let prev = edge(0);
       for (let i = 1; i <= n; i++) {
         const cur = edge(i);
-        quad(prev[0], prev[1], cur[1], cur[0], r.kind === 'boardwalk' && i % 2 ? c2 : c);
+        quad(prev[0], prev[1], cur[1], cur[0], r.kind === 'boardwalk' && i % 2 ? c2 : c, [
+          gAt(i - 1, -1),
+          gAt(i - 1, 1),
+          gAt(i, 1),
+          gAt(i, -1)
+        ]);
         prev = cur;
       }
     }
     if (!pos.length) return null;
-    const out = meshOf(pos, col, stdMat({ side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+    const out = meshOf(
+      pos,
+      col,
+      groundMat(stdMat({ side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }))
+    );
+    out.mesh.geometry.setAttribute('gk', new THREE.Float32BufferAttribute(gk, 4));
     // faces must point up whichever way the road runs
     const nrm = out.mesh.geometry.attributes.normal;
     for (let i = 0; i < nrm.count; i++) if (nrm.getY(i) < 0) nrm.setXYZ(i, -nrm.getX(i), -nrm.getY(i), -nrm.getZ(i));
@@ -527,8 +547,11 @@ export function createTown(scene, heightAt, opts = {}) {
       }
     ringLots = want;
   };
-  /** Kerbs, pavements, the main roads' centre dashes and zebra crossings, and pavement props, within the ring (into mesher W). */
-  const ringGround = (W, roads, cx, cz, frames) => {
+  /**
+   * Kerbs, pavements, the main roads' centre dashes and zebra crossings (into mesher S: the painted ground, T-370; Fast: W), and
+   * pavement props (W), within the ring.
+   */
+  const ringGround = (W, S, roads, cx, cz, frames) => {
     const inLot = (x, z) =>
       frames.some(f => {
         const dx = x - f.x,
@@ -547,6 +570,8 @@ export function createTown(scene, heightAt, opts = {}) {
       paint = rgb(PAINT),
       flat = [0, 0, 0, 0, 0, 0, 0, 0],
       none = { wmask: [0, 0, 0] },
+      slabs = { wmask: [0, 0, 0], gk: [2, 0, 0, 0] },
+      worn = { wmask: [0, 0, 0], gk: [3, 0, 0, 0] },
       R2 = (RING.r + 20) ** 2;
     roads.forEach((r, ri) => {
       if (r.kind !== 'main' && r.kind !== 'street') return;
@@ -577,13 +602,13 @@ export function createTown(scene, heightAt, opts = {}) {
             K = RING.kerb,
             // quads wound counter-clockwise from above / from the road side
             ord = (A, B, C, D) => (side > 0 ? [A, B, C, D] : [B, A, D, C]);
-          W.quad(...ord(at(p, i1, K), at(q, i1, K), at(q, i0, K), at(p, i0, K)), pave, flat, none); // the pavement
-          W.quad(...ord(at(p, i0, K), at(q, i0, K), at(q, i0, 0), at(p, i0, 0)), kerb, flat, none); // the kerb face
+          S.quad(...ord(at(p, i1, K), at(q, i1, K), at(q, i0, K), at(p, i0, K)), pave, flat, slabs); // the pavement
+          S.quad(...ord(at(p, i0, K), at(q, i0, K), at(q, i0, 0), at(p, i0, 0)), kerb, flat, none); // the kerb face
         }
       if (r.kind === 'main') {
         const hl = RING.line / 2;
         for (let s = s0 + 0.5; s + RING.dash < s1; s += RING.dash + RING.gap)
-          W.quad(at(s, hl, 0.02), at(s + RING.dash, hl, 0.02), at(s + RING.dash, -hl, 0.02), at(s, -hl, 0.02), paint, flat, none);
+          S.quad(at(s, hl, 0.02), at(s + RING.dash, hl, 0.02), at(s + RING.dash, -hl, 0.02), at(s, -hl, 0.02), paint, flat, worn);
         for (const [end, dir] of [
           [0, 1],
           [L, -1]
@@ -593,7 +618,7 @@ export function createTown(scene, heightAt, opts = {}) {
             const z0 = end + dir * RING.zebra[0],
               z1 = end + dir * RING.zebra[1],
               [sA, sB] = dir > 0 ? [z0, z1] : [z1, z0];
-            W.quad(at(sA, o + 0.4, 0.025), at(sB, o + 0.4, 0.025), at(sB, o, 0.025), at(sA, o, 0.025), paint, flat, none);
+            S.quad(at(sA, o + 0.4, 0.025), at(sB, o + 0.4, 0.025), at(sB, o, 0.025), at(sA, o, 0.025), paint, flat, worn);
           }
         }
       }
@@ -617,7 +642,7 @@ export function createTown(scene, heightAt, opts = {}) {
       fast = !!fastOf(),
       R2 = RING.r * RING.r,
       want = new Set(),
-      M = { W: mesher({ wmask: 3 }), G: mesher({ glow: 3 }), R: mesher(), I: mesher({ room: 4, tan: 3 }) },
+      M = { W: mesher({ wmask: 3 }), G: mesher({ glow: 3 }), R: mesher(), I: mesher({ room: 4, tan: 3 }), S: mesher({ gk: 4 }, 8192) },
       col = new THREE.Color(),
       frames = [],
       got = []; // the ring's lots' builds (cached), in lot order
@@ -642,7 +667,7 @@ export function createTown(scene, heightAt, opts = {}) {
       if (c.ok) want.add(i);
     });
     for (const p of ['W', 'G', 'R', 'I']) {
-      M[p].reserve(got.reduce((n, c) => n + (c[p] ? c[p].n : 0), 0) + (p === 'W' ? 30000 : 0)); // (W: + the ground detail)
+      M[p].reserve(got.reduce((n, c) => n + (c[p] ? c[p].n : 0), 0) + (p === 'W' ? 8000 : 0)); // (W: + the pavement props)
       for (const c of got) M[p].append(c[p]);
     }
     const keep = (RING.r + 2 * RING.step) ** 2; // (the cache keeps the lots a short walk can bring back)
@@ -650,7 +675,7 @@ export function createTown(scene, heightAt, opts = {}) {
       const l = L.lots[i];
       if (!l || (l.at[0] * MAP_M - cx) ** 2 + (l.at[1] * MAP_M - cz) ** 2 > keep) ringCache.delete(i);
     }
-    ringGround(M.W, L.roads || [], cx, cz, frames);
+    ringGround(M.W, fast ? M.W : M.S, L.roads || [], cx, cz, frames);
     ringClear();
     const mats = detailMats();
     let tris = 0;
@@ -658,7 +683,8 @@ export function createTown(scene, heightAt, opts = {}) {
       ['W', mats.wall],
       ['G', mats.glass],
       ['R', mats.roof],
-      ['I', interiorMat()]
+      ['I', interiorMat()],
+      ['S', ringGroundMat()]
     ]) {
       const g = M[k].geometry();
       if (!g) continue;
@@ -914,7 +940,63 @@ export function createTown(scene, heightAt, opts = {}) {
   scene.add(farG);
   let blk = null; // { ver, of: item → block, spans: block → per part [v0, v1, …] } for the detailed lots
 
+  // ---- open ground (T-370: street level's grass tufts stay off roads, pavements, lots and landmarks) ----
+  let openIx = null; // { key, cell, segs: tile → [[ax, az, bx, bz, r]], boxes: tile → [frame] }
+  const OPEN = 32; // the index's tile (m)
+  const openIndex = () => {
+    if (openIx && openIx.key === layoutKey) return openIx;
+    const L = lastModel ? lastModel.land : {},
+      segs = new Map(),
+      boxes = new Map(),
+      add = (M, x0, z0, x1, z1, v) => {
+        for (let j = Math.floor(z0 / OPEN); j <= Math.floor(z1 / OPEN); j++)
+          for (let i = Math.floor(x0 / OPEN); i <= Math.floor(x1 / OPEN); i++) {
+            const k = `${i},${j}`;
+            if (!M.has(k)) M.set(k, []);
+            M.get(k).push(v);
+          }
+      };
+    for (const r of L.roads || []) {
+      if (r.kind === 'overpass') continue;
+      const spec = ROAD[r.kind] || ROAD.street,
+        rr = spec.w / 2 + (r.kind === 'main' || r.kind === 'street' ? RING.pave : 0) + 0.3;
+      for (let q = 1; q < r.pts.length; q++) {
+        const [ax, az] = toM(r.pts[q - 1]),
+          [bx, bz] = toM(r.pts[q]);
+        add(segs, Math.min(ax, bx) - rr, Math.min(az, bz) - rr, Math.max(ax, bx) + rr, Math.max(az, bz) + rr, [ax, az, bx, bz, rr]);
+      }
+    }
+    (L.lots || []).forEach((l, i) => {
+      const f = lotFrame(l, i);
+      if (!f) return;
+      const R = Math.hypot(f.w, f.d) / 2 + 0.6;
+      add(boxes, f.x - R, f.z - R, f.x + R, f.z + R, { x: f.x, z: f.z, w: f.w + 1.2, d: f.d + 1.2, cs: f.cs, sn: f.sn });
+    });
+    for (const f of facs) {
+      const R = Math.hypot(f.w, f.d) / 2 + 1;
+      add(boxes, f.x - R, f.z - R, f.x + R, f.z + R, { x: f.x, z: f.z, w: f.w + 2, d: f.d + 2, cs: Math.cos(f.yaw), sn: Math.sin(f.yaw) });
+    }
+    return (openIx = { key: layoutKey, segs, boxes });
+  };
+
   return {
+    /** Open ground at world (x, z): not on a road or its pavements, a lot or a landmark (street level's tufts, T-370). */
+    clear(x, z) {
+      const I = openIndex(),
+        k = `${Math.floor(x / OPEN)},${Math.floor(z / OPEN)}`;
+      for (const [ax, az, bx, bz, rr] of I.segs.get(k) || []) {
+        const dx = bx - ax,
+          dz = bz - az,
+          t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
+        if ((ax + dx * t - x) ** 2 + (az + dz * t - z) ** 2 < rr * rr) return false;
+      }
+      for (const f of I.boxes.get(k) || []) {
+        const dx = x - f.x,
+          dz = z - f.z;
+        if (Math.abs(dx * f.cs - dz * f.sn) < f.w / 2 && Math.abs(dx * f.sn + dz * f.cs) < f.d / 2) return false;
+      }
+      return true;
+    },
     /** Bring the layer up to date with a model (reads model.land roads / lots / landmarks / districts and model.fog only). */
     sync(model) {
       lastModel = model;

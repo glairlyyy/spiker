@@ -55,15 +55,19 @@ export function streetPose(d) {
     lens: [STREET.lens[0] * k, STREET.lens[1] * k]
   };
 }
-/** Put the target at NDC lens [x, y] by shifting the camera's view window (three's setViewOffset in fractions); [0, 0] clears it. */
+/**
+ * Put the target at NDC lens [x, y] by shifting the camera's view window (three's setViewOffset in fractions); [0, 0] clears it.
+ * The aspect stays the canvas's: three's setViewOffset sets `aspect = fullWidth / fullHeight` (1 here) — the street view's stretch.
+ */
 export function setLens(cam, fov, lx, ly) {
   const V = cam.view,
     ox = -lx / 2,
     oy = ly / 2;
   if (Math.abs(cam.fov - fov) < 1e-4 && (V && V.enabled ? Math.abs(V.offsetX - ox) < 1e-5 && Math.abs(V.offsetY - oy) < 1e-5 : !lx && !ly))
     return;
+  const aspect = cam.aspect;
   cam.fov = fov;
-  if (lx || ly) cam.setViewOffset(1, 1, ox, oy, 1, 1);
+  if (lx || ly) (cam.setViewOffset(1, 1, ox, oy, 1, 1), (cam.aspect = aspect));
   else if (V && V.enabled) cam.clearViewOffset();
   cam.updateProjectionMatrix();
 }

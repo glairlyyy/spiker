@@ -129,6 +129,112 @@ function lookTextures(n) {
   return { det: dataTex(det, n), wave: dataTex(heightToNormal(tileNoise(n, 8, 5, 9, 0.55), n, 7), n) };
 }
 /**
+ * Street level's ground (spec §4.44, T-370): one generated tileable RGBA texture, painted (soft bands, few flecks — not photo
+ * grain), each channel a shade around 0.5 sampled with world UVs — R asphalt (mottled, tar seams, sparse flecks; tile
+ * GROUND.tile.asph m), G pavement (GROUND.slab m slabs: a tone each, dark joints, a light chamfer), B grass (blade strokes,
+ * posterized into painted bands), A paint wear (lane marks). Made in code, decoded in memory (no image files).
+ */
+export const GROUND = {
+  n: 256,
+  tile: { asph: 4, pave: 2, grass: 1.7, paint: 3, var: 13 }, // m a texture tile covers
+  slab: 0.5, // pavement slab (m): 4 × 4 in a tile
+  fade: [0.06, 0.4], // the detail fades to its mean between these m a pixel (no shimmer far off)
+  edge: { in: 0.18, w: 0.1, end: 1.4 } // main roads' edge lines: this far in from the edge, this wide, clear of junctions by hw + end m
+};
+export function groundBytes(n = GROUND.n) {
+  const mott = tileNoise(n, 4, 3, 21),
+    fleck = tileNoise(n, 64, 1, 22),
+    seam = tileNoise(n, 6, 3, 23),
+    tone = tileNoise(n, 4, 2, 24),
+    blade = tileNoise(n, 16, 3, 25),
+    clump = tileNoise(n, 4, 3, 26),
+    wear = tileNoise(n, 12, 3, 27),
+    out = new Uint8Array(n * n * 4),
+    band = (v, k) => Math.round(v * k) / k, // posterize (painted)
+    sl = n / 4; // a slab's side (px)
+  for (let y = 0; y < n; y++)
+    for (let x = 0; x < n; x++) {
+      const i = y * n + x,
+        // asphalt: two-tone mottling, a thin tar seam, rare light flecks
+        sm = smooth(0, 0.035, Math.abs(2 * seam[i] - 1)),
+        a = 0.5 + 0.42 * (band(mott[i], 5) - 0.5) - 0.18 * (1 - sm) + (fleck[i] > 0.86 ? 0.14 : 0),
+        // pavement: a tone per slab (hash of its cell), joints, the top-left chamfer lighter
+        cx = Math.floor(x / sl),
+        cy = Math.floor(y / sl),
+        h = (((cx * 73 + cy * 151 + 17) * 2654435761) >>> 0) / 4294967296,
+        fx = (x % sl) / sl,
+        fy = (y % sl) / sl,
+        jo = Math.min(fx, fy, 1 - fx, 1 - fy),
+        p =
+          (0.5 + 0.14 * (h - 0.5) + 0.06 * (band(tone[i], 4) - 0.5)) * (jo < 0.03 ? 0.55 : 1) +
+          (jo < 0.09 && jo >= 0.03 && (fx < 0.09 || fy < 0.09) ? 0.06 : 0),
+        // grass: stretched blade strokes (the noise read along y faster), clumps, three painted bands
+        bs = blade[((y * 3) % n) * n + x],
+        g = 0.5 + 0.3 * (band(0.55 * bs + 0.45 * clump[i], 3) - 0.5),
+        w = 0.5 + 0.35 * (wear[i] > 0.62 ? -(wear[i] - 0.62) * 2.2 : 0.05);
+      out.set([clamp(a, 0, 1) * 255, clamp(p, 0, 1) * 255, clamp(g, 0, 1) * 255, clamp(w, 0, 1) * 255], i * 4);
+    }
+  return out;
+}
+/** Shared uniforms: the texture (made on first use) and the weight (look.step: smooth(0.2, 0.8, st) on Auto / High, 0 on Fast). */
+export const GROUND_U = { tGround: { value: null }, uGr: { value: 0 } };
+const groundTex = () => GROUND_U.tGround.value || (GROUND_U.tGround.value = dataTex(groundBytes(), GROUND.n));
+const GLSL_GROUND = `
+  float grFade(vec2 gp) { return uGr * (1.0 - smoothstep(${GROUND.fade[0].toFixed(3)}, ${GROUND.fade[1].toFixed(3)}, length(fwidth(gp)))); }
+  vec4 grTex(vec2 gp, float tile) { return texture2D(tGround, gp / tile); }`;
+/**
+ * A road / pavement material (town3d, T-370) painted at street level: its geometry has `gk` (vec4: kind 1 asphalt, 2 pavement,
+ * 3 lane paint, 4 dirt, 0 none; across the road −1…1; m to the nearer end; the half width for edge lines, 0 = none) —
+ * asphalt / slabs / worn paint / dirt in world UVs, main roads' solid edge lines.
+ * The weight uGr is 0 on Fast and above street level: the look there is unchanged. Chains a previous onBeforeCompile.
+ */
+export function groundMat(m) {
+  if (m.userData.ground) return m;
+  m.userData.ground = true;
+  const prev = m.onBeforeCompile,
+    key = m.customProgramCacheKey ? m.customProgramCacheKey() : '';
+  m.customProgramCacheKey = () => `ground|${key}`;
+  m.onBeforeCompile = function (sh, r) {
+    if (prev) prev.call(this, sh, r);
+    groundTex();
+    Object.assign(sh.uniforms, GROUND_U);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute vec4 gk; varying vec4 vGk; varying vec3 vGkW;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvGk = gk; vGkW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>\nuniform sampler2D tGround; uniform float uGr; varying vec4 vGk; varying vec3 vGkW;${GLSL_GROUND}`
+      )
+      .replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        {
+          vec2 gp = vGkW.xz;
+          float f = grFade(gp), k = vGk.x, hw = vGk.w, o = abs(vGk.y) * hw, aa = max(fwidth(o), 1e-4); // (derivatives outside the branches)
+          vec4 T = grTex(gp, ${GROUND.tile.asph.toFixed(1)}), P = grTex(gp, ${GROUND.tile.pave.toFixed(1)}), Q = grTex(gp, ${GROUND.tile.paint.toFixed(1)});
+          float big = grTex(gp + 0.37, ${GROUND.tile.var.toFixed(1)}).r;
+          vec3 c = diffuseColor.rgb, t = c;
+          if (f > 0.001 && k > 0.5) {
+          if (k < 1.5) {
+            t = c * (0.55 + 0.9 * T.r) * (0.92 + 0.16 * big) * vec3(0.95, 0.97, 1.07);
+            // main roads: solid edge lines (hw = the half width; 0 = none), clear of the junctions
+            float lw = ${GROUND.edge.w.toFixed(2)}, e = ${GROUND.edge.in.toFixed(2)};
+            if (hw > 0.0 && vGk.z > hw + ${GROUND.edge.end.toFixed(1)}) {
+              float ln = smoothstep(e - aa, e, hw - o) * (1.0 - smoothstep(e + lw, e + lw + aa, hw - o));
+              t = mix(t, vec3(0.93, 0.92, 0.86) * (0.8 + 0.4 * Q.a), ln);
+            }
+          } else if (k < 2.5) t = c * (0.6 + 0.8 * P.g);
+          else if (k < 3.5) t = c * (0.7 + 0.6 * Q.a);
+          else t = c * (0.7 + 0.6 * T.r) * (0.9 + 0.2 * big) * vec3(1.03, 1.0, 0.94);
+          }
+          diffuseColor.rgb = mix(c, t, f);
+        }`
+      );
+  };
+  return m;
+}
+/**
  * Street level's colour grade (spec §4.44, T-369) by time of day (wrapping): gain = × the lights, lift = added to the darks
  * (coloured shadows, not grey), sat / con = saturation and contrast, haze = the distance haze's colour (it replaces the grey
  * sky tint on every look). Applied after the tone mapping (display colours), weighted by street level.
@@ -288,25 +394,28 @@ export function richLook(renderer, scene, cam, sun) {
   const terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
   terrainMat.onBeforeCompile = sh => {
     textures();
-    Object.assign(sh.uniforms, { tDet: U.det });
+    groundTex();
+    Object.assign(sh.uniforms, { tDet: U.det }, GROUND_U);
     sh.vertexShader = sh.vertexShader
       .replace(
         '#include <common>',
         `#include <common>
-        attribute vec4 gnd; attribute vec2 gdir; attribute float gpav; varying vec4 vGnd; varying vec2 vGdir; varying float vPav;
-        varying vec3 vWp; varying vec3 vWn;`
+        attribute vec4 gnd; attribute vec2 gdir; attribute float gpav; attribute vec3 nsm; varying vec4 vGnd; varying vec2 vGdir; varying float vPav;
+        varying vec3 vWp; varying vec3 vWn; varying vec3 vNsm;`
       )
       .replace(
         '#include <project_vertex>',
         `#include <project_vertex>
-        vGnd = gnd; vGdir = gdir; vPav = gpav; vWp = (modelMatrix * vec4(transformed, 1.0)).xyz; vWn = normalize(mat3(modelMatrix) * objectNormal);`
+        vGnd = gnd; vGdir = gdir; vPav = gpav; vWp = (modelMatrix * vec4(transformed, 1.0)).xyz; vWn = normalize(mat3(modelMatrix) * objectNormal);
+        vNsm = normalMatrix * nsm;`
       );
     sh.fragmentShader = sh.fragmentShader
       .replace(
         '#include <common>',
         `#include <common>
         uniform sampler2D tDet; varying vec4 vGnd; varying vec2 vGdir; varying float vPav; varying vec3 vWp; varying vec3 vWn;
-        float lkH; float lkWet; ${GLSL_BUMP}`
+        uniform sampler2D tGround; uniform float uGr; varying vec3 vNsm;
+        float lkH; float lkWet; float lkG; ${GLSL_BUMP}`
       )
       .replace(
         '#include <color_fragment>',
@@ -323,6 +432,14 @@ export function richLook(renderer, scene, cam, sun) {
           vec3 base = diffuseColor.rgb;
           vec3 g = base * (0.72 + 0.52 * d1.r) * (0.9 + 0.2 * d2.g);
           g = mix(g, g * vec3(1.2, 1.1, 0.68), smoothstep(0.5, 0.85, d2.g) * 0.5);
+          // street level (T-370): painted grass near you — blade strokes in three bands, cool shade / sunlit warm patches
+          float gf = uGr * (1.0 - smoothstep(0.05, 0.35, length(fwidth(gp))));
+          float gs = texture2D(tGround, gp / ${GROUND.tile.grass.toFixed(1)}).b, gv = texture2D(tGround, gp / ${GROUND.tile.var.toFixed(1)} + 0.5).b;
+          float gw2 = texture2D(tGround, gp / 41.0 + 0.21).b;
+          vec3 gpn = base * (0.66 + 0.68 * gs) * (0.84 + 0.32 * smoothstep(0.3, 0.7, gw2));
+          gpn = mix(gpn * vec3(0.84, 0.94, 1.14), gpn * vec3(1.14, 1.08, 0.76), smoothstep(0.36, 0.64, gv));
+          g = mix(g, gpn, gf);
+          lkG = uGr * (1.0 - smoothstep(0.08, 0.6, length(fwidth(gp)))); // (the smooth normals' weight: near the camera)
           float rip = texture2D(tDet, vec2(gp.x + gp.y * 0.35, gp.y - gp.x * 0.25) / 9.0).b;
           vec3 sa = base * (0.9 + 0.1 * rip + 0.16 * (d1.r - 0.5));
           vec3 ro = mix(base, vec3(0.2, 0.19, 0.165), steep) * (0.78 + 0.22 * d2.a) * (0.8 + 0.4 * d1.r);
@@ -350,6 +467,7 @@ export function richLook(renderer, scene, cam, sun) {
       .replace(
         '#include <normal_fragment_maps>',
         `#include <normal_fragment_maps>
+        normal = normalize(mix(normal, normalize(vNsm), lkG)); // (T-370: street level's smooth slopes)
         normal = lkBump(-vViewPosition, normal, vec2(dFdx(lkH), dFdy(lkH)) * 0.07 * (1.0 - lkWet));`
       );
   };
@@ -594,6 +712,7 @@ export function richLook(renderer, scene, cam, sun) {
       adapt(gfx);
       gradeAt(tod, GR);
       STREET_FX.uFdToon.value = on ? smooth(0.3, 0.9, st) : 0;
+      GROUND_U.uGr.value = on ? smooth(0.2, 0.8, st) : 0; // (T-370: the painted ground; Fast: none)
       if (!on) return;
       const G = grade.material.uniforms;
       G.uK.value = smooth(0.15, 0.8, st);

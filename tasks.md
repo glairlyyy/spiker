@@ -81,7 +81,7 @@ Accept:
 - npm test, lint, test:ui pass.
 QA: career run → street level, two times of day, screenshots
 Result: over-the-shoulder at eye level (7.2 m, 12°, 50° lens, lens shift → figure in the lower third, left of centre); occluder fade = dithered discard round the camera → you line (shader, no rays / transparency); FXAA + per-hour grade (Auto / High); toon bands on the sun only; haze in the grade's hue. F3 at the gym junction, headless Auto 10:00 / 18:30: calls 153 → 152 / 168 → 171, tris 0.99 M → 0.98 M / 0.99 M → 0.99 M, new JS (sweep) 0.06–0.16 ms; Fast calls 116–144, tris 0.48–0.61 M as before (stream variance), sweep 0.03–0.08 ms. Headless update ms rises with the two extra passes (swiftshader shares the CPUs; the same ratio with the old framing in-page) — real GPUs: ~0.2 ms GPU. Screenshots qa/t369-{before,after}-{10,1830}.png.
-### [ ] T-370: Street view: ground
+### [x] T-370: Street view: ground
 Spec: §4.44          Goldens: unchanged          Save: no change
 Goal: asphalt roads with lane markings, curbs and pavements; painted grass with variation and near tufts; the near terrain smooth-shaded.
 Files: js/map3d/terrain3d.mjs, town3d.mjs (roads), nature3d.mjs (tufts), look3d.mjs (shared textures); tests/map3d.test.js; spec.md §4.44; ARCHITECTURE-details.md
@@ -92,7 +92,7 @@ Accept:
 - Screenshots before / after; F3 within budget.
 - npm test, lint, test:ui pass.
 QA: career run → street level on a main road and a residential street
-Result:
+Result: built — one generated RGBA texture (asphalt / slabs / grass strokes / paint wear) in world UVs on roads, the ring's pavements (own mesh S) and lawn; main-road edge lines in the road shader; smooth normals (nsm) near; the meadow (hashed, ≤ 6 tiles a frame, rebuilt per 3 m walked, 2–6 ms headless); kerbs / pavements stay in the ring (rebuilt per 30 m) rather than per block; map3d wires the meadow (2 lines). Gym junction, Auto: calls 156 → 158 (10:00), 171 → 173 (18:30), tris 0.990 → 0.996 M; Fast unchanged (141 / 144 calls, 612k / 615k tris).
 ### [ ] T-371: Street view: buildings
 Spec: §4.44          Goldens: unchanged          Save: no change
 Goal: near facades with window frames, doors, awnings, shop signs and roof edges in the district palette; the far skyline as painted silhouettes.

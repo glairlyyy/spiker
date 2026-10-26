@@ -486,6 +486,24 @@ test('map3d: street level — one continuous zoom path (pitch, distance, height 
     assert(!M.lens[0] && !M.lens[1], '… unshifted');
     setLens(cam, M.fov, ...M.lens);
     assert(!cam.view || !cam.view.enabled, 'the shift clears');
+    // the stretch (owner 2026-10-26): the projection's aspect = the canvas's through a lens shift, a resize and back
+    const pa = () => cam.projectionMatrix.elements[5] / cam.projectionMatrix.elements[0];
+    for (const a of [16 / 9, 4 / 5, 2.4]) {
+      cam.aspect = a;
+      cam.updateProjectionMatrix();
+      setLens(cam, P.fov, ...P.lens);
+      assert(
+        Math.abs(cam.aspect - a) < 1e-9 && Math.abs(pa() - a) < 1e-6,
+        `a lens shift keeps the aspect ${a.toFixed(2)} (${pa().toFixed(3)})`
+      );
+      setLens(cam, P.fov, P.lens[0] * 0.5, P.lens[1] * 0.5);
+      assert(Math.abs(pa() - a) < 1e-6, '… easing it too');
+      cam.aspect = a * 1.3; // a resize mid-shift (map3d size())
+      cam.updateProjectionMatrix();
+      assert(Math.abs(pa() - a * 1.3) < 1e-6 && cam.view.enabled, '… a resize keeps the shift and takes the new aspect');
+      setLens(cam, M.fov, ...M.lens);
+      assert(Math.abs(pa() - a * 1.3) < 1e-6, '… and clearing it');
+    }
   }
   // T-369: the street grade by time of day (warm morning, clear noon, orange-pink dusk, blue night), wrapping round midnight
   {
@@ -572,9 +590,44 @@ test('map3d: the detail ring — every face and rooms behind the ground-floor gl
       .map(o => o.userData.ring)
       .sort()
       .join(','),
-    'G,I,R,W',
-    'walls, glass, roofs, rooms: one draw call each'
+    'G,I,R,S,W',
+    'walls, glass, roofs, rooms, the painted ground (T-370): one draw call each'
   );
+  // T-370: the ring ground carries its paint kind (2 pavement slabs, 3 lane paint, 0 the kerb face); the roads their asphalt / dirt
+  {
+    const S = ring.find(o => o.userData.ring === 'S'),
+      gk = S.geometry.attributes.gk,
+      kinds = new Set();
+    for (let v = 0; v < gk.count; v++) kinds.add(gk.getX(v));
+    assert(
+      [0, 2, 3].every(k => kinds.has(k)),
+      `pavement, paint and kerb in the ring ground (${[...kinds]})`
+    );
+    assert(S.material.userData.ground && !S.castShadow, 'painted, no shadow draw');
+    let RD = null;
+    sc.traverse(o => o.isMesh && o.geometry.attributes.gk && !o.userData.ring && (RD = o));
+    const rg = RD.geometry.attributes.gk;
+    let asph = 0,
+      edge = 0,
+      dirt = 0;
+    for (let v = 0; v < rg.count; v++) {
+      if (rg.getX(v) === 1) asph++;
+      if (rg.getX(v) === 4) dirt++;
+      if (rg.getW(v) > 0) (edge++, assert(Math.abs(rg.getY(v)) === 1 && rg.getZ(v) >= 0, 'across ±1, m to the end ≥ 0'));
+    }
+    assert(
+      asph > 1000 && edge > 0 && edge < asph && rg.count === RD.geometry.attributes.position.count,
+      `asphalt ${asph}, edge-lined ${edge}, dirt ${dirt}`
+    );
+    // open ground: a main road and a lot are not, the middle of nowhere is
+    const mr = m.land.roads.find(r => r.kind === 'main'),
+      [ax, az] = mr.pts[0].map(v => v * 0.5),
+      [bx, bz] = mr.pts[mr.pts.length - 1].map(v => v * 0.5),
+      lot = m.land.lots.find(l => kit.lotFrame(l, 0));
+    assert(!town.clear((ax + bx) / 2, (az + bz) / 2), 'a main road is not open ground');
+    assert(!town.clear(lot.at[0] * 0.5, lot.at[1] * 0.5), 'a lot is not');
+    assert(town.clear(-500, -500), 'off everything: open');
+  }
   const I = ring.find(o => o.userData.ring === 'I'),
     room = I.geometry.attributes.room;
   assert(room.count > 200, `room panes (${room.count / 6})`);
@@ -975,4 +1028,76 @@ test('map3d streaming: a far terrain chunk is coarse, turned like the full grid,
   eq(miss, 0, 'every edge vertex kept: it meets a full chunk without cracks');
   const big = coarseIndex(nx, 0, 96 > nx ? nx : 96, 0, 24);
   assert(big.length / 3 < (nx * 24 * 2) / 4, 'a big chunk ≥ 4× lighter');
+});
+
+test('map3d: street level ground (T-370) — the painted texture tiles, the meadow is hashed, dense on grass, off roads', () => {
+  const { groundBytes, GROUND } = require('../js/map3d/look3d.mjs'),
+    { meadowTile, MEADOW } = require('../js/map3d/nature3d.mjs'),
+    n = 64,
+    B = groundBytes(n);
+  eq(B.length, n * n * 4, 'RGBA');
+  for (let c = 0; c < 4; c++) {
+    let sum = 0,
+      seam = 0,
+      inner = 0;
+    for (let i = 0; i < n * n; i++) sum += B[i * 4 + c];
+    const mean = sum / (n * n * 255);
+    assert(mean > 0.3 && mean < 0.65, `channel ${c}: a shade round 0.5 (${mean.toFixed(2)})`);
+    // tileable: the wrap seam (last column → first) is no rougher than inside (asphalt, grass, paint; slabs have joints)
+    if (c === 1) continue;
+    for (let y = 0; y < n; y++) {
+      seam += Math.abs(B[(y * n + n - 1) * 4 + c] - B[y * n * 4 + c]);
+      inner += Math.abs(B[(y * n + n / 2) * 4 + c] - B[(y * n + n / 2 - 1) * 4 + c]);
+    }
+    assert(seam < inner * 2 + n * 4, `channel ${c} wraps (${seam} vs ${inner})`);
+  }
+  assert(GROUND.fade[0] < GROUND.fade[1], 'the detail fades out far off');
+  const col = (x, z, o) => ((o[0] = 0.4), (o[1] = 0.6), (o[2] = 0.3), o),
+    lawn = meadowTile(
+      3,
+      4,
+      () => 1,
+      () => true,
+      col
+    ),
+    again = meadowTile(
+      3,
+      4,
+      () => 1,
+      () => true,
+      col
+    ),
+    half = meadowTile(
+      3,
+      4,
+      () => 0.6,
+      () => true,
+      col
+    ),
+    road = meadowTile(
+      3,
+      4,
+      () => 1,
+      x => x > 3.5 * MEADOW.tile,
+      col
+    ),
+    bare = meadowTile(
+      3,
+      4,
+      () => MEADOW.min,
+      () => true,
+      col
+    );
+  eq(lawn.join(), again.join(), 'hashed: the same tile twice');
+  const k = lawn.length / 7,
+    cells = Math.round(MEADOW.tile / MEADOW.cell) ** 2;
+  assert(k > cells * MEADOW.dense * 0.75 && k < cells * MEADOW.dense * 1.25, `full grass: ~${MEADOW.dense} a cell (${k} of ${cells})`);
+  assert(half.length / 7 < k * 0.55 && half.length > 0, 'thinner on mixed ground');
+  eq(bare.length, 0, 'none on bare ground');
+  for (let a = 0; a < lawn.length; a += 7)
+    assert(
+      lawn[a] >= 3 * MEADOW.tile && lawn[a] < 4 * MEADOW.tile && lawn[a + 1] >= 4 * MEADOW.tile && lawn[a + 1] < 5 * MEADOW.tile,
+      'inside its tile'
+    );
+  for (let a = 0; a < road.length; a += 7) assert(road[a] > 3.5 * MEADOW.tile, 'none where the ground is not open');
 });

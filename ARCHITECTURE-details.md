@@ -876,7 +876,7 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
 - **Camera path** — mapcam3d `streetPose(d)` (pure, tested): above `DIST[0]` (25 m) today's view; below it s = smoothstep((25 − d) /
   (25 − `STREET.d1` 7.2)), pitch 55° → `STREET.pitch` 12°, the target rising to your middle (`STREET.head` 0.95 m) and pulled onto your
   avatar (k by s), so at d1 the camera is ~7 m behind, ~2.4 m above the ground (eye level). T-369: the lens widens 40° → 50°
-  (`STREET.fov`) and a lens shift (`setLens`: three `setViewOffset` in fractions, cleared at s = 0) puts the target at NDC
+  (`STREET.fov`) and a lens shift (`setLens`: three `setViewOffset` in fractions, cleared at s = 0; it keeps `cam.aspect` — three's setViewOffset sets aspect = fullWidth ÷ fullHeight = 1, the 2026-10-26 stretch; `info().aspect` { canvas, cam, proj } for QA) puts the target at NDC
   `STREET.lens` [−0.12, −0.62] × s — your whole figure in the lower third, left of centre, verticals upright (picks / project() use the
   same projection); pulled in front of a building the shift eases off by k. Below 25 m only while your avatar is inside the
   district (everywhere on land since T-361) and the view centre within `STREET.pad` of it (`allowed`); otherwise the zoom stops at 25 m, and leaving the district eases
@@ -915,6 +915,20 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   `uFdToon` = smooth(0.3, 0.9, st) on Auto / High, 0 on Fast) and the occluder fade: fragments within ~1.1 → 0.6 m of the camera →
   your middle line (not its last ~1 m) or within ~1 m of the lens are discarded by a 4 × 4 ordered dither (`uFdK`, eased in from st
   0.4; ghost floor 15 %). No transparency, no extra draws; `info()` `aa` / `grade`.
+- **Ground (T-370, spec §4.44)** — look3d `GROUND` / `groundBytes(n)`: one tileable RGBA texture made in code (R asphalt, G 0.5 m
+  slabs, B grass strokes posterized, A paint wear; shades round 0.5), shared via `GROUND_U` { tGround, uGr } — `uGr` = smooth(0.2,
+  0.8, st) on Auto / High, 0 on Fast (look.step); every use fades to its mean by the pixel footprint (`GROUND.fade` m/px). `groundMat(m)`
+  patches a material (chains onBeforeCompile, own cache key) for geometry with `gk` vec4 (kind 1 asphalt / 2 slabs / 3 paint / 4 dirt /
+  0 none; across −1…1; m to the nearer end; half width for edge lines): town3d's roads mesh (`ROAD_GK` per kind, main roads' edge lines
+  clear of junctions by hw + `GROUND.edge.end`) and the ring's new ground mesh `S` (`ringGroundMat`: pavements, kerb faces, dashes,
+  zebras; no shadow; Fast puts them in W as before). Terrain material: painted grass in the grass term and the smooth normals —
+  terrain3d `nsm` (Int8 normalized, slope over ±`SMOOTH` 2 cells) mixed in by `lkG` near the camera; Fast's flat material ignores both.
+  terrain3d also gives `grassAt(x, z)` (0–1, what the ground weights leave) and `colourAt(x, z)` (pre-fog colour). **Meadow**: nature3d
+  `MEADOW` / `meadowTile(ti, tj, grass, clear, colour)` (hashed lattice per 16 m tile, density by grass weight over `min` × `dense`)
+  and `near(you [x, z], st)` (map3d each frame after streamStep): at st ≥ 0.6, not Fast, one InstancedMesh of the detailed tuft (sway
+  material) with the clumps within `r` 30 m, shrinking over the last `edge` m, rebuilt per `step` 3 m, ≤ `per` 6 new tiles a frame;
+  tiles cached to r + `keep`. town3d `clear(x, z)` = not on a road (+ pavements), lot or landmark (a 32 m tile index per layout).
+  `info().meadow` { on, n, tiles, ms }.
 - **Look** — at s > 0.15 the background is the baked sky (`look.envTex()`; Fast: the clock's sky colour); a `THREE.Fog` haze in the
   grade's colour closes in with s (near 160 m at street level; 1e6 on the map); the war borders (`war.show`) and the route preview
   ribbons hide at s ≥ 0.5; the story figures (`model.figures`) shrink to life size with you.
