@@ -2152,7 +2152,13 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Street life** (T-372): benches, bins, vending machines, parked bikes, signs, overhead wires and utility poles, ground
     decals (cracks, puddles, leaves); grass and trees sway.
   - **Dusk and night** (T-373): lamp and window glow (bloom on Auto / High), pools of light under lamps, the sky's gradient and
-    clouds by time of day.
+    clouds by time of day. **[built 2026-10-26]**: at street level on Auto / High the sky is painted — a deep anime blue overhead
+    fading to the hour's haze at the skyline (the noon sky no longer washes near-white), soft-edged painted clouds lit toward the sun
+    and shaded in their middles, warm at dawn, orange-pink at dusk, violet after, dark navy with stars and a moon at night; it follows
+    the clock and the clouds drift. From dusk the lit windows, shop fronts, signs (the blade signs too) and lamp heads glow and only
+    they bloom; painted pools of warm light fade in under the lamps at dusk. No real lamp lights. Measured (headless, gym junction,
+    Auto): draw calls 159 → 159 (10:00), 174 → 174 (18:30, 22:00), triangles unchanged (~1.00 M); the sky re-paints one face of a
+    small cube a frame when the hour moves (≤ ~1 ms in software GL, none otherwise); Fast unchanged (141 / 144 / 143 calls).
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.

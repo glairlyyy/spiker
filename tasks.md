@@ -117,7 +117,7 @@ Accept:
 - npm test, lint, test:ui pass.
 QA: career run → street level on a main road
 Result:
-### [ ] T-373: Street view: dusk and night
+### [x] T-373: Street view: dusk and night
 Spec: §4.44          Goldens: unchanged          Save: no change
 Goal: lamp and window glow (bloom on Auto / High), light pools under lamps, the sky's gradient and painted clouds by time of day.
 Files: js/map3d/look3d.mjs, layers3d.mjs (night lights), terrain3d.mjs (sky) or where the sky lives; tests/map3d.test.js; spec.md §4.44; ARCHITECTURE-details.md
@@ -128,7 +128,7 @@ Accept:
 - Screenshots at 18:30 and 22:00; F3 within budget.
 - npm test, lint, test:ui pass.
 QA: career run → street level at dusk and night
-Result:
+Result: Painted sky (look3d `PSKY` / `paintAt`, keys on GRADE's, horizon = its haze; gradient, code-made clouds, sun glow, stars + moon) baked into a 256-px cube, one face a frame on change, shown as street level's background on Auto / High (noon = clear blue); selective bloom = every emissive × `uFdGlow` via streetMat (panes, signs incl. blades, rooms, far windows ~2.4 in HDR) with the threshold at 1.15 above lit surfaces; lamp / flood points ×2.6 at street level, window points eased out; pools = a painted decal fading in at dusk. Calls 159 / 174 / 174 (10:00 / 18:30 / 22:00) unchanged, tris ~1.00 M unchanged, sky ≤ ~1 ms JS while re-baking (swiftshader), Fast unchanged (141 / 144 / 143). Deviation: no terrain3d / map3d change (the background goes through `look.envTex()`).
 
 ### [x] T-366: The three duels — free aiming, settling, block read / commit
 Spec: §2.39          Goldens: update (serve and attack choices change)          Save: no change
