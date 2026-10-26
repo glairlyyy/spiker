@@ -1160,8 +1160,27 @@ and adds the Run + Stretch rows inside it (`stretchAt(run, p, pre)`: picker + or
 
 ### Running a trip (T-309)
 
-`City.path` also returns the road node ids; `City.legs(from, to)` turns the route into ground legs `{ kind, cost }` (ROADS edge kinds;
-an edge at the `steps` node = 'steps'; to / from the network = 'ground'). `City.runPlan(run, p)` = `RUN_GROUND[kind]` gains per
+`City.path` also returns the road node ids and `run` (the road pieces walked: `{ a, b, kind, u, v }`); `City.legs(from, to)` turns the route into ground legs `{ kind, cost }` (ROADS edge kinds;
+an edge at the `steps` node = 'steps'; to / from the network = 'ground').
+**Joins (2026-10-26, walks follow the drawn roads)**: each end of `City.path` joins the network at `City.join(p)` = the nearest point on any ROADS
+edge but the overpass (`City.joinEdges`), entered into Dijkstra as two virtual nodes on their edges (`'<a'` / `'>b'`, linked to both ends
+of their edge; one edge: also straight along it); pts = [from, join, …nodes…, join, to]; straight only when the ends are nearer each other than
+to the road. Places stand on their nodes (join = the node), so place-to-place trips are unchanged. `wheelTrip` rides `run`. Display: avatar3d
+`setTarget` keeps the route's first point when the walk starts elsewhere (out of a door: door → node → road, not door → the second node);
+`deck(model.land.roads)` (map3d update) chains the overpass as town3d's `buildOverpass` does (`deckChains`) and a walk / ride span along it
+lifts the figure by `deckLift` (DECK ramp; `lift()`, added to map3d `youPos` and mapcam3d's street target); `MapView.home()` walks back from
+a refused WASD stop by `City.route`.
+**Access lanes (2026-10-26, every building fronts a road)**: `MapModel.laneData(nodes, edges)` (end of mapmodel.js; pure, run-independent)
+walks each district's lot grid as `lots` does (frame, density hash, size; not the run's places) and, for candidates farther than
+`LANES.reach` from every road (a bucket grid of the roads), lays a lane on the nearest `LANES.every`-th grid row: runs of columns
+(≤ `join` apart), cut where `ok` fails (sea, airport, kept ground, within a place's facility reach `clearOf` or a venue), split at the
+roads it crosses (junction nodes `ln<i>`; the crossed edge re-chained through them as 'via' edges — the original edge stays for bus
+lines / traffic, `MapModel.build` leaves 'via' out of `land.roads`), else a connector from its nearer end to the nearest road or earlier
+lane (ring search, ≤ `reachMax`, stopping at the first road it meets); nodes within 0.5 units merge. Edges are `[a, b, kind, 'lane' |
+'via']` — the 4th field marks generated ones (the road-side lot rows and Wei's street trees skip them). `addLanes` turns `ROADS.nodes`
+/ `.edges` into getters that append them on first read. `lots`: a lot must also be within `LANES.reach` of a road (centre − half size).
+`City.adj()` caches the graph; `pathRaw` runs Dijkstra on a binary heap ordered (distance, id) (= the old sorted scan); `City.join` is
+memoised by point. `City.runPlan(run, p)` = `RUN_GROUND[kind]` gains per
 TRIP_DAY of each leg's travel cost, stamina `RUN_GROUND.sta` (× HOURS.staK) per trip day; `City.noRun` (no move, injured, too tired → walk only).
 `City.travelTo(run, p, 'run')` spends the running hours (÷ RUN_PACE), logs a 'Run' block and calls `Training.runTrip` (the gains × `Training.mul`
 of the `DAY_ORDERS.run` key × DAY_GAIN; no fail roll). Since §4.41 the gains are × HOURS.unit × HOURS.run and the stamina × HOURS.staK. UI: `runBtn` (career-panels.js) beside Walk on place cards and inside

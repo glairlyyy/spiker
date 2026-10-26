@@ -1672,6 +1672,8 @@ Full text of every done task, newest first: **tasks-done.md** (read it only when
 
 - Focus press removed (owner, 2026-10-21: "remove QTE in training"): career-map.js, city.js, encounter.js, data/encounter.js, menu.js, storage.js, tests, career bot.
 - Duel-part recipes dropped (owner, 2026-10-26: "drop recipe"): Sniper, Lockdown, Full Target Serve, Full Read Block — data/cards.js, data/skills.js, tests/cards.test.js, spec, ARCHITECTURE-details.
+- Every building fronts a road (owner, 2026-10-26): access lanes (`LANES`, `MapModel.laneData`, added to ROADS on first read), lots beyond 25 m of a road not built, City's Dijkstra on a heap + cached graph / joins — js/data/city.js, js/career/mapmodel.js, js/career/city.js, tests, spec §4.18, ARCHITECTURE-details.
+- Walks follow the drawn roads (owner, 2026-10-26: "fix pathing"): joins at the nearest road point (`City.join`), the door leg to the road's first point, the overpass deck climbed, the WASD walk-back by road — js/career/city.js, js/map3d/avatar3d.mjs, map3d.mjs, mapcam3d.mjs, js/ui/map-view.js, tests, spec §4.18, ARCHITECTURE-details.
 
 (build chat: owner requests made directly in the build chat — one line each; the spec chat moves them into spec.md and then into tasks-done.md)
 - 2026-10-08 The crouch before a jump goes deeper the higher the player jumps (owner): × 1 at Jump ≤ 40 up to × 1.5 at Jump 99 (`squatK`, `deepen` in poses3d.mjs: hip drop × k, joints × 1 + 0.3 (k − 1)) on the spike's load and the block's prep. QA (qa_poses, head height): spike load drop 0.47 → 0.71 m at Jump 99 (+51 %), block prep +36 %. Files: js/render3d/poses3d.mjs, poses3d-attack.mjs.

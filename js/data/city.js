@@ -214,6 +214,20 @@ const HOTEL = { price: 12, rest: 1 };
  * edge's length × ROAD_COST[kind]): main roads and the overpass are fast, Shu mountain paths are slower than the open ground.
  */
 const ROAD_COST = { main: 0.45, overpass: 0.35, street: 0.6, boardwalk: 0.7, dirt: 0.8, path: 1.2 };
+/**
+ * Access lanes (owner, 2026-10-26: every building fronts a road — MapModel.laneData): a lot farther than `reach` (map units, 25 m) from
+ * every road gets a lane along its grid row; every `every`-th row of a district's lot grid is the lane, runs of lots up to `join` cells
+ * apart share one; lanes keep `clear` from places, HQs, homes and venues; a connector longer than `reachMax` is not built (those lots
+ * are left out instead); kind by region (the beach: boardwalk).
+ */
+const LANES = {
+  reach: 50,
+  reachMax: 700,
+  every: 5,
+  join: 3,
+  clear: 30,
+  kind: { wei: 'street', wu: 'street', open: 'street', gloria: 'street', shu: 'dirt', outlaws: 'dirt', beach: 'boardwalk' }
+};
 /** Going cross-country (off the roads) costs this × the distance by region (the Shu highlands are rough ground); others 1. */
 const GROUND_COST = { shu: 1.35 },
   /** …and × (1 + height / RELIEF_COST) up the Peak and the Spine (reliefAt): going over the ridge costs more than the valley road. */

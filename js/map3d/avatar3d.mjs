@@ -1,7 +1,8 @@
 // The player on the 3D map: your own model (Main_v2, as in matches and your portrait; the default model if it fails), idle-breathing, walking or running to wherever the rules put
 // the player. Display only — the rules move instantly; this animates from the previously shown position.
 //   createAvatar(scene, opts?) → { setTarget([x, y], path?, { head?, tail?, legs?, dur?, scale? }), snap([x, y]), face([x, y]), tick(dt, heightAt, view?), busy(), pos(), lapse(),
-//                                  heading(), drive(x, z, v, yaw), setLife(k), progress(), ride(), act(k), dispose() }
+//                                  heading(), drive(x, z, v, yaw), setLife(k), progress(), ride(), act(k), deck(roads), lift(), dispose() }
+// deck(model.land.roads): a walk / ride along the overpass climbs its deck as town3d draws it (lift() = the metres over the ground).
 // act('drill' | 'sleep' | null): while a session or a sleep fast-forwards (spec §4.43) you hop block jumps / lie down where you stand.
 // A ride (spec §4.42): o.legs = the trip's legs ([{ m: 'walk' | 'bus' | 'bike' | 'scooter' | 'ferry' | 'taxi', pts, w, a, b }], map
 // points, week time — model.you.ride) replaces the road: the trip plays on the legs' own clock (RIDE_T s in all; a wait = standing at the stop), you
@@ -35,7 +36,8 @@ import {
 } from '../render3d/players3d.mjs';
 import { STAND, READY, locoPose, mix } from '../render3d/poses3d.mjs';
 import { BLOCK, SIT, shadowPart } from './people3d.mjs';
-import { toWorld, clamp, wrap } from './geo3d.mjs';
+import { toWorld, clamp, wrap, smooth } from './geo3d.mjs';
+import { DECK } from './town3d.mjs';
 
 const HEIGHT = 6, // metres: drawn about 3.5× life size so you can find yourself on the island (owner, 2026-10-03)
   SPEED = 6, // m/s: the pace a trip is timed at (longer trips run faster, shown as a time-lapse)
@@ -89,6 +91,42 @@ export const WALK = {
   }
 };
 const ROUTE = { half: 3.2, up: 1.4, step: 8 }; // the route preview's ribbon: half width (map units), lift (m), sample step (map units)
+/**
+ * The overpass as town3d draws it (2026-10-26): its road edges (model.land.roads, kind 'overpass') chained as town3d's buildOverpass
+ * chains them, in world metres, with the distance along each chain — so a walk along it climbs the same deck (DECK ramp).
+ */
+export function deckChains(roads) {
+  const chains = [],
+    near = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 0.5;
+  for (const r of roads || []) {
+    if (r.kind !== 'overpass') continue;
+    const [a, b] = [r.pts[0], r.pts[r.pts.length - 1]].map(toWorld),
+      last = chains.length && chains[chains.length - 1];
+    if (last && near(last[last.length - 1], a)) last.push(b);
+    else if (last && near(last[last.length - 1], b)) last.push(a);
+    else chains.push([a, b]);
+  }
+  return chains.map(p => {
+    const cum = [0];
+    for (let i = 1; i < p.length; i++) cum.push(cum[i - 1] + Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]));
+    return { p, cum, L: cum[cum.length - 1] };
+  });
+}
+/** The deck's lift (m over the ground) at world (x, z) while walking segment a → b: 0 unless a → b is one of the chains' spans. */
+export function deckLift(chains, a, b, x, z) {
+  if (!a || !b) return 0;
+  const near = (p, q) => Math.abs(p[0] - q[0]) < 0.5 && Math.abs(p[1] - q[1]) < 0.5;
+  for (const C of chains)
+    for (let i = 1; i < C.p.length; i++) {
+      const P = C.p[i - 1],
+        Q = C.p[i];
+      if (!((near(a, P) && near(b, Q)) || (near(a, Q) && near(b, P)))) continue;
+      const s = C.cum[i - 1] + Math.hypot(x - P[0], z - P[1]),
+        up = DECK.up * smooth(0, DECK.ramp, s) * smooth(0, DECK.ramp, C.L - s);
+      return up + Math.min(0.25, up); // (town3d: the deck's top 0.25 m over the ground + the ramp)
+    }
+  return 0;
+}
 /** Split world-space polyline pts at the point nearest `at`: [to it, from it]. */
 function splitAt(pts, at) {
   let best = { d: Infinity, i: 0, q: pts[0] };
@@ -120,7 +158,10 @@ export function createAvatar(scene, opts = {}) {
     pend = null, // (T-368) loaded and dressed, waiting to be whole: the capsule stands in until then
     dead = false,
     rmesh = null, // the route preview (yours only)
-    rkey = null;
+    rkey = null,
+    decks = [], // the overpass chains (deck(roads)): a walk along them climbs the deck
+    deckKey = null,
+    lift = 0; // this frame's deck lift (m)
   const me = !opts.kit, // your own avatar: WALK applies
     S = {
       x: 0,
@@ -314,7 +355,13 @@ export function createAvatar(scene, opts = {}) {
       if (me) WALK.via = WALK.stop = null;
       let pts = [[S.x, S.z]];
       for (const p of o.head || []) pts.push(toWorld(p));
-      if (V && V.length > 1) for (const p of V.slice(1, -1)) pts.push(toWorld(p));
+      // the road from its first point (where the rules have you): kept when you stand elsewhere — out of a door, a walk cut short —
+      // so the way onto the road is the short leg to it, not a straight line to its second point across the lots (2026-10-26)
+      if (V && V.length > 1) {
+        const s0 = pts[pts.length - 1],
+          v0 = toWorld(V[0]);
+        for (const p of Math.hypot(s0[0] - v0[0], s0[1] - v0[1]) > 0.5 ? V.slice(0, -1) : V.slice(1, -1)) pts.push(toWorld(p));
+      }
       pts.push(toWorld(at));
       for (const p of o.tail || []) pts.push(toWorld(p));
       const end = o.tail && o.tail.length ? o.tail[o.tail.length - 1] : at;
@@ -345,6 +392,14 @@ export function createAvatar(scene, opts = {}) {
         ? { m: S.ride.m, x: S.x, z: S.z, yaw: S.yaw, v: S.ride.v }
         : null,
     pos: () => [S.x, S.z],
+    /** The overpass to climb (model.land.roads; rebuilt when its overpass edges change). */
+    deck(roads) {
+      const R = (roads || []).filter(r => r.kind === 'overpass'),
+        k = JSON.stringify(R.map(r => r.pts));
+      if (k !== deckKey) ((deckKey = k), (decks = deckChains(R)));
+    },
+    /** How far over the ground the overpass deck holds you this frame (m; 0 off it). */
+    lift: () => lift,
     /** The way you face (rad, atan2(dx, dz)). */
     heading: () => S.yaw,
     /** One WASD frame (display only): stand at world (x, z), moving at v m/s, turning toward yaw. */
@@ -372,6 +427,7 @@ export function createAvatar(scene, opts = {}) {
     tick(dt, heightAt, view = null) {
       const W = S.walk;
       if (!S.drive) S.drv += dt;
+      lift = 0; // (set below while a walk / ride runs along the overpass)
       let v = 0;
       if (S.drive) {
         v = S.drive.v;
@@ -400,6 +456,7 @@ export function createAvatar(scene, opts = {}) {
           g = clamp((s - L.cum[i]) / (L.cum[i + 1] - L.cum[i] || 1), 0, 1);
         S.x = a[0] + (b[0] - a[0]) * g;
         S.z = a[1] + (b[1] - a[1]) * g;
+        lift = deckLift(decks, a, b, S.x, S.z);
         Rd.m = L.m !== 'walk' && tau <= L.a ? 'wait' : L.m; // (spec §4.43: before its time you stand at the stop / pier — the bus comes on the timetable)
         Rd.v = Rd.t < 0 || tau <= L.a || f >= 1 || S.held ? 0 : L.dist / Math.max(0.05, ((L.b - L.a) / (Rd.T1 - Rd.T0)) * Rd.dur);
         if (L.pts.length > 1 && Rd.v > 0) S.yaw += wrap(segYaw(L.pts, Math.min(i, L.pts.length - 2)) - S.yaw) * (1 - Math.exp(-dt / 0.08));
@@ -422,6 +479,7 @@ export function createAvatar(scene, opts = {}) {
           f = clamp((s - W.cum[W.i]) / (W.cum[W.i + 1] - W.cum[W.i] || 1), 0, 1);
         S.x = a[0] + (b[0] - a[0]) * f;
         S.z = a[1] + (b[1] - a[1]) * f;
+        lift = deckLift(decks, a, b, S.x, S.z);
         W.yaw = segYaw(W.pts, W.i);
         S.yaw += wrap(W.yaw - S.yaw) * (1 - Math.exp(-dt / 0.08));
         if (W.t >= dur) {
@@ -440,7 +498,7 @@ export function createAvatar(scene, opts = {}) {
       const rm = S.ride && S.ride.t >= 0 && S.ride.m !== 'wait' ? S.ride.m : 'walk',
         aboard = rm === 'bus' || rm === 'taxi', // inside the vehicle: vehicles3d draws it (with your ring)
         seat = rm === 'bike' || rm === 'scooter',
-        h = rm === 'ferry' ? Math.max(heightAt(S.x, S.z), 0) + DECK_Y : heightAt(S.x, S.z);
+        h = rm === 'ferry' ? Math.max(heightAt(S.x, S.z), 0) + DECK_Y : heightAt(S.x, S.z) + lift;
       const size = 1 + (LIFE_H / HEIGHT - 1) * S.life; // map size → life size
       marker.visible = !aboard;
       if (pend) adopt();
