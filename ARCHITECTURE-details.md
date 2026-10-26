@@ -947,7 +947,20 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   past `SIL.r` [80, 420] m a building leans (`SIL.k` 0.65) toward the hour's haze hue × `SIL.dark` 0.55 before the fog — blue-grey
   silhouettes, not pale boxes washed white; bright (lit) pixels keep their glow. `uSilK` = smooth(0.3, 0.9, st) on Auto / High (look.step),
   0 on Fast and the map.
-- **Look** — at s > 0.15 the background is the baked sky (`look.envTex()`; Fast: the clock's sky colour); a `THREE.Fog` haze in the
+- **Dusk and night (T-373, spec §4.44)** — look3d. Sky: `PSKY` keys (on `GRADE`'s times; `hor` = the grade's haze) → `paintAt(tod, out)`
+  (zenith / horizon gradient, cloud lit / shade tones, sun glow, cover, stars + a painted moon at `SKY.moon`); `PSKY_FRAG` on a
+  BackSide sphere baked into a `WebGLCubeRenderTarget` (`PSKY.n` 256, half float) by a `CubeCamera`'s six cameras — all six on the first
+  bake, then one face a frame when the hour moved `PSKY.moved` or the clouds drifted (`drift`), at most every `every` s; the lowest band
+  takes `scene.fog.color` so the haze meets it; colours × `PSKY.gain` (day → night by `lit`). Clouds: a code-made two-octave noise
+  texture projected on a plane overhead, crisp edge, shaded middle, lit toward the sun. `look.envTex()` returns the painted cube while
+  `paintOn` (Auto / High, st > 0.1), else the PMREM; the PMREM still lights. Glow: `STREET_FX.uFdGlow` × every patched material's
+  `totalEmissiveRadiance` (streetMat, before `aomap_fragment`) = 1 + sg·max(0, `GLOW.k`·smooth(`GLOW.lit`, lit) / lit − 1), sg =
+  smooth(0.3, 0.9, st) on Auto / High — lit panes, signs (blades too), rooms, far windows reach ~`k` in the HDR buffer; the bloom's
+  threshold → `GLOW.thr` (above any lit surface), strength / radius by sg. `STREET_U.st` = sg for layers3d: lamp / flood points (`lamp`
+  attribute) × `NIGHT.street.lamp`, smaller; window points × (1 − `win`) (the panes glow themselves); the pools are a quad decal with a
+  code-made painted texture (`poolBytes`: core + soft step + tail), opacity smooth(`street.on`, lit) × (1 + (pool − 1) sg) — on at dusk.
+  No lights, no extra draws in the frame (the bake's face draws come before `info` resets); `info().sky` { bakes, tod, ms }, `bloom`.
+- **Look** — at s > 0.15 the background is the baked sky (`look.envTex()`: the painted one on Auto / High, T-373; Fast: the clock's sky colour); a `THREE.Fog` haze in the
   grade's colour closes in with s (near 160 m at street level; 1e6 on the map); the war borders (`war.show`) and the route preview
   ribbons hide at s ≥ 0.5; the story figures (`model.figures`) shrink to life size with you.
 - **Contract for the interiors (T-336b)** — map3d `api.street()` (0–1), `api.youPos()` (world [x, y, z]);

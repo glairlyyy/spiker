@@ -2,7 +2,8 @@
 // borders (warLayer: unit borders, the hot stretch, banners). Display only, no randoms.
 import * as THREE from 'three';
 import { KIT, FOOTPRINT, unit, facade, lampSpots, STREET, mesher, detailMats, lampPost, floodTower, NIGHT_U, rgb } from './kit3d.mjs';
-import { MAP_M, clamp, fogFactor, ribbon, bannerArrays } from './geo3d.mjs';
+import { MAP_M, clamp, fogFactor, ribbon, bannerArrays, smooth } from './geo3d.mjs';
+import { STREET_U } from './look3d.mjs';
 
 /**
  * The night lights (spec §4.37 2, T-332): warm windows on the town's lots, street lamps along the main roads and streets,
@@ -20,28 +21,46 @@ const NIGHT = {
   lamp: { ...STREET, size: 1.8, pool: 3.5, color: '#ffd9a0', poolColor: '#ff9f45', post: '#3d4248' }, // (kinds, every, up, side, cap: kit3d STREET)
   flood: { up: 11, dx: 14, dz: 9, size: 3.2, pool: 22, color: '#f2f6ff', tower: '#7a7e84' },
   sign: 0.9, // a sign's glow (m)
-  shop: 1.4 // a shop front's glows: one every this many metres
+  shop: 1.4, // a shop front's glows: one every this many metres
+  // street level (T-373, Auto / High): the lamp heads ×`lamp` (they bloom), smaller (`size`); the window points give way to the
+  // lit panes themselves (× 1 − `win`); the pools a painted decal (a bright core, a soft edge) that fades in at dusk (`on` lit)
+  street: { lamp: 2.6, size: 0.45, win: 0.75, on: [0.04, 0.4], pool: 1.6 }
 };
+/** The pool decal (T-373): a painted light pool — a bright core with a soft toon step, a faint tail to the rim (made in code). */
+export function poolBytes(n = 64) {
+  const B = new Uint8Array(n * n * 4);
+  for (let y = 0; y < n; y++)
+    for (let x = 0; x < n; x++) {
+      const r = Math.hypot((x + 0.5) / n - 0.5, (y + 0.5) / n - 0.5) * 2,
+        v = r >= 1 ? 0 : 0.5 * (1 - smooth(0.32, 0.46, r)) + 0.5 * (1 - r) ** 2 * (1 - smooth(0.9, 1, r));
+      B.set([v * 255, v * 255, v * 255, 255], (y * n + x) * 4);
+    }
+  return B;
+}
 export function nightLayer(scene, heightAt) {
   const glowMat = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
-      uniforms: { lit: { value: 0 }, scale: { value: 1000 }, pr: { value: 1 } },
-      vertexShader: `attribute float size; attribute vec3 glow; varying vec3 vC; uniform float scale; uniform float pr;
-        void main() { vC = glow; vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = clamp(size * scale / -mv.z, 2.5 * pr, 40.0 * pr); gl_Position = projectionMatrix * mv; }`,
+      uniforms: { lit: { value: 0 }, scale: { value: 1000 }, pr: { value: 1 }, uSt: STREET_U.st },
+      vertexShader: `attribute float size; attribute vec3 glow; attribute float lamp; varying vec3 vC; uniform float scale; uniform float pr;
+        uniform float uSt;
+        void main() { vC = glow * mix(1.0 - ${NIGHT.street.win.toFixed(2)} * uSt, 1.0 + ${(NIGHT.street.lamp - 1).toFixed(2)} * uSt, lamp);
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          float s = size * mix(1.0, mix(1.0, ${NIGHT.street.size.toFixed(2)}, lamp), uSt);
+          gl_PointSize = clamp(s * scale / -mv.z, 2.5 * pr, 40.0 * pr); gl_Position = projectionMatrix * mv; }`,
       fragmentShader: `varying vec3 vC; uniform float lit;
         void main() { vec2 d = gl_PointCoord - 0.5; float r = dot(d, d) * 4.0; if (r > 1.0) discard;
           gl_FragColor = vec4(vC * lit * (1.0 - r * r), 1.0); }`
     }),
-    disc = new THREE.CircleGeometry(1, 16).rotateX(-Math.PI / 2),
-    rim = new Float32Array(disc.attributes.position.count * 3);
-  rim.fill(0);
-  rim.set([1, 1, 1], 0); // the centre vertex lit, the rim dark: a soft pool under additive blending
-  disc.setAttribute('color', new THREE.BufferAttribute(rim, 3));
+    disc = new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2), // (T-373: a decal quad, the painted pool its texture)
+    poolTex = new THREE.DataTexture(poolBytes(), 64, 64, THREE.RGBAFormat);
+  poolTex.magFilter = THREE.LinearFilter;
+  poolTex.minFilter = THREE.LinearMipmapLinearFilter;
+  poolTex.generateMipmaps = true;
+  poolTex.needsUpdate = true;
   const poolMat = new THREE.MeshBasicMaterial({
-    vertexColors: true,
+    map: poolTex,
     transparent: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
@@ -64,6 +83,8 @@ export function nightLayer(scene, heightAt) {
     const pos = [],
       glow = [],
       size = [],
+      lampA = [], // 1 = a lamp head / floodlight (it blooms at street level), 0 = a window / sign
+      isLamp = { v: 0 },
       pool = [], // [x, y, z, r, color]
       c = new THREE.Color(),
       fog = fogFactor(m.fog),
@@ -72,6 +93,7 @@ export function nightLayer(scene, heightAt) {
         pos.push(x, y, z);
         glow.push(c.r, c.g, c.b);
         size.push(s);
+        lampA.push(isLamp.v);
       };
     n = { win: 0, lamp: 0, flood: 0, post: 0 };
     const W = NIGHT.win,
@@ -156,7 +178,9 @@ export function nightLayer(scene, heightAt) {
         y = heightAt(x, z),
         f = fog(x, z),
         dim = 0.4 + 0.6 * f;
+      isLamp.v = 1;
       add(x, y + L.up, z, L.size, L.color, dim);
+      isLamp.v = 0;
       if (!low) {
         pool.push([x, y + 0.25, z, L.pool, dim * 0.35, L.poolColor]);
         const ox = -p.uz * p.s, // away from the road
@@ -192,7 +216,9 @@ export function nightLayer(scene, heightAt) {
       ]) {
         const tx = x + sx * F.dx,
           tz = z + sz * F.dz;
+        isLamp.v = 1;
         add(tx, y + F.up, tz, F.size, F.color, dim);
+        isLamp.v = 0;
         if (!low)
           (floodTower(
             PW,
@@ -221,6 +247,7 @@ export function nightLayer(scene, heightAt) {
       g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       g.setAttribute('glow', new THREE.Float32BufferAttribute(glow, 3));
       g.setAttribute('size', new THREE.Float32BufferAttribute(size, 1));
+      g.setAttribute('lamp', new THREE.Float32BufferAttribute(lampA, 1));
       pts = new THREE.Points(g, glowMat);
       pts.frustumCulled = false;
       pts.renderOrder = 2;
@@ -256,7 +283,9 @@ export function nightLayer(scene, heightAt) {
       glowMat.uniforms.scale.value = scale;
       glowMat.uniforms.pr.value = pr;
       NIGHT_U.value = lit; // the lit panes (kit3d glass)
-      poolMat.opacity = lit;
+      const S = NIGHT.street,
+        st = STREET_U.st.value;
+      poolMat.opacity = Math.min(1, smooth(S.on[0], S.on[1], lit) * (1 + (S.pool - 1) * st) * 0.62); // (T-373: on at dusk; brighter at street level)
       if (pts) pts.visible = on;
       if (pools) pools.visible = on;
     },
@@ -264,6 +293,7 @@ export function nightLayer(scene, heightAt) {
     dispose() {
       clear();
       disc.dispose();
+      poolTex.dispose();
       glowMat.dispose();
       poolMat.dispose();
     }

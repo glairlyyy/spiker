@@ -527,6 +527,41 @@ test('map3d: street level — one continuous zoom path (pitch, distance, height 
       b = at(0.01);
     assert(Math.abs(a.gain.x - b.gain.x) < 1e-3 && Math.abs(a.haze.b - b.haze.b) < 1e-3, 'no jump at midnight');
   }
+  // T-373: the painted sky by time of day (keys on the grade's, its horizon = the grade's haze), the emissive lift, the pool decal
+  {
+    const THREE = require('three'),
+      { PSKY, paintAt, GRADE, streetMat, STREET_FX, GLOW } = require('../js/map3d/look3d.mjs'),
+      { poolBytes } = require('../js/map3d/layers3d.mjs'),
+      C = () => new THREE.Color(),
+      at = h => paintAt(h / 24, { zen: C(), hor: C(), cloud: C(), shade: C(), sun: C(), cover: 0, star: 0 });
+    assert(
+      PSKY.keys.every((k, i) => k.t === GRADE[i].t && k.hor === GRADE[i].haze),
+      'the sky keys sit on the grade, the horizon its haze'
+    );
+    const noon = at(12),
+      dusk = at(17.8),
+      night = at(1),
+      [nh, ns, nl] = [noon.zen.getHSL({}).h, noon.zen.getHSL({}).s, noon.zen.getHSL({}).l];
+    assert(nh > 0.55 && nh < 0.68 && ns > 0.6 && nl < 0.6, 'noon: a clear saturated blue overhead, not near-white');
+    assert(noon.cloud.r > 0.95 && noon.star === 0, 'white clouds, no stars by day');
+    assert(dusk.hor.r > dusk.hor.b && dusk.sun.r > dusk.sun.b, 'dusk: an orange-pink horizon and sun glow');
+    assert(night.star === 1 && night.zen.getHSL({}).l < 0.1, 'night: dark, stars');
+    const a = at(23.99),
+      b = at(0.01);
+    assert(Math.abs(a.zen.b - b.zen.b) < 1e-3, 'no jump at midnight');
+    const m = new THREE.MeshStandardMaterial(),
+      sh = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
+    streetMat(m);
+    m.onBeforeCompile(sh, null);
+    assert(sh.uniforms.uFdGlow === STREET_FX.uFdGlow && /totalEmissiveRadiance \*= uFdGlow;/.test(sh.fragmentShader), 'the emissive lift');
+    eq(STREET_FX.uFdGlow.value, 1, 'off until street level at night');
+    assert(GLOW.thr > 1 && GLOW.k > GLOW.thr, 'only the lifted emissives pass the bloom threshold');
+    const n = 32,
+      P = poolBytes(n),
+      v = (x, y) => P[(y * n + x) * 4];
+    assert(v(n / 2, n / 2) > 200 && v(0, n / 2) === 0 && v(0, 0) === 0, 'the pool: bright core, dark rim');
+    for (let x = n / 2; x < n - 1; x++) assert(v(x + 1, n / 2) <= v(x, n / 2), 'falls off outward');
+  }
   // the occluder fade (T-369, fixed 2026-10-26): the lens zone and instances at the lens go outright, the line dissolves by a coarse 8 × 8 pattern
   {
     const THREE = require('three'),

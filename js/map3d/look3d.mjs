@@ -301,6 +301,86 @@ export function gradeAt(tod, out) {
   out.haze.copy(A.haze).lerp(B.haze, u);
   return out;
 }
+/**
+ * Street level's painted sky (T-373, spec §4.44) by time of day (the grade's keys and times; wrapping): zen / hor = the gradient
+ * (hor = the grade's haze: the skyline's haze meets it), cloud / shade = the clouds' lit and shaded tones, sun = the glow round
+ * the sun, cover (0–1), star (the stars and the moon). Colours are the display intent before the tone mapping; `gain` × them.
+ * Baked into a small cube (`n` px a face, one face a frame while it re-bakes, at most every `every` s) — no per-frame cost.
+ */
+export const PSKY = (() => {
+  const night = { zen: '#070c26', hor: GRADE[0].haze, cloud: '#34406e', shade: '#161e40', sun: '#000000', cover: 0.36, star: 1 },
+    morning = { zen: '#3f86d8', hor: GRADE[1].haze, cloud: '#fff3e4', shade: '#c4a8c0', sun: '#ffb27a', cover: 0.4, star: 0 },
+    noon = { zen: '#1c66db', hor: GRADE[2].haze, cloud: '#ffffff', shade: '#a3bde6', sun: '#fff0d6', cover: 0.42, star: 0 },
+    dusk = { zen: '#3a5aa6', hor: GRADE[4].haze, cloud: '#ffcaa0', shade: '#a2628c', sun: '#ff8448', cover: 0.42, star: 0 },
+    glow = { zen: '#22245c', hor: GRADE[5].haze, cloud: '#d8869f', shade: '#4a376c', sun: '#c0506a', cover: 0.4, star: 0.35 };
+  return {
+    n: 256,
+    every: 1,
+    moved: 0.001, // re-bake when the time of day moved this far (or the clouds drifted)
+    drift: 0.0008, // the clouds' drift (texture units a second of map time)
+    gain: { day: 0.62, night: 0.3 }, // (night: the exposure rises with the lights — the sky stays dark)
+    keys: [
+      { t: GRADE[0].t, ...night },
+      { t: GRADE[1].t, ...morning },
+      { t: GRADE[2].t, ...noon },
+      { t: GRADE[3].t, ...noon },
+      { t: GRADE[4].t, ...dusk },
+      { t: GRADE[5].t, ...glow },
+      { t: GRADE[6].t, ...night }
+    ]
+  };
+})();
+const PSKY_C = PSKY.keys.map(k => ({
+  t: k.t,
+  ...Object.fromEntries(['zen', 'hor', 'cloud', 'shade', 'sun'].map(c => [c, new THREE.Color(k[c])])),
+  cover: k.cover,
+  star: k.star
+}));
+/** The painted sky at time of day tod into out { zen, hor, cloud, shade, sun (Color), cover, star }. */
+export function paintAt(tod, out) {
+  const K = PSKY_C;
+  let i = K.findIndex(k => k.t > tod);
+  if (i < 0) i = K.length;
+  const A = K[(i - 1 + K.length) % K.length],
+    B = K[i % K.length],
+    span = (B.t - A.t + 1) % 1 || 1,
+    u = smooth(0, 1, ((tod - A.t + 1) % 1) / span);
+  for (const c of ['zen', 'hor', 'cloud', 'shade', 'sun']) out[c].copy(A[c]).lerp(B[c], u);
+  out.cover = lerp(A.cover, B.cover, u);
+  out.star = lerp(A.star, B.star, u);
+  return out;
+}
+const PSKY_FRAG = `uniform vec3 uZen, uHor, uHaze, uCl, uSh, uSunC, uSun, uMoon; uniform float uCover, uStar; uniform vec2 uOff;
+uniform sampler2D tCl; varying vec3 vDir;
+float pkH(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+float pkD(vec2 p) { vec2 q = texture2D(tCl, p).rg; return q.r * 0.78 + q.g * 0.22; }
+void main() {
+  vec3 d = normalize(vDir);
+  float h = d.y, up = clamp(h, 0.0, 1.0);
+  vec3 c = mix(uZen, uHor, pow(1.0 - up, 3.2)); // the gradient: deep at the top, the haze's hue low down
+  float sd = max(dot(d, uSun), 0.0);
+  c += uSunC * (0.22 * pow(sd, 4.0) + 0.45 * pow(sd, 40.0)) * smoothstep(-0.12, 0.04, h);
+  if (uStar > 0.0) { // stars and a painted moon
+    vec3 sc = floor(d * 150.0);
+    c += vec3(0.5, 0.55, 0.65) * uStar * step(0.998, pkH(sc)) * (0.35 + 0.65 * pkH(sc + 1.7)) * smoothstep(0.08, 0.35, h);
+    float md = dot(d, uMoon);
+    c += vec3(0.16, 0.2, 0.34) * uStar * pow(max(md, 0.0), 220.0);
+    c = mix(c, vec3(0.92, 0.9, 0.78), uStar * smoothstep(0.99925, 0.9995, md));
+  }
+  if (h > 0.0) { // clouds on a plane overhead: a crisp painted edge, lit toward the sun, shaded in their thick middle
+    vec2 p = d.xz / (h + 0.16) * 0.2 + uOff;
+    float n = pkD(p), cov = n - (0.75 - 0.6 * uCover); // (the noise sits round 0.45: cover 0.4 ≈ a third of the sky)
+    float a = smoothstep(0.0, 0.03, cov) * smoothstep(0.015, 0.16, h);
+    float n2 = pkD(p + normalize(uSun.xz + vec2(1e-4)) * 0.02);
+    float lt = smoothstep(-0.004, 0.004, n - n2);
+    float body = smoothstep(0.04, 0.17, cov);
+    vec3 cc = mix(uCl, uSh, body * (1.0 - 0.55 * lt));
+    cc += uSunC * 0.35 * pow(sd, 3.0) * (1.0 - smoothstep(0.0, 0.07, cov));
+    c = mix(c, cc, a);
+  }
+  c = mix(c, uHaze, smoothstep(0.07, -0.01, h)); // the skyline's haze
+  gl_FragColor = vec4(c, 1.0);
+}`;
 const GradeShader = {
   uniforms: {
     tDiffuse: { value: null },
@@ -334,8 +414,17 @@ export const STREET_FX = {
   uFdA: { value: new THREE.Vector3() },
   uFdB: { value: new THREE.Vector3() },
   uFdK: { value: 0 },
-  uFdToon: { value: 0 }
+  uFdToon: { value: 0 },
+  uFdGlow: { value: 1 } // (T-373) × every emissive at street level at dusk / night (Auto / High): the lit panes and signs bloom
 };
+/** Street level's weight on Auto / High (0 on Fast and on the map) — the night layer's lamp glows and pools read it (T-373). */
+export const STREET_U = { st: { value: 0 } };
+/**
+ * Dusk and night at street level (T-373, spec §4.44): selective bloom — the emissives (lit panes, signs, rooms behind the glass,
+ * the far windows; uFdGlow) are lifted to ~`k` in the HDR buffer, the lamp heads by the night layer, and the bloom threshold sits
+ * at `thr`, above any lit surface (diffuse ≤ ~0.8), so only the lights bloom. `lit` = when the lights reach full glow (dusk → night).
+ */
+export const GLOW = { k: 2.4, lit: [0.02, 0.45], thr: 1.15, strength: 0.75, radius: 0.55 };
 const FD_LIGHT = ['lights_physical_pars_fragment', 'lights_lambert_pars_fragment', 'lights_phong_pars_fragment'];
 const FD_DIR = '#if ( NUM_DIR_LIGHTS > 0 ) && defined( RE_Direct )',
   FD_RECT = '#if ( NUM_RECT_AREA_LIGHTS > 0 ) && defined( RE_Direct_RectArea )';
@@ -380,7 +469,7 @@ export function streetMat(m) {
     let f = sh.fragmentShader.replace(
       '#include <common>',
       `#include <common>
-      varying vec3 vFdW; uniform vec3 uFdA, uFdB; uniform float uFdK, uFdToon; float fdDir;
+      varying vec3 vFdW; uniform vec3 uFdA, uFdB; uniform float uFdK, uFdToon, uFdGlow; float fdDir;
       float fdB2(vec2 a) { a = floor(a); return fract(a.x * 0.5 + a.y * a.y * 0.75); }
       float fdB8(vec2 a) { return (fdB2(0.25 * a) * 0.25 + fdB2(0.5 * a)) * 0.25 + fdB2(a); }
       float fdBand(float x) { return mix(x, 0.55 * smoothstep(0.0, 0.08, x) + 0.45 * smoothstep(0.38, 0.46, x), uFdToon * fdDir); }`
@@ -398,6 +487,9 @@ export function streetMat(m) {
           `#include <${c}>`,
           THREE.ShaderChunk[c].replace(FD_DOTNL, 'float dotNL = fdBand( saturate( dot( geometryNormal, directLight.direction ) ) );')
         );
+    // (T-373: the emissive lifted for the selective bloom; after the lights, before the sum)
+    if (f.includes('totalEmissiveRadiance') && f.includes('#include <aomap_fragment>'))
+      f = f.replace('#include <aomap_fragment>', 'totalEmissiveRadiance *= uFdGlow;\n#include <aomap_fragment>');
     sh.fragmentShader = f.replace(
       '#include <clipping_planes_fragment>',
       `#include <clipping_planes_fragment>
@@ -592,6 +684,88 @@ export function richLook(renderer, scene, cam, sun) {
     envAge = 0;
     if (on) scene.environment = rt.texture;
   };
+  // ---- street level's painted sky (T-373): the gradient and clouds by the hour, baked into a small cube (the background)
+  const P = { zen: new THREE.Color(), hor: new THREE.Color(), cloud: new THREE.Color(), shade: new THREE.Color(), sun: new THREE.Color() };
+  let pk = null; // { rt, cam, scene, mat, tex, face, tod, off, age, haze } once street level first shows it
+  const paintMake = () => {
+    const n = 256,
+      a = tileNoise(n, 5, 5, 21, 0.5),
+      b = tileNoise(n, 14, 3, 22, 0.5),
+      bytes = new Uint8Array(n * n * 4);
+    for (let i = 0; i < n * n; i++) bytes.set([a[i] * 255, b[i] * 255, 0, 255], i * 4);
+    const tex = dataTex(bytes, n),
+      rt = new THREE.WebGLCubeRenderTarget(PSKY.n, { type: THREE.HalfFloatType, generateMipmaps: false }),
+      cube = new THREE.CubeCamera(0.1, 100, rt),
+      mat = new THREE.ShaderMaterial({
+        side: THREE.BackSide,
+        depthWrite: false,
+        depthTest: false,
+        uniforms: {
+          ...Object.fromEntries(
+            ['uZen', 'uHor', 'uHaze', 'uCl', 'uSh', 'uSunC', 'uSun', 'uMoon'].map(k => [k, { value: new THREE.Vector3() }])
+          ),
+          uCover: { value: 0.4 },
+          uStar: { value: 0 },
+          uOff: { value: new THREE.Vector2() },
+          tCl: { value: tex }
+        },
+        vertexShader:
+          'varying vec3 vDir; void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: PSKY_FRAG
+      }),
+      sc = new THREE.Scene();
+    sc.add(new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), mat), cube);
+    cube.updateMatrixWorld();
+    return { rt, cube, scene: sc, mat, tex, face: 6, tod: -1, off: 0, age: 99, ms: 0 };
+  };
+  /** Street level's sky each frame (Auto / High): new colours when the hour moved / the clouds drifted, then one cube face a frame. */
+  const paintStep = (dt, tod, sunDir, lit) => {
+    if (!pk) pk = paintMake();
+    pk.age += dt;
+    pk.off += dt * PSKY.drift;
+    const first = pk.tod < 0;
+    if (pk.face >= 6 && (first || (pk.age >= PSKY.every && (Math.abs(tod - pk.tod) > PSKY.moved || pk.off > 0.004)))) {
+      const u = pk.mat.uniforms,
+        g = lerp(PSKY.gain.day, PSKY.gain.night, lit),
+        v3 = (k, c, s = g) => u[k].value.set(c.r * s, c.g * s, c.b * s);
+      paintAt(tod, P);
+      v3('uZen', P.zen);
+      v3('uHor', P.hor);
+      v3('uCl', P.cloud);
+      v3('uSh', P.shade);
+      v3('uSunC', P.sun);
+      u.uHaze.value.set(
+        scene.fog ? scene.fog.color.r : P.hor.r,
+        scene.fog ? scene.fog.color.g : P.hor.g,
+        scene.fog ? scene.fog.color.b : P.hor.b
+      );
+      u.uSun.value.copy(sunDir);
+      u.uMoon.value.copy(SKY.moon);
+      u.uCover.value = P.cover;
+      u.uStar.value = P.star;
+      u.uOff.value.x += pk.off;
+      u.uOff.value.y += pk.off * 0.35;
+      pk.off = 0;
+      pk.tod = tod;
+      pk.age = 0;
+      pk.face = 0;
+    }
+    if (pk.face >= 6) return;
+    const C = pk.cube;
+    if (C.coordinateSystem !== renderer.coordinateSystem) ((C.coordinateSystem = renderer.coordinateSystem), C.updateCoordinateSystem());
+    const rt0 = renderer.getRenderTarget(),
+      tm = renderer.toneMapping;
+    renderer.toneMapping = THREE.NoToneMapping;
+    // the first bake draws all six faces; later ones one a frame (a face differs from its neighbours by a minute or two)
+    for (const last = first ? 6 : pk.face + 1; pk.face < last; pk.face++) {
+      renderer.setRenderTarget(pk.rt, pk.face);
+      renderer.render(pk.scene, C.children[pk.face]);
+    }
+    renderer.setRenderTarget(rt0);
+    renderer.toneMapping = tm;
+    pk.bakes = (pk.bakes || 0) + 1;
+  };
+  let paintOn = false;
   // ---- post: render → (GTAO) → bloom → ACES + sRGB
   let composer = null,
     bloom = null,
@@ -751,6 +925,12 @@ export function richLook(renderer, scene, cam, sun) {
       GROUND_U.uGr.value = on ? smooth(0.2, 0.8, st) : 0; // (T-370: the painted ground; Fast: none)
       SIL_U.uSilK.value = on ? smooth(0.3, 0.9, st) : 0; // (T-371: the painted distance on the buildings)
       SIL_U.uSil.value.copy(GR.haze).multiplyScalar(SIL.dark);
+      // (T-373: dusk and night at street level — the emissives lifted for the selective bloom, the lamps' weight for the night layer)
+      const sg = on ? smooth(0.3, 0.9, st) : 0,
+        gw = lit > 0.005 ? (GLOW.k * smooth(GLOW.lit[0], GLOW.lit[1], lit)) / lit : 1;
+      STREET_FX.uFdGlow.value = 1 + sg * Math.max(0, gw - 1);
+      STREET_U.st.value = sg;
+      paintOn = on && st > 0.1;
       if (!on) return;
       const G = grade.material.uniforms;
       G.uK.value = smooth(0.15, 0.8, st);
@@ -762,11 +942,17 @@ export function richLook(renderer, scene, cam, sun) {
       const a = ((tod - 0.25) / 0.5) * Math.PI;
       SKYDIR.set(1.25 * Math.cos(a), Math.sin(a), 0.05 + 0.3 * Math.max(0, Math.sin(a))).normalize();
       bakeSky(dt, SKYDIR);
+      if (paintOn) {
+        const p0 = performance.now();
+        paintStep(dt, tod, SKYDIR, lit);
+        pk.ms += (performance.now() - p0 - pk.ms) * 0.1;
+      }
       scene.environmentIntensity = LOOK.env * smooth(-0.05, 0.35, SKYDIR.y);
       renderer.toneMappingExposure = lerp(LOOK.exposure[0], LOOK.exposure[1], lit);
       bloom.enabled = lit > 0.02;
-      bloom.threshold = lerp(LOOK.bloom.day, LOOK.bloom.night, lit);
-      bloom.strength = LOOK.bloom.strength * lit;
+      bloom.threshold = lerp(lerp(LOOK.bloom.day, LOOK.bloom.night, lit), GLOW.thr, sg);
+      bloom.strength = lerp(LOOK.bloom.strength * lit, GLOW.strength * smooth(GLOW.lit[0], GLOW.lit[1], lit), sg);
+      bloom.radius = lerp(LOOK.bloom.radius, GLOW.radius, sg);
       // shadows: the box follows the zoom (crisp near, the whole view far), the sun far enough to cover it
       const S = LOOK.shadow,
         box = clamp(view ? view.d * S.k : 120, S.box[0], S.box[1]),
@@ -798,12 +984,14 @@ export function richLook(renderer, scene, cam, sun) {
       ao: !!(gtao && gtao.enabled),
       aa: !!(fxaa && fxaa.enabled && on),
       grade: !!(grade && grade.enabled && on),
+      sky: paintOn && pk ? { bakes: pk.bakes || 0, tod: +pk.tod.toFixed(4), ms: +pk.ms.toFixed(3) } : null,
+      bloom: !!(bloom && bloom.enabled && on),
       shed: dyn.shed
     }),
     /** The grade's haze colour at this frame's time of day (street level's distance haze, every look). */
     haze: () => GR.haze,
-    /** The baked sky (PMREM) — street level shows it as the background. */
-    envTex: () => (envRT ? envRT.texture : null),
+    /** Street level's background: the painted sky (T-373; Auto / High), else the baked one (PMREM). */
+    envTex: () => (paintOn && pk ? pk.rt.texture : envRT ? envRT.texture : null),
     dispose() {
       if (composer) {
         for (const p of composer.passes) p.dispose && p.dispose();
@@ -811,6 +999,7 @@ export function richLook(renderer, scene, cam, sun) {
         composer.renderTarget2.dispose();
       }
       if (envRT) envRT.dispose();
+      if (pk) (pk.rt.dispose(), pk.tex.dispose(), pk.mat.dispose(), pk.scene.children[0].geometry.dispose());
       pmrem.dispose();
       sky.geometry.dispose();
       sky.material.dispose();
