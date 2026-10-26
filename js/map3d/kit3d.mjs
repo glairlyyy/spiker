@@ -660,6 +660,35 @@ const SIGN_GLOW = {
   [TILE.signWu]: ['#bfe0ff', '#ffe7b0'],
   [TILE.signPlain]: ['#fff1c8']
 };
+/**
+ * Sign lettering (street view polish, 2026-10-26): one word per sign tile in a 5 × 7 block font (FONT5), cell k of the word in the
+ * tile's lettering box SIGN_BOX (px); a facade sign shows the tile as is (letters read left to right from the street), a blade sign
+ * stacks the same cells upright, top to bottom (signCell → atlas UVs). Never mirrored (tests: the sign quads' UV handedness).
+ */
+export const SIGN_WORD = { [TILE.signCity]: 'KARAOKE', [TILE.signOld]: 'NOODLES', [TILE.signWu]: 'SEAFOOD', [TILE.signPlain]: 'STORE' };
+const SIGN_BOX = [10, 26, 108, 76];
+// prettier-ignore
+export const FONT5 = {
+  A: ['01110', '10001', '10001', '11111', '10001', '10001', '10001'],
+  D: ['11110', '10001', '10001', '10001', '10001', '10001', '11110'],
+  E: ['11111', '10000', '10000', '11110', '10000', '10000', '11111'],
+  F: ['11111', '10000', '10000', '11110', '10000', '10000', '10000'],
+  K: ['10001', '10010', '10100', '11000', '10100', '10010', '10001'],
+  L: ['10000', '10000', '10000', '10000', '10000', '10000', '11111'],
+  N: ['10001', '11001', '10101', '10011', '10001', '10001', '10001'],
+  O: ['01110', '10001', '10001', '10001', '10001', '10001', '01110'],
+  R: ['11110', '10001', '10001', '11110', '10100', '10010', '10001'],
+  S: ['01111', '10000', '10000', '01110', '00001', '00001', '11110'],
+  T: ['11111', '00100', '00100', '00100', '00100', '00100', '00100']
+};
+/** Atlas UVs [u0, v0, u1, v1] (v0 the bottom) of letter k's cell of sign tile t (the lettering box's height, a little margin). */
+export const signCell = (t, k) => {
+  const n = SIGN_WORD[t].length,
+    cw = SIGN_BOX[2] / n,
+    px0 = (t % 4) * 128 + SIGN_BOX[0] + k * cw,
+    py0 = Math.floor(t / 4) * 128 + SIGN_BOX[1] - 5;
+  return [px0 / 512, 1 - (py0 + SIGN_BOX[3] + 10) / 512, (px0 + cw) / 512, 1 - py0 / 512];
+};
 /** Window colours at night (the Fast setting's NIGHT.win.colors are the same). */
 export const GLOW = ['#ffd38a', '#ffe7b0', '#ffc070', '#d8e4ff'];
 export const FACES = [
@@ -1158,8 +1187,7 @@ const windowTextures = () => {
     c = canvas(S, S),
     e = canvas(S, S),
     g = c.getContext('2d'),
-    m = e.getContext('2d'),
-    rnd = lcg(5);
+    m = e.getContext('2d');
   m.fillStyle = '#000';
   m.fillRect(0, 0, S, S);
   const at = t => [(t % 4) * T, Math.floor(t / 4) * T],
@@ -1179,25 +1207,25 @@ const windowTextures = () => {
       g.fill();
       rect(m, lit, x, y, w, h);
     },
-    glyphs = (x, y, w, h, n, col, glow) => {
-      // letters drawn narrow: a sign is stretched ~5 × sideways
-      const cw = w / n;
-      for (let k = 0; k < n; k++) {
-        const gx = x + k * cw + cw * 0.2,
-          gw = cw * 0.6;
-        for (const ctx of [g, m]) ctx.fillStyle = ctx === g ? col : glow;
-        for (let s = 0; s < 3; s++) {
-          const r = rnd(),
-            vert = r < 0.5;
-          const sx = vert ? gx + (rnd() < 0.5 ? 0 : gw * 0.7) : gx,
-            sy = vert ? y : y + rnd() * h * 0.85,
-            sw = vert ? gw * 0.3 : gw,
-            sh = vert ? h : h * 0.15;
-          g.fillStyle = col;
-          g.fillRect(sx, sy, sw, sh);
-          m.fillStyle = glow;
-          m.fillRect(sx, sy, sw, sh);
-        }
+    glyphs = (t, col, glow) => {
+      // the sign's word in the block font, one cell a letter (signCell), letters drawn narrow: a facade sign stretches them sideways
+      const word = SIGN_WORD[t],
+        [bx, by, bw, bh] = SIGN_BOX,
+        [x0, y0] = at(t),
+        cw = bw / word.length;
+      for (let k = 0; k < word.length; k++) {
+        const F = FONT5[word[k]],
+          gx = x0 + bx + k * cw + cw * 0.18,
+          px = (cw * 0.64) / 5,
+          py = bh / 7;
+        for (let r = 0; r < 7; r++)
+          for (let q = 0; q < 5; q++)
+            if (F[r][q] === '1')
+              for (const [ctx, cc] of [
+                [g, col],
+                [m, glow]
+              ])
+                rect(ctx, cc, gx + q * px, y0 + by + r * py, px + 0.4, py + 0.4);
       }
     };
   let [x, y] = at(TILE.sash);
@@ -1291,18 +1319,18 @@ const windowTextures = () => {
   glass(x + 10, y + 6, 50, 122);
   glass(x + 68, y + 6, 50, 122);
   // signs: a board with letters (their glow mask = the letters)
-  const board = (t, bg, edge, ink, glow, n) => {
+  const board = (t, bg, edge, ink, glow) => {
     [x, y] = at(t);
     rect(g, edge, x, y, T, T);
     rect(g, bg, x + 5, y + 8, 118, 112);
-    glyphs(x + 10, y + 26, 108, 76, n, ink, glow);
+    glyphs(t, ink, glow);
   };
-  board(TILE.signCity, '#1c1f26', '#3a3f48', '#ffd060', '#fff', 8);
+  board(TILE.signCity, '#1c1f26', '#3a3f48', '#ffd060', '#fff');
   rect(g, '#ff6fb0', x + 5, y + 8, 118, 6);
   rect(m, '#fff', x + 5, y + 8, 118, 6);
-  board(TILE.signOld, '#9a2a22', '#e0b040', '#f0c040', '#fff', 6);
-  board(TILE.signWu, '#c8a878', '#6b4a32', '#2f5f9f', '#fff', 7);
-  board(TILE.signPlain, '#f2efe6', '#2f5f4a', '#2a2f3a', '#fff', 8);
+  board(TILE.signOld, '#9a2a22', '#e0b040', '#f0c040', '#fff');
+  board(TILE.signWu, '#c8a878', '#6b4a32', '#2f5f9f', '#fff');
+  board(TILE.signPlain, '#f2efe6', '#2f5f4a', '#2a2f3a', '#fff');
   const tex = cv => {
     const t = new THREE.CanvasTexture(cv);
     t.colorSpace = THREE.SRGBColorSpace;
@@ -1736,7 +1764,10 @@ export function buildLot(B, l, i, y0, wall, all = false) {
   return true;
 }
 const NOUV = [0, 0, 0, 0, 0, 0, 0, 0];
-/** A blade sign hung out from the shop front's edge (street level, T-371): a board in the district's trim, the sign tile on both faces (vertical lettering), lit at night by hash. */
+/**
+ * A blade sign hung out from the shop front's edge (street level, T-371): a board in the district's trim, lit at night by hash; on both
+ * faces the sign tile's board colour and its word's letters stacked upright, top to bottom (signCell), read unmirrored from either side.
+ */
 function blade(W, G, P, nx, nz, half, S, eave, c, style, hh) {
   const tile = SIGN[style] !== undefined ? SIGN[style] : TILE.signPlain,
     glow = { glow: hh < 0.75 ? rgb(SIGN_GLOW[tile][Math.floor(hh * 97) % SIGN_GLOW[tile].length]) : [0, 0, 0] },
@@ -1747,12 +1778,31 @@ function blade(W, G, P, nx, nz, half, S, eave, c, style, hh) {
     o1 = 0.72,
     t = 0.05,
     Q = (a, y, o) => P(nx * (half + o) + nz * a, y, nz * (half + o) - nx * a),
-    [a0, b0, a1, , , b1] = tileUV(tile),
-    rot = [a0, b0, a0, b1, a1, b1, a1, b0]; // the tile turned a quarter: its lettering runs up the board
+    word = SIGN_WORD[tile],
+    n = word.length,
+    seg = (y1 - y0 - 0.12) / n,
+    lw = Math.min(o1 - o0 - 0.08, seg * 1.15) / 2,
+    om = (o0 + o1) / 2,
+    // the board's colour: a corner patch of the tile (glow mask dark there)
+    [bu, bv] = [((tile % 4) * 128 + 8) / 512, 1 - (Math.floor(tile / 4) * 128 + 116) / 512],
+    bg = [bu, bv, bu + 1 / 512, bv, bu + 1 / 512, bv + 1 / 512, bu, bv + 1 / 512];
   lbox(W, Q, u - t, u + t, y0 - 0.06, y1 + 0.06, o0 - 0.06, o1 + 0.06, c, 'none', '');
   faceBox(W, P, nx, nz, half, u - 0.03, u + 0.03, y1 - 0.25, y1 - 0.15, 0, o0, c); // the bracket
-  G.quad(Q(u + t + 0.005, y0, o1), Q(u + t + 0.005, y0, o0), Q(u + t + 0.005, y1, o0), Q(u + t + 0.005, y1, o1), [1, 1, 1], rot, glow);
-  G.quad(Q(u - t - 0.005, y0, o0), Q(u - t - 0.005, y0, o1), Q(u - t - 0.005, y1, o1), Q(u - t - 0.005, y1, o0), [1, 1, 1], rot, glow);
+  // each face (s = +1: the side at u + t, its viewer's right toward the wall; −1 the other): corners BL, BR, TR, TL as seen
+  for (const s of [1, -1]) {
+    const a = u + s * (t + 0.005),
+      F = (o, y, d = 0) => Q(a + s * d, y, o),
+      L = (o, oo) => (s > 0 ? [oo, o] : [o, oo]); // (left / right edge out from the wall)
+    let [l, r] = L(o0, o1);
+    G.quad(F(l, y0), F(r, y0), F(r, y1), F(l, y1), [1, 1, 1], bg, { glow: [0, 0, 0] });
+    [l, r] = L(om - lw, om + lw);
+    for (let k = 0; k < n; k++) {
+      const [c0, v0, c1, v1] = signCell(tile, k),
+        top = y1 - 0.06 - k * seg,
+        bot = top - seg;
+      G.quad(F(l, bot, 0.003), F(r, bot, 0.003), F(r, top, 0.003), F(l, top, 0.003), [1, 1, 1], [c0, v0, c1, v0, c1, v1, c0, v1], glow);
+    }
+  }
 }
 
 /** A pitched roof over w × d (local), walls up to `eave`, ridge at `top` (y offset `base`): gable (ridge along the longer side), hip or lean-to. Gable ends in the wall mesher, slopes in the roof mesher. */

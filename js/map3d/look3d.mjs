@@ -262,11 +262,11 @@ export function groundMat(m) {
  * sky tint on every look). Applied after the tone mapping (display colours), weighted by street level.
  */
 export const GRADE = (() => {
-  const night = { gain: [0.8, 0.88, 1.12], lift: [0.015, 0.03, 0.09], sat: 0.92, con: 1.06, haze: '#22305a' },
+  const night = { gain: [0.8, 0.88, 1.1], lift: [0.004, 0.01, 0.035], sat: 0.95, con: 1.12, haze: '#22305a' },
     morning = { gain: [1.08, 1.0, 0.88], lift: [0.05, 0.03, 0.045], sat: 1.1, con: 1.03, haze: '#f1cfae' },
     noon = { gain: [1.0, 1.02, 1.04], lift: [0.01, 0.025, 0.05], sat: 1.16, con: 1.05, haze: '#bcdcf2' },
     dusk = { gain: [1.06, 0.95, 0.95], lift: [0.05, 0.02, 0.07], sat: 1.14, con: 1.04, haze: '#f2a28c' },
-    glow = { gain: [0.98, 0.84, 1.0], lift: [0.045, 0.02, 0.09], sat: 1.04, con: 1.05, haze: '#86609a' };
+    glow = { gain: [0.98, 0.84, 1.0], lift: [0.03, 0.012, 0.055], sat: 1.04, con: 1.08, haze: '#86609a' };
   return [
     { t: 0.2, ...night },
     { t: 0.29, ...morning },
@@ -318,6 +318,8 @@ export const PSKY = (() => {
     every: 1,
     moved: 0.001, // re-bake when the time of day moved this far (or the clouds drifted)
     drift: 0.0008, // the clouds' drift (texture units a second of map time)
+    jump: 0.02, // the hour moved this far at once (~30 min: a skip, a fast-forward's end): re-bake the whole cube in one frame
+    hazed: 0.01, // re-bake when the haze colour (the fog's) moved this far (sum of |Δrgb|)
     gain: { day: 0.62, night: 0.3 }, // (night: the exposure rises with the lights — the sky stays dark)
     keys: [
       { t: GRADE[0].t, ...night },
@@ -407,9 +409,11 @@ const GradeShader = {
  * light) and the occluder fade (uFdA = the camera, uFdB = your middle, uFdK 0–1): what lies near the camera → you line (not the
  * last metre by you) dissolves by a coarse 8 × 8 ordered dither (2-px cells) to a faint ghost; what is right at the lens goes
  * outright — fragments within `FD.lens` m, and a whole instance (tree, filler block, tuft) whose box comes within `FD.inst` m of the
- * camera (no screen-wide screen door). No transparency, no sorting, no CPU rays.
+ * camera (no screen-wide screen door). Props (`userData.fdWhole`, props3d's solid kinds) never dissolve: an instance is dropped
+ * whole at the lens or when its box comes within `whole.r` m of the line (short of its last `whole.end` m) — a scooter at your feet
+ * stays whole. No transparency, no sorting, no CPU rays.
  */
-export const FD = { lens: 1.0, inst: 1.4, ghost: 0.15, cell: 2, r: [1.1, 0.6], near: [0.35, 0.3] };
+export const FD = { lens: 1.0, inst: 1.4, ghost: 0.15, cell: 2, r: [1.1, 0.6], near: [0.35, 0.3], whole: { r: 0.2, end: 1.3 } };
 export const STREET_FX = {
   uFdA: { value: new THREE.Vector3() },
   uFdB: { value: new THREE.Vector3() },
@@ -423,8 +427,20 @@ export const STREET_U = { st: { value: 0 } };
  * Dusk and night at street level (T-373, spec §4.44): selective bloom — the emissives (lit panes, signs, rooms behind the glass,
  * the far windows; uFdGlow) are lifted to ~`k` in the HDR buffer, the lamp heads by the night layer, and the bloom threshold sits
  * at `thr`, above any lit surface (diffuse ≤ ~0.8), so only the lights bloom. `lit` = when the lights reach full glow (dusk → night).
+ * Polish (2026-10-26): `k` modest and the bloom tight (`mips`: the wide mips nearly off, `radius` 0) so lit panes read as crisp windows
+ * with a small halo, not hazy blobs; the night exposure at street level `exposure` (dark-blue night, readable silhouettes).
  */
-export const GLOW = { k: 2.4, lit: [0.02, 0.45], thr: 1.15, strength: 0.75, radius: 0.55 };
+export const GLOW = {
+  k: 1.6,
+  lit: [0.02, 0.45],
+  thr: 1.15,
+  strength: 0.45,
+  radius: 0,
+  mips: [1, 0.5, 0.18, 0.05, 0], // (polish 2026-10-26) the bloom's mip weights at street level: a tight halo, no screen-wide haze
+  exposure: 1.3, // the night exposure at street level (the map's LOOK.exposure[1] lifts the whole scene: milky)
+  hemi: 1.15 // the night sky light at street level (× the clock's hemisphere; the map's LOOK.hemi[1] floods the ground blue)
+};
+const MIPS0 = [1.0, 0.8, 0.6, 0.4, 0.2]; // (UnrealBloomPass's own)
 const FD_LIGHT = ['lights_physical_pars_fragment', 'lights_lambert_pars_fragment', 'lights_phong_pars_fragment'];
 const FD_DIR = '#if ( NUM_DIR_LIGHTS > 0 ) && defined( RE_Direct )',
   FD_RECT = '#if ( NUM_RECT_AREA_LIGHTS > 0 ) && defined( RE_Direct_RectArea )';
@@ -438,6 +454,7 @@ export function streetMat(m) {
     return false;
   if (m.userData && m.userData.noStreetFx) return false;
   // the instances' local box (map3d fxBox: the union over the instanced meshes using m; empty = never hidden whole)
+  const whole = !!m.userData.fdWhole; // (props: dropped whole, never dissolved)
   const box = (m.userData.fdBox = { lo: { value: new THREE.Vector3(1e9, 1e9, 1e9) }, hi: { value: new THREE.Vector3(-1e9, -1e9, -1e9) } });
   const prev = m.onBeforeCompile,
     hadKey = Object.prototype.hasOwnProperty.call(m, 'customProgramCacheKey'),
@@ -447,7 +464,7 @@ export function streetMat(m) {
     prev.call(this, sh, r);
     Object.assign(sh.uniforms, STREET_FX, { uFdLo: box.lo, uFdHi: box.hi });
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vFdW; uniform vec3 uFdA, uFdLo, uFdHi; uniform float uFdK;')
+      .replace('#include <common>', '#include <common>\nvarying vec3 vFdW; uniform vec3 uFdA, uFdB, uFdLo, uFdHi; uniform float uFdK;')
       .replace(
         '#include <project_vertex>',
         `#include <project_vertex>
@@ -461,7 +478,18 @@ export function streetMat(m) {
             mat4 im = modelMatrix * instanceMatrix; mat3 rm = mat3(im);
             vec3 lc = inverse(rm) * (uFdA - im[3].xyz);
             vec3 dq = max(abs(lc - 0.5 * (uFdLo + uFdHi)) - 0.5 * (uFdHi - uFdLo), 0.0);
-            if (length(rm * dq) < ${FD.inst.toFixed(2)} * uFdK) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
+            if (length(rm * dq) < ${FD.inst.toFixed(2)} * uFdK) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);${
+              whole
+                ? `
+            // (a prop: never dithered — dropped whole when it stands across the camera → you line, short of your last metre)
+            // (the line's point nearest the box centre, short of your last metre; props are small: one box test)
+            vec3 lb = inverse(rm) * (uFdB - im[3].xyz), lab = lb - lc, bc = 0.5 * (uFdLo + uFdHi);
+            float lL = length(rm * lab), lt = max(0.0, 1.0 - ${FD.whole.end.toFixed(2)} / max(lL, 0.01));
+            float tq = clamp(dot(bc - lc, lab) / max(dot(lab, lab), 1e-4), 0.0, lt);
+            vec3 q = max(abs(lc + lab * tq - bc) - 0.5 * (uFdHi - uFdLo), 0.0);
+            if (length(rm * q) < ${FD.whole.r.toFixed(2)} * uFdK) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);`
+                : ''
+            }
           }
           #endif
           vFdW = (modelMatrix * fw).xyz; }`
@@ -500,11 +528,11 @@ export function streetMat(m) {
         float d = length(aw - ab * (a / L));
         float r = min(${FD.near[0].toFixed(2)} + ${FD.near[1].toFixed(2)} * max(a, 0.0), mix(${FD.r[0].toFixed(2)}, ${FD.r[1].toFixed(2)}, clamp(a / L, 0.0, 1.0)));
         float fd = (1.0 - smoothstep(r * 0.55, r, d)) * step(0.0, a) * (1.0 - smoothstep(L - 1.3, L - 0.7, a));
-        if (fd * uFdK * ${(1 - FD.ghost).toFixed(2)} > fdB8(gl_FragCoord.xy / ${FD.cell.toFixed(1)}) + 0.008) discard;
+        if (${whole ? 'false && ' : ''}fd * uFdK * ${(1 - FD.ghost).toFixed(2)} > fdB8(gl_FragCoord.xy / ${FD.cell.toFixed(1)}) + 0.008) discard;
       }`
     );
   };
-  m.customProgramCacheKey = () => (hadKey ? prevKey.call(m) : src) + '|sfx';
+  m.customProgramCacheKey = () => (hadKey ? prevKey.call(m) : src) + (whole ? '|sfxw' : '|sfx');
   return true;
 }
 export function richLook(renderer, scene, cam, sun) {
@@ -723,8 +751,14 @@ export function richLook(renderer, scene, cam, sun) {
     if (!pk) pk = paintMake();
     pk.age += dt;
     pk.off += dt * PSKY.drift;
-    const first = pk.tod < 0;
-    if (pk.face >= 6 && (first || (pk.age >= PSKY.every && (Math.abs(tod - pk.tod) > PSKY.moved || pk.off > 0.004)))) {
+    const dT = Math.abs(tod - pk.tod),
+      first = pk.tod < 0 || Math.min(dT, 1 - dT) > PSKY.jump; // (a jump in the hour: all six faces at once, no seam between hours)
+    // (polish 2026-10-26: also when the haze it meets moved — the fog colour follows the hour a frame late, so a jump in the hour
+    // used to bake the old hour's haze into the low sky until the clouds next drifted)
+    const fog = scene.fog ? scene.fog.color : P.hor,
+      hz = pk.mat.uniforms.uHaze.value,
+      hazed = Math.abs(fog.r - hz.x) + Math.abs(fog.g - hz.y) + Math.abs(fog.b - hz.z) > PSKY.hazed;
+    if (pk.face >= 6 && (first || (pk.age >= PSKY.every && (Math.abs(tod - pk.tod) > PSKY.moved || pk.off > 0.004 || hazed)))) {
       const u = pk.mat.uniforms,
         g = lerp(PSKY.gain.day, PSKY.gain.night, lit),
         v3 = (k, c, s = g) => u[k].value.set(c.r * s, c.g * s, c.b * s);
@@ -734,11 +768,7 @@ export function richLook(renderer, scene, cam, sun) {
       v3('uCl', P.cloud);
       v3('uSh', P.shade);
       v3('uSunC', P.sun);
-      u.uHaze.value.set(
-        scene.fog ? scene.fog.color.r : P.hor.r,
-        scene.fog ? scene.fog.color.g : P.hor.g,
-        scene.fog ? scene.fog.color.b : P.hor.b
-      );
+      u.uHaze.value.set(fog.r, fog.g, fog.b);
       u.uSun.value.copy(sunDir);
       u.uMoon.value.copy(SKY.moon);
       u.uCover.value = P.cover;
@@ -948,11 +978,13 @@ export function richLook(renderer, scene, cam, sun) {
         pk.ms += (performance.now() - p0 - pk.ms) * 0.1;
       }
       scene.environmentIntensity = LOOK.env * smooth(-0.05, 0.35, SKYDIR.y);
-      renderer.toneMappingExposure = lerp(LOOK.exposure[0], LOOK.exposure[1], lit);
+      renderer.toneMappingExposure = lerp(LOOK.exposure[0], lerp(LOOK.exposure[1], GLOW.exposure, sg), lit);
       bloom.enabled = lit > 0.02;
       bloom.threshold = lerp(lerp(LOOK.bloom.day, LOOK.bloom.night, lit), GLOW.thr, sg);
       bloom.strength = lerp(LOOK.bloom.strength * lit, GLOW.strength * smooth(GLOW.lit[0], GLOW.lit[1], lit), sg);
       bloom.radius = lerp(LOOK.bloom.radius, GLOW.radius, sg);
+      const BF = bloom.compositeMaterial.uniforms.bloomFactors.value;
+      for (let i = 0; i < BF.length; i++) BF[i] = lerp(MIPS0[i], GLOW.mips[i], sg);
       // shadows: the box follows the zoom (crisp near, the whole view far), the sun far enough to cover it
       const S = LOOK.shadow,
         box = clamp(view ? view.d * S.k : 120, S.box[0], S.box[1]),
@@ -990,8 +1022,8 @@ export function richLook(renderer, scene, cam, sun) {
     }),
     /** Dev (the perf probe, map3d): the post passes and the dynamic resolution's state, to switch off for a measured draw. */
     parts: () => ({ bloom, grade, fxaa, gtao, dyn }),
-    /** The grade's haze colour at this frame's time of day (street level's distance haze, every look). */
-    haze: () => GR.haze,
+    /** The grade's haze colour at time of day `t` (default: the last step's) — street level's distance haze, every look. */
+    haze: t => (t === undefined ? GR.haze : gradeAt(t, GR).haze),
     /** Street level's background: the painted sky (T-373; Auto / High), else the baked one (PMREM). */
     envTex: () => (paintOn && pk ? pk.rt.texture : envRT ? envRT.texture : null),
     dispose() {

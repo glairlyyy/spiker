@@ -321,6 +321,7 @@ const solidMat = () => {
       );
   };
   m.customProgramCacheKey = () => 'props3d-solid';
+  m.userData.fdWhole = true; // (street finish: dropped whole at the lens / across the camera → you line, never dithered)
   return m;
 };
 const mats = () => {

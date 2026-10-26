@@ -942,7 +942,9 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   map3d `fxBox` unions the geometry boxes of the instanced meshes using it; empty = never) comes within `FD.inst` m of the camera is
   dropped whole in the vertex shader; fragments near the camera → your middle line (radius min(0.35 + 0.3 a, 1.1 → 0.6 m), not its
   last ~1 m) dissolve by an 8 × 8 Bayer pattern on 2-px cells (`fdB8`, static: no TAA to hide an animated one; FXAA after) to a
-  15 % ghost. No transparency, no extra draws; `info()` `aa` / `grade`.
+  15 % ghost. Props (`userData.fdWhole`: props3d's solid kinds; own program key) never dissolve: the vertex shader also drops an
+  instance whole when its box comes within `FD.whole.r` of the line (tested at the line's point nearest the box centre, short of its last `whole.end` m), and the
+  fragment dither is compiled out. No transparency, no extra draws; `info()` `aa` / `grade`.
 - **Ground (T-370, spec §4.44)** — look3d `GROUND` / `groundBytes(n)`: one tileable RGBA texture made in code (R asphalt, G 0.5 m
   slabs, B grass strokes posterized, A paint wear; shades round 0.5), shared via `GROUND_U` { tGround, uGr } — `uGr` = smooth(0.2,
   0.8, st) on Auto / High, 0 on Fast (look.step); every use fades to its mean by the pixel footprint (`GROUND.fade` m/px). `groundMat(m)`
@@ -961,7 +963,9 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   by district style (trim colour, `blade` share) — a surround quad behind every pane / door / shop front / sign (W at 0.012 m out;
   glass curtain walls stay plain), a lintel (face + underside) over windows / doors below 9 m, the flat roof's coping lip and the
   pitched roofs' fascia (`pitched(…, edge)`; gable and hip) in an ink colour from the wall, and blade signs (`blade`: a board out from
-  the shop front's edge, the sign tile turned a quarter on both faces in G, lit by hash). The wall material paints a foot-to-top
+  the shop front's edge, lit by hash: on both faces in G the tile's board colour and its word's letter cells stacked upright, top to
+  bottom, unmirrored from either side). Sign lettering: `SIGN_WORD` (one word per sign tile) in the 5 × 7 block font `FONT5`, drawn
+  narrow into `SIGN_BOX`; `signCell(t, k)` = letter k's atlas UVs (facade signs show the whole tile, read left to right). The wall material paints a foot-to-top
   gradient (0.84 → 1.04 over ~6 m, plaster / brick / wood). Outlines: `lotOutline(l, i, y0, wall, pos, col)` (body corners, the wall
   top or the roof's eaves, verges, hips and ridge, pushed 5 cm out) for the ring's lots within `RING.ink` 90 m of its centre — one
   `LineSegments` (`userData.ring = 'ink'`, `inkMat`, cached per lot in `ringCache` as `ink`). Far skyline: the streamed far boxes
@@ -975,13 +979,15 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
 - **Dusk and night (T-373, spec §4.44)** — look3d. Sky: `PSKY` keys (on `GRADE`'s times; `hor` = the grade's haze) → `paintAt(tod, out)`
   (zenith / horizon gradient, cloud lit / shade tones, sun glow, cover, stars + a painted moon at `SKY.moon`); `PSKY_FRAG` on a
   BackSide sphere baked into a `WebGLCubeRenderTarget` (`PSKY.n` 256, half float) by a `CubeCamera`'s six cameras — all six on the first
-  bake, then one face a frame when the hour moved `PSKY.moved` or the clouds drifted (`drift`), at most every `every` s; the lowest band
-  takes `scene.fog.color` so the haze meets it; colours × `PSKY.gain` (day → night by `lit`). Clouds: a code-made two-octave noise
+  bake and a jump of the hour > `PSKY.jump` (all six at once: no seam), then one face a frame when the hour moved `PSKY.moved`, the clouds
+  drifted (`drift`) or the fog colour moved `hazed`, at most every `every` s; the lowest band takes `scene.fog.color` (map3d sets it
+  from `look.haze(tod)`, this frame's hour) so the haze meets it; colours × `PSKY.gain` (day → night by `lit`). Clouds: a code-made two-octave noise
   texture projected on a plane overhead, crisp edge, shaded middle, lit toward the sun. `look.envTex()` returns the painted cube while
   `paintOn` (Auto / High, st > 0.1), else the PMREM; the PMREM still lights. Glow: `STREET_FX.uFdGlow` × every patched material's
   `totalEmissiveRadiance` (streetMat, before `aomap_fragment`) = 1 + sg·max(0, `GLOW.k`·smooth(`GLOW.lit`, lit) / lit − 1), sg =
   smooth(0.3, 0.9, st) on Auto / High — lit panes, signs (blades too), rooms, far windows reach ~`k` in the HDR buffer; the bloom's
-  threshold → `GLOW.thr` (above any lit surface), strength / radius by sg. `STREET_U.st` = sg for layers3d: lamp / flood points (`lamp`
+  threshold → `GLOW.thr` (above any lit surface), strength / radius by sg, its mip weights → `GLOW.mips` (the wide mips nearly off:
+  a tight halo), the night exposure → `GLOW.exposure` and map3d's night hemisphere → `GLOW.hemi` (dark-blue night, not milky). `STREET_U.st` = sg for layers3d: lamp / flood points (`lamp`
   attribute) × `NIGHT.street.lamp`, smaller; window points × (1 − `win`) (the panes glow themselves); the pools are a quad decal with a
   code-made painted texture (`poolBytes`: core + soft step + tail), opacity smooth(`street.on`, lit) × (1 + (pool − 1) sg) — on at dusk.
   No lights, no extra draws in the frame (the bake's face draws come before `info` resets); `info().sky` { bakes, tod, ms }, `bloom`.
@@ -998,7 +1004,7 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   nothing on a carriageway (`onRoad`) or in a lot. Decals every `decal.every` m by hash (carriageway: cracks, tar patches, puddles at the
   edge, leaves; pavements: cracks, leaves; dirt: puddles, leaves), tilted to the slope, one `decalAtlas` canvas (4 tiles, alpha-tested,
   `dtile` per instance; the puddle tile low roughness). Materials: solid kinds `solidMat` (one per kind: streetMat's lens hide keeps one
-  box per material; `ptint` = where the instance colour applies, `glow` = lit faces → emissive × (0.22 + 1.1 NIGHT_U), lifted / bloomed
+  box per material; `fdWhole`: dropped whole near the lens / across the camera → you line, never dithered; `ptint` = where the instance colour applies, `glow` = lit faces → emissive × (0.22 + 1.1 NIGHT_U), lifted / bloomed
   by T-373's uFdGlow); wires `wsp` (len, sag, rise, thickness) bend a unit span in the vertex shader and sway × STREET_U.st
   (`noStreetFx`, not frustum-culled). Sway (nature3d `WIND.street`, × STREET_U.st: Auto / High street level): grass shapes bend from the
   root, crowns sway more and flutter (`richMat(U, double, shape)`, program key by grass / not). `info().props` { on, n per kind, blocks,

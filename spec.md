@@ -2197,6 +2197,18 @@ the AI coach fills every slot you leave with the same function. Built and measur
     they bloom; painted pools of warm light fade in under the lamps at dusk. No real lamp lights. Measured (headless, gym junction,
     Auto): draw calls 159 → 159 (10:00), 174 → 174 (18:30, 22:00), triangles unchanged (~1.00 M); the sky re-paints one face of a
     small cube a frame when the hour moves (≤ ~1 ms in software GL, none otherwise); Fast unchanged (141 / 144 / 143 calls).
+  - **Polish (owner, 2026-10-26: "yes, fix everything")**:
+    **[fixed 2026-10-26]** the night glow is calm: lit windows, vending machines and signs read as crisp lit panes with a small halo
+    (a weaker, tighter bloom and a smaller glow lift), lamps keep a soft glow, and the night at street level is darker (a lower
+    exposure and sky light, deeper darks, more contrast) — a dark-blue night with readable silhouettes, not a milky blue haze.
+    **[fixed 2026-10-26]** props (scooters, bins, signs, vending machines …) never show the halftone dissolve: one at the lens or
+    standing across the camera → you line goes whole, one at your feet stays whole.
+    **[fixed 2026-10-26]** shop signs show real words (KARAOKE in the city, NOODLES in the old town, SEAFOOD on the coast, STORE
+    elsewhere) read left to right from the street; blade signs stack the same letters upright, readable from both sides (they were mirrored).
+    **[fixed 2026-10-26]** the painted sky never keeps an old hour: after a jump in the time (a skip, a fast-forward) the whole sky
+    repaints at once (no seam, no lavender dusk sky at 23:00), and its low haze matches the hour.
+    Measured (headless, Auto, same spots): draw calls unchanged (market 158 / 171, gym 150 / 165 at 10:00 / 21:00), triangles within
+    ±0.3 %, draw time unchanged; Fast unchanged (140 / 142, 113 / 115 calls).
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.
