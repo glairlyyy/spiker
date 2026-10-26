@@ -2126,7 +2126,8 @@ the AI coach fills every slot you leave with the same function. Built and measur
     metre of the line from the camera to you (or right at the lens) dissolves to a ghost; Auto / High smooth the edges and grade the
     colours by the hour, and the sun's light falls in soft toon bands (Fast keeps its look; the haze takes the hour's hue there too).
     Measured (headless, gym junction, Auto): draw calls 153 → 152 (10:00), 168 → 171 (18:30), triangles unchanged (~0.99 M), the
-    new per-frame JavaScript 0.06–0.16 ms; Fast unchanged.
+    new per-frame JavaScript 0.06–0.16 ms; Fast unchanged. **[fixed 2026-10-26]** the street view no longer stretches: the picture keeps
+    the window's proportions after the lens shift, a resize or a resolution change.
   - **Ground** (T-370): roads as asphalt with lane markings, curbs and pavements; grass with painted variation and tufts near
     you; the near terrain smooth (no flat-shaded facets).
   - **Buildings** (T-371): near facades with window frames, doors, awnings, shop signs and roof edges in the district palette;

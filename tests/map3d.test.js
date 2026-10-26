@@ -486,6 +486,21 @@ test('map3d: street level — one continuous zoom path (pitch, distance, height 
     assert(!M.lens[0] && !M.lens[1], '… unshifted');
     setLens(cam, M.fov, ...M.lens);
     assert(!cam.view || !cam.view.enabled, 'the shift clears');
+    // the stretch (owner 2026-10-26): the projection's aspect = the canvas's through a lens shift, a resize and back
+    const pa = () => cam.projectionMatrix.elements[5] / cam.projectionMatrix.elements[0];
+    for (const a of [16 / 9, 4 / 5, 2.4]) {
+      cam.aspect = a;
+      cam.updateProjectionMatrix();
+      setLens(cam, P.fov, ...P.lens);
+      assert(Math.abs(cam.aspect - a) < 1e-9 && Math.abs(pa() - a) < 1e-6, `a lens shift keeps the aspect ${a.toFixed(2)} (${pa().toFixed(3)})`);
+      setLens(cam, P.fov, P.lens[0] * 0.5, P.lens[1] * 0.5);
+      assert(Math.abs(pa() - a) < 1e-6, '… easing it too');
+      cam.aspect = a * 1.3; // a resize mid-shift (map3d size())
+      cam.updateProjectionMatrix();
+      assert(Math.abs(pa() - a * 1.3) < 1e-6 && cam.view.enabled, '… a resize keeps the shift and takes the new aspect');
+      setLens(cam, M.fov, ...M.lens);
+      assert(Math.abs(pa() - a * 1.3) < 1e-6, '… and clearing it');
+    }
   }
   // T-369: the street grade by time of day (warm morning, clear noon, orange-pink dusk, blue night), wrapping round midnight
   {

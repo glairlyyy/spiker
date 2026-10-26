@@ -876,7 +876,7 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
 - **Camera path** — mapcam3d `streetPose(d)` (pure, tested): above `DIST[0]` (25 m) today's view; below it s = smoothstep((25 − d) /
   (25 − `STREET.d1` 7.2)), pitch 55° → `STREET.pitch` 12°, the target rising to your middle (`STREET.head` 0.95 m) and pulled onto your
   avatar (k by s), so at d1 the camera is ~7 m behind, ~2.4 m above the ground (eye level). T-369: the lens widens 40° → 50°
-  (`STREET.fov`) and a lens shift (`setLens`: three `setViewOffset` in fractions, cleared at s = 0) puts the target at NDC
+  (`STREET.fov`) and a lens shift (`setLens`: three `setViewOffset` in fractions, cleared at s = 0; it keeps `cam.aspect` — three's setViewOffset sets aspect = fullWidth ÷ fullHeight = 1, the 2026-10-26 stretch; `info().aspect` { canvas, cam, proj } for QA) puts the target at NDC
   `STREET.lens` [−0.12, −0.62] × s — your whole figure in the lower third, left of centre, verticals upright (picks / project() use the
   same projection); pulled in front of a building the shift eases off by k. Below 25 m only while your avatar is inside the
   district (everywhere on land since T-361) and the view centre within `STREET.pad` of it (`allowed`); otherwise the zoom stops at 25 m, and leaving the district eases

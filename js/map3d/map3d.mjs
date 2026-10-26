@@ -796,6 +796,7 @@ export function create(onIdle) {
       street: +st.toFixed(3),
       ring: town && town.ringInfo ? town.ringInfo() : null,
       stream: stream && stream.info(),
+      aspect: { canvas: +(cw / (ch || 1)).toFixed(3), cam: +cam.aspect.toFixed(3), proj: +(cam.projectionMatrix.elements[5] / cam.projectionMatrix.elements[0]).toFixed(3) }, // (= canvas: no stretch)
       fx: { ms: +fxInfo.ms.toFixed(3), sweeps: fxInfo.sweeps } // (T-369: the street finish — JS ms a frame, scene sweeps so far)
     }),
     dispose() {
