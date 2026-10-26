@@ -988,6 +988,8 @@ export function richLook(renderer, scene, cam, sun) {
       bloom: !!(bloom && bloom.enabled && on),
       shed: dyn.shed
     }),
+    /** Dev (the perf probe, map3d): the post passes and the dynamic resolution's state, to switch off for a measured draw. */
+    parts: () => ({ bloom, grade, fxaa, gtao, dyn }),
     /** The grade's haze colour at this frame's time of day (street level's distance haze, every look). */
     haze: () => GR.haze,
     /** Street level's background: the painted sky (T-373; Auto / High), else the baked one (PMREM). */

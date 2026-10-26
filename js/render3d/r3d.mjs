@@ -33,6 +33,39 @@ import {
 } from './camera3d.mjs';
 import { posePlayer, dressActors, swapActor, setPovHidden, setKeepColors } from './actors3d.mjs';
 
+/** The perf probe's match layers (owner, 2026-10-26; PerfHUD Measure): the adding module's file → layer (map3d tagAdds' rule). */
+const PROBE_OF = {
+  arena3d: 'arena',
+  venue3d: 'venue',
+  ambient3d: 'ambient',
+  fx3d: 'fx',
+  kit: 'fx',
+  hits: 'fx',
+  drone: 'fx',
+  gloom: 'fx',
+  trails3d: 'trails',
+  players3d: 'players',
+  actors3d: 'players'
+};
+function tagAdds(scene) {
+  const add0 = scene.add;
+  scene.add = function (...objs) {
+    let k = null;
+    for (const o of objs)
+      if (o && o.userData && !o.userData.probe) {
+        if (k === null) {
+          k = 'other';
+          for (const m of String(new Error().stack).matchAll(/\/([\w-]+)\.m?js/g))
+            if (m[1] !== 'r3d' && PROBE_OF[m[1]]) {
+              k = PROBE_OF[m[1]];
+              break;
+            }
+        }
+        o.userData.probe = k;
+      }
+    return add0.apply(this, objs);
+  };
+}
 const TAG_DROP = 30; // bird's-eye: how far (figure units) the tags come down toward the figure (seen from 45°, a body looks shorter)
 const N_PLAYERS = 8;
 
@@ -66,6 +99,7 @@ async function build(onProgress) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = lowEnd ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
   const scene = new THREE.Scene();
+  tagAdds(scene); // (the perf probe's layers)
   scene.background = new THREE.Color('#0b1030');
   scene.fog = new THREE.Fog('#0b1030', 45, 90);
 
@@ -78,6 +112,7 @@ async function build(onProgress) {
   const people = [];
   for (let i = 0; i < N_PLAYERS; i++) {
     const pl = await makeVRM(buf, 1.8);
+    pl.root.userData.probe = 'players';
     scene.add(pl.root);
     prog(0.5 + (0.5 * (i + 1)) / N_PLAYERS, 'Getting players ready');
     await new Promise(r => setTimeout(r, 0));
@@ -92,6 +127,7 @@ async function build(onProgress) {
     DBG.log('info', `Model main: ${modelStats(pl)}`);
     pl.own = true;
     pl.root.visible = false;
+    pl.root.userData.probe = 'players';
     scene.add(pl.root);
     people.push(kitOut(pl, scene, arena));
   } catch (e) {
@@ -109,6 +145,7 @@ function kitOut(pl, scene, arena) {
     new THREE.SpriteMaterial({ map: arena.glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })
   );
   pl.aura.scale.set(2.2, 2.6, 1);
+  pl.aura.userData.probe = 'players';
   scene.add(pl.aura);
   pl.gloom = makeGloom(scene); // gloom lines over a debuffed player (fx/gloom.mjs)
   pl.zone = arena.flatRing(arena.ringTex, 1.5);
@@ -135,6 +172,7 @@ async function addModel(buf, name, n = EXTRA_FIGS) {
     pl.model = name;
     if (!i) DBG.log('info', `Model ${name}: ${modelStats(pl)}`);
     pl.root.visible = false;
+    pl.root.userData.probe = 'players';
     w.scene.add(pl.root);
     figs.push(kitOut(pl, w.scene, w));
     await new Promise(r => setTimeout(r, 0));
@@ -275,6 +313,7 @@ function bind() {
   lastT = performance.now();
 }
 function unbind() {
+  if (probe.drv) probe.drv.abort('the match closed');
   if (world) setPovHidden(world, null); // no head stays hidden after a POV match
   if (world && world.gl.parentNode) world.gl.remove();
   bound = null;
@@ -289,6 +328,7 @@ const dyn = { res: 1, ema: 16.7, t: 0 };
 function adaptRes(ms) {
   const Q = GFX[G.gfx] || GFX.auto;
   dyn.ema += (Math.min(100, ms) - dyn.ema) * 0.05;
+  if (probe.drv) return; // (the perf probe measures: the resolution holds)
   dyn.t += ms;
   if (dyn.res < Q.floor) dyn.res = Q.floor;
   if (dyn.t < 1000) return;
@@ -325,8 +365,23 @@ function perfHook(w, t0, tR) {
   perfM.ms = E(perfM.ms, iv);
   perfM.update = E(perfM.update, tR - t0);
   perfM.draw = E(perfM.draw, t - tR);
-  const info = w.renderer.info.render;
+  const info = w.renderer.info.render,
+    raw = { update: tR - t0, draw: t - tR },
+    ev = [],
+    d = (k, v, f) => {
+      if (perfM[k] !== undefined && v !== perfM[k]) ev.push(f(v - perfM[k], perfM[k], v));
+      perfM[k] = v;
+    };
+  d('progs', (w.renderer.info.programs || []).length, n => `shader compile ${n > 0 ? '+' : ''}${n}`);
+  d('tex', w.renderer.info.memory.textures, n => `textures ${n > 0 ? '+' : ''}${n} (VRM dress?)`);
+  d('res', dyn.res, (n, a, b) => `render scale ${a} → ${b}`);
+  d('beat', A && A.bi, () => 'new beat');
+  if (ev.length === 1 && ev[0] === 'new beat') ev.length = 0; // (a beat alone is no cause)
   H.frame('match', {
+    raw,
+    ev,
+    src: probe.api,
+    secs: { update: perfM.update, draw: perfM.draw },
     fps: 1000 / perfM.ms,
     ms: perfM.ms,
     last: iv,
@@ -341,6 +396,123 @@ function perfHook(w, t0, tR) {
     look: (GFX[G.gfx] || GFX.auto).name
   });
 }
+// ---------- the perf probe (owner, 2026-10-26; map-view.js PerfHUD Measure): the match's layers and looks, off in turn ----------
+const px1 = new Uint8Array(4);
+function probeAfter(w, pz, t0, tR) {
+  pz.mid();
+  const gl = w.renderer.getContext();
+  gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px1); // (waits for the GPU: the draw's real cost)
+  const I = w.renderer.info.render;
+  pz.post({ draw: performance.now() - tR, js: tR - t0, calls: I.calls, tris: I.triangles });
+}
+const swap = (o, k, v) => {
+  if (!o || o[k] === v) return null;
+  const a = o[k];
+  o[k] = v;
+  return () => (o[k] = a);
+};
+/** Hide a set of objects for one draw (the visible ones come back right after). */
+const hideAll = list => {
+  const r = list.filter(o => o && o.visible);
+  for (const o of r) o.visible = false;
+  return r.length ? () => r.forEach(o => (o.visible = true)) : null;
+};
+const probe = {
+  drv: null,
+  held: null,
+  api: {
+    kind: 'match',
+    gl: () => world && world.renderer.getContext(),
+    items() {
+      const w = world,
+        roots = id => w.scene.children.filter(o => o.userData.probe === id),
+        L = (id, label) => ({
+          id,
+          label,
+          group: 'layer',
+          can: () => roots(id).some(o => o.visible) || 'nothing drawn',
+          mask: () => hideAll(roots(id))
+        }),
+        sh = w.renderer.shadowMap,
+        lights = () => w.scene.children.filter(o => o.isLight && o.castShadow && o.shadow);
+      return [
+        L('arena', 'court, net, stands, ball'),
+        L('venue', 'venue set'),
+        {
+          id: 'crowd',
+          label: 'crowd',
+          group: 'layer',
+          can: () => (w.crowd || []).some(c => c.mesh.visible) || 'none',
+          mask: () => hideAll((w.crowd || []).map(c => c.mesh))
+        },
+        L('players', 'players (VRMs) + auras'),
+        L('fx', 'effects'),
+        L('trails', 'trails'),
+        L('ambient', 'air (wind, embers, flames)'),
+        {
+          id: 'shadow',
+          label: 'shadows (the shadow pass)',
+          group: 'look',
+          can: () => sh.enabled || 'off',
+          mask: () => swap(sh, 'autoUpdate', false)
+        },
+        {
+          id: 'shmap',
+          label: 'shadow maps ÷ 2',
+          group: 'look',
+          can: () => (sh.enabled && lights().some(l => l.shadow.mapSize.x > 512)) || 'off',
+          hold() {
+            const ls = lights().map(l => [l, l.shadow.mapSize.x]),
+              set = (l, s) => (l.shadow.mapSize.set(s, s), l.shadow.map && (l.shadow.map.dispose(), (l.shadow.map = null)));
+            for (const [l, s] of ls) set(l, Math.max(512, s / 2));
+            return () => ls.forEach(([l, s]) => set(l, s));
+          }
+        },
+        { id: 'post', label: 'post', group: 'look', can: () => 'matches draw without post' },
+        {
+          id: 'res1',
+          label: `render scale held at 1 (dyn ${dyn.res})`,
+          group: 'look',
+          can: () => dyn.res !== 1 || 'already 1',
+          hold: () => swap(dyn, 'res', 1)
+        }
+      ];
+    },
+    /** The match holds (A.hold: the beats wait) and the resolution holds while the probe runs; both as they were on stop. */
+    start(drv) {
+      probe.held = A ? [A, A.hold] : null;
+      if (A) A.hold = true;
+      probe.drv = drv;
+    },
+    stop() {
+      probe.drv = null;
+      if (probe.held) probe.held[0].hold = probe.held[1];
+      probe.held = null;
+    },
+    /** What the probe may touch, as it is now (compared before / after). */
+    state() {
+      const w = world,
+        o = { drv: !!probe.drv, hold: A ? A.hold : null, res: dyn.res, shadowAuto: w.renderer.shadowMap.autoUpdate };
+      for (const l of w.scene.children) if (l.isLight && l.shadow) o[`sh:${l.uuid.slice(0, 6)}`] = l.shadow.mapSize.x;
+      for (const c of w.scene.children) if (c.userData.probe) o[`${c.userData.probe}:${c.uuid.slice(0, 6)}`] = c.visible;
+      (w.crowd || []).forEach((c, i) => (o[`crowd:${i}`] = c.mesh.visible));
+      return o;
+    },
+    ctx() {
+      const w = world;
+      return {
+        css: [cv.width, cv.height],
+        px: [w.gl.width, w.gl.height],
+        scale: +(w.gl.width / Math.max(1, cv.width)).toFixed(2),
+        res: dyn.res,
+        look: (GFX[G.gfx] || GFX.auto).name,
+        view: `match (${getCamMode()})`,
+        place: (A && A.venue) || 'arena',
+        extra: `${w.people.filter(p => p.root.visible).length} figures`
+      };
+    }
+  }
+};
 function draw() {
   if (!world || !A) return;
   if (bound !== A || !world.gl.isConnected) bind();
@@ -393,8 +565,14 @@ function draw() {
     cam.position.copy(w.ball.position).add(qaOff.set(...A.qaLook));
     cam.lookAt(w.ball.position);
   }
-  const tR = performance.now();
-  w.renderer.render(w.scene, cam);
+  const tR = performance.now(),
+    pz = probe.drv;
+  if (pz) pz.pre();
+  try {
+    w.renderer.render(w.scene, cam);
+  } finally {
+    if (pz) probeAfter(w, pz, now, tR);
+  }
   perfHook(w, now, tR);
   // overlay: the playback layer's screen-space pieces, now projected through this camera
   Overlay.drawChant(now);

@@ -860,6 +860,22 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   update = everything before `draw()`, draw = the submit, labels = `furn.tick`; `api.perf()`) and r3d `perfHook` (update = draw()
   up to the render, draw = the render); `rule(ms)` from career-map `spotFollow` (MapView.tick + the popups' placement). Redraws at
   4 Hz, the worst frame / rules of the last 2 s. F3 toggles it (capture-phase key, anywhere); ⚙ and the Dev tab have the button.
+- **Measure** (owner 2026-10-26): `PerfHUD.measure()` (Shift+F3 / the button; `PerfHUD.opt` { warm, frames } for QA) runs on
+  `p.src`, the renderer's probe — map3d `api.probe` / r3d `probe.api`: `items()` → [{ id, label, group, can?() → true | why n/a,
+  mask?() → undo (off for one draw), hold?() → undo (off for a configuration: sizes) }], `start(drv)` (map: the shown clock, `clock`,
+  `C.step` and look's `dyn` adapt held; MapView.stopped → 'probe'; match: `A.hold`, r3d `adaptRes` held), `stop()`, `state()` (the
+  touched settings + every tagged root's visible: compared before / after → `PerfHUD.restored`), `ctx()`. The renderer calls the
+  driver round its draw: `pre()` → draw → `mid()` (masks undone, the GPU query closed) → 1-px `readPixels` → `post(sample)` (try /
+  finally). `PerfHUD.probeRun` (pure, tests/perf.test.js) sequences base / each item / base again, `probeResult` ranks (GPU ms when
+  every configuration has `EXT_disjoint_timer_query_webgl2` samples, else the waited draw), `probeReport` = the text. A 3-s
+  watchdog / Esc / toggle off / dispose / unbind → `abort()`. Layers: `tagAdds(scene, table)` wraps `scene.add` once — an object
+  gets `userData.probe` from the adding module's file in the stack (map3d `PROBE_OF`, r3d `PROBE_OF`; map3d tags its own terrain,
+  figure groups, war and lights). look3d `parts()` = { bloom, grade, fxaa, gtao, dyn } (the probe's only hook there).
+- **Spike log**: `PerfHUD.spike` each frame while on: interval > `SPIKES.k` × the median (last 120) or > `abs` → a record of the
+  frame before (`p.raw` JS split, `p.ev`: map3d `frameEvents` diffs the parts' counters — programs, textures, geometries, ring
+  builds, stream / props preps and picks, sky bakes, render scale, street fx sweeps, updates, fog re-dims, people VRMs, slow `lap`
+  sections) + `PerfHUD.note`s since (`hook()`: renderCareer, MapModel.build, Run.save wrapped while on). map3d's `lap(name)` splits
+  the frame's JS (`secE` averages → the report's hot JS).
 - `MapView.saveSoon()`: the running clock's periodic save on `requestIdleCallback` (≤ 1 s), not in the frame.
 - **Inside a hall** (owner 2026-10-25): the cost there is the people at its stations as VRMs near the camera (each ~13 meshes,
   ~36k tris, 7 outlined: ~20 draws + its shadow). interior3d `people()` marks the moved people `inside: true` → life3d state

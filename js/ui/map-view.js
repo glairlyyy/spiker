@@ -261,6 +261,7 @@ const MapView = {
   stopped() {
     const L = CW.lock;
     if (MapView.CLK.paused) return 'paused';
+    if (typeof PerfHUD !== 'undefined' && PerfHUD.probe) return 'probe'; // (the perf overlay measures: the clock holds)
     if (!RUN || A || typeof document === 'undefined' || !document.querySelector('.career.hub')) return 'off';
     if (RUN.event || CW.sheet || CW.fig || CW.gear || Story.step(RUN) || document.querySelector('.hubmodal')) return 'modal';
     if (L && L.phase !== 'walk' && L.phase !== 'ff') return 'modal'; // (a greeting, an encounter's card, a result: it waits for you)
@@ -337,8 +338,12 @@ const MapView = {
 /**
  * The perf overlay (owner, 2026-10-25; spec §4.39 Performance): F3 on the map and in a match, ⚙ › Perf overlay, the title's Dev tab;
  * off by default, remembered per browser. map3d / r3d call frame(kind, p) each frame while it is on (p = { fps, ms, update, draw,
- * labels, calls, tris, res, scale, px, vrm, blocks, look, ao, shadow }); the page's rules step (career-map spotFollow) adds rule(ms).
- * Redrawn 4 times a second: the averages, and the worst frame of the last 2 s (a hitch: a save, a rebuild).
+ * labels, calls, tris, res, scale, px, vrm, blocks, look, ao, shadow, raw?, secs?, ev?, src? }); the page's rules step (career-map
+ * spotFollow) adds rule(ms). Redrawn 4 times a second: the averages, and the worst frame of the last 2 s (a hitch: a save, a rebuild).
+ * Measure (owner, 2026-10-26; Shift+F3, Esc cancels): `p.src` = the renderer's probe ({ kind, gl(), items(), start(drv), stop(),
+ * ctx() }) — each layer / look feature switched off in turn (probeRun), a report to paste (probeReport). The spike log: a frame
+ * > 2× the median or > 50 ms keeps what the frame before it did (p.ev, its JS split) and what ran between (renderCareer,
+ * MapModel.build, Run.save: wrapped while the overlay is on). Display only: no rules, no randoms.
  */
 const PerfHUD = {
   on: store.get(KEYS.perf) === '1',
@@ -349,9 +354,25 @@ const PerfHUD = {
   peakR: 0, // … and of rules
   win: 0,
   shown: [0, 0],
+  ivs: [], // the last 120 frame intervals (the spike median)
+  med: 16.7,
+  medN: 0,
+  prev: null, // the frame before: { raw, ev }
+  evs: [], // the page's work since the last frame (hook)
+  spikes: [], // the last SPIKES.keep spikes, newest last
+  src: null, // the probe of the renderer drawing now
+  kind: 'map',
+  probe: null, // the running probe { drv, src, dog }
+  status: '',
+  text: '', // the last report
+  hooked: false,
+  opt: null, // dev / QA: { warm, frames, only: [item ids] } for Measure (the UI smoke's short probe)
+  restored: null, // the last probe: { ok, off: [what differs from before] }
+  SPIKES: { keep: 20, k: 2, abs: 50, n: 120 },
   toggle(v = !PerfHUD.on) {
     PerfHUD.on = !!v;
     store.set(KEYS.perf, PerfHUD.on ? '1' : '0');
+    if (!PerfHUD.on) PerfHUD.cancel();
     if (!PerfHUD.on && PerfHUD.el) (PerfHUD.el.remove(), (PerfHUD.el = null));
   },
   /** The page's rules step this frame (the running clock, the popups' placement): ms. */
@@ -359,40 +380,457 @@ const PerfHUD = {
     PerfHUD.rules += (ms - PerfHUD.rules) * 0.1;
     PerfHUD.peakR = Math.max(PerfHUD.peakR, ms);
   },
+  /** Something the page did between two frames (a render, a save): kept for the next frame's spike record. */
+  note(s) {
+    if (PerfHUD.evs.length < 30) PerfHUD.evs.push(s);
+  },
+  /** While the overlay is on, the page's big steps note their time (wrapped once; the wrapper passes through when off). */
+  hook() {
+    const H = PerfHUD,
+      g = typeof globalThis !== 'undefined' ? globalThis : null;
+    if (H.hooked || !g) return;
+    H.hooked = true;
+    const wrap = (o, k, tag) => {
+      const f = o && o[k];
+      if (typeof f !== 'function' || f.__perf) return;
+      const w = function (...a) {
+        if (!H.on) return f.apply(this, a);
+        const t0 = performance.now();
+        try {
+          return f.apply(this, a);
+        } finally {
+          H.note(`${tag} ${(performance.now() - t0).toFixed(1)} ms`);
+        }
+      };
+      w.__perf = true;
+      o[k] = w;
+    };
+    try {
+      wrap(g, 'renderCareer', 'renderCareer');
+      if (typeof MapModel !== 'undefined') wrap(MapModel, 'build', 'MapModel.build');
+      if (typeof Run !== 'undefined') wrap(Run, 'save', 'save');
+    } catch (e) {
+      /* (a read-only binding: no hook) */
+    }
+  },
+  /** Spikes (always while the overlay is on): a frame interval > k × the median or > abs ms; the frame before it is the cause. */
+  spike(kind, p) {
+    const H = PerfHUD,
+      S = H.SPIKES,
+      iv = p.last || 0;
+    if (iv > 0) {
+      H.ivs.push(iv);
+      if (H.ivs.length > S.n) H.ivs.shift();
+      if (++H.medN >= 30 || H.ivs.length < 30) ((H.medN = 0), (H.med = PerfHUD.median(H.ivs)));
+    }
+    const was = H.prev;
+    H.prev = { raw: p.raw || null, ev: p.ev || [] };
+    if (!was || H.probe || H.ivs.length < 10 || !(iv > S.abs || iv > S.k * H.med)) return void (H.evs = []);
+    const r = was.raw,
+      js = r ? r.update + r.draw + (r.labels || 0) : null,
+      ev = [...was.ev, ...H.evs];
+    if (!ev.length && js !== null && js < iv * 0.3) ev.push('gap: little JS in the frame (GC / browser / GPU stall)');
+    H.evs = [];
+    H.spikes.push({ t: performance.now() / 1000, kind, ms: iv, med: H.med, js: r && { ...r }, ev });
+    if (H.spikes.length > S.keep) H.spikes.shift();
+  },
   frame(kind, p) {
     const now = performance.now(),
       H = PerfHUD;
     H.peak = Math.max(H.peak, p.last || 0);
+    H.kind = kind;
+    if (p.src) H.src = p.src;
+    if (!H.hooked) H.hook();
+    H.spike(kind, p);
     if (now - H.t < 250) return;
     H.t = now;
+    H.last = { kind, p, rules: H.rules };
     if (now - H.win > 2000) ((H.win = now), (H.shown = [H.peak, H.peakR]), (H.peak = H.peakR = 0));
     let el = H.el;
     if (!el || !el.isConnected) {
       el = H.el = document.createElement('div');
       el.className = 'perfhud';
-      el.setAttribute('aria-hidden', 'true');
+      el.innerHTML = `<div class="phs" aria-hidden="true"></div><div class="phx">
+        <div class="phb"><button class="btn" data-a="m" onclick="PerfHUD.measure()">Measure <kbd>⇧F3</kbd></button><button class="btn" data-a="c" onclick="PerfHUD.copy()" disabled>Copy report</button></div>
+        <div class="phst small"></div><textarea class="phr" readonly hidden spellcheck="false" aria-label="Perf report"></textarea></div>`;
       document.body.append(el);
+      H.paint();
     }
     const f = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : '–'),
       k = v => (v >= 1e6 ? `${(v / 1e6).toFixed(2)}M` : v >= 1e3 ? `${Math.round(v / 1e3)}k` : String(v | 0)),
       slow = p.fps < 30 ? 'bad' : p.fps < 50 ? 'warn' : '',
       js = (kind === 'map' ? H.rules : 0) + p.update + p.draw + (p.labels || 0),
       row = (a, b) => `<div><span>${a}</span><b>${b}</b></div>`;
-    el.innerHTML = `<div class="ph">${kind === 'map' ? 'Map' : 'Match'} · ${esc(String(p.look || G.gfx))} <kbd>F3</kbd></div>
+    el.firstChild.innerHTML = `<div class="ph">${kind === 'map' ? 'Map' : 'Match'} · ${esc(String(p.look || G.gfx))} <kbd>F3</kbd></div>
       ${row('fps', `<i class="${slow}">${f(p.fps, 0)}</i> · ${f(p.ms)} ms · worst ${f(H.shown[0], 0)}`)}
       ${row('JS ms', `${f(js)} = ${kind === 'map' ? `rules ${f(H.rules, 2)} · ` : ''}${kind === 'map' ? 'map' : 'update'} ${f(p.update)} · draw ${f(p.draw)}${kind === 'map' ? ` · tags ${f(p.labels, 2)}` : ''}`)}
       ${kind === 'map' ? row('rules worst', `${f(H.shown[1])} ms`) : ''}
       ${row('draws', `${p.calls} · ${k(p.tris)} tris`)}
       ${row('scale', `${f(p.scale, 2)} · ${p.px ? p.px.join('×') : '–'}${p.ao !== undefined ? ` · AO ${p.ao ? 'on' : 'off'}` : ''}${p.shadow ? ` · sh ${p.shadow}` : ''}`)}
-      ${row('VRMs', `${p.vrm}${p.blocks !== null && p.blocks !== undefined ? ` · blocks ${p.blocks}` : ''}`)}`;
+      ${row('VRMs', `${p.vrm}${p.blocks !== null && p.blocks !== undefined ? ` · blocks ${p.blocks}` : ''}`)}
+      ${row('spikes', `${H.spikes.length} · median ${f(H.med)} ms`)}`;
+    if (H.probe) H.paint();
+  },
+  /** The Measure panel's state: the status line, the buttons, the report. */
+  paint() {
+    const el = PerfHUD.el,
+      H = PerfHUD;
+    if (!el) return;
+    const st = el.querySelector('.phst'),
+      ta = el.querySelector('.phr'),
+      m = el.querySelector('[data-a="m"]'),
+      c = el.querySelector('[data-a="c"]');
+    if (st) st.textContent = H.status;
+    if (m) m.disabled = !!H.probe;
+    if (c) c.disabled = !H.text;
+    if (ta && ta.value !== H.text) ((ta.value = H.text), (ta.hidden = !H.text));
+  },
+  /** Run the probe on the renderer drawing now (o: { warm, frames } for tests). */
+  measure(o = {}) {
+    const H = PerfHUD;
+    if (!H.on) H.toggle(true);
+    if (H.probe) return false;
+    const src = H.src;
+    if (!src || !src.items) return ((H.status = 'Nothing to measure: open the map or a match first.'), H.paint(), false);
+    let items;
+    try {
+      items = src.items();
+      if (H.opt && H.opt.only) items = items.filter(it => H.opt.only.includes(it.id)); // (QA: a subset)
+    } catch (e) {
+      return ((H.status = `Measure failed: ${e.message}`), H.paint(), false);
+    }
+    const gl = src.gl && src.gl(),
+      gpu = PerfHUD.gpuTimer(gl),
+      ctx0 = H.ctx(src),
+      s0 = src.state ? src.state() : null,
+      js0 = H.last ? { ...H.last } : null;
+    const drv = PerfHUD.probeRun(items, {
+      warm: o.warm ?? (H.opt && H.opt.warm) ?? 6,
+      frames: o.frames ?? (H.opt && H.opt.frames) ?? 24,
+      gpu,
+      step: (i, n, label, base) => ((H.status = `Measuring ${i} / ${n}: ${base ? label : `${label} off`} · Esc cancels`), void 0),
+      done: D => {
+        const P = H.probe;
+        H.probe = null;
+        if (P) (clearInterval(P.dog), src.stop());
+        const s1 = src.state ? src.state() : null,
+          off = s0 && s1 ? Object.keys(s0).filter(k => s0[k] !== s1[k]) : [];
+        H.restored = { ok: !off.length, off };
+        const rs = off.length ? `NOT restored: ${off.join(', ')}` : 'everything restored';
+        if (D.aborted) H.status = `Measure cancelled${D.why ? ` (${D.why})` : ''}; ${rs}.`;
+        else {
+          H.text = PerfHUD.probeReport({
+            ctx: ctx0,
+            gpu: gpu && gpu.name,
+            res: PerfHUD.probeResult(D),
+            js: js0,
+            spikes: H.spikes,
+            restored: rs
+          });
+          H.status = `Done; ${rs}. Copy the report and paste it.`;
+        }
+        H.paint();
+      }
+    });
+    H.probe = { drv, src, seen: performance.now(), n: 0 };
+    drv.watch = () => (H.probe && (H.probe.seen = performance.now()), void 0);
+    // (no frame for 3 s — the map left, the match ended: give up and restore)
+    H.probe.dog = setInterval(() => {
+      if (H.probe && performance.now() - H.probe.seen > 3000) H.cancel('no frames');
+    }, 500);
+    H.status = 'Measuring… Esc cancels';
+    src.start(drv);
+    H.paint();
+    return true;
+  },
+  cancel(why) {
+    const P = PerfHUD.probe;
+    if (P) P.drv.abort(why);
+  },
+  /** Copy the report; the clipboard may be blocked (the artifact host): then the text is selected for Ctrl+C. */
+  copy() {
+    const H = PerfHUD,
+      ta = H.el && H.el.querySelector('.phr');
+    if (!H.text) return;
+    const sel = () => ta && (ta.focus(), ta.select(), (H.status = 'Selected: press Ctrl+C to copy.'), H.paint());
+    try {
+      const p = navigator.clipboard && navigator.clipboard.writeText(H.text);
+      if (!p) return sel();
+      p.then(() => ((H.status = 'Copied to the clipboard.'), H.paint()), sel);
+    } catch (e) {
+      sel();
+    }
+  },
+  /** The report's context: device, canvas, look, view, place, time of day (the renderer's ctx() + the page's). */
+  ctx(src) {
+    const c = { kind: src.kind };
+    try {
+      Object.assign(c, src.ctx ? src.ctx() : {});
+    } catch (e) {
+      /* (a partial context) */
+    }
+    const gl = src.gl && src.gl();
+    try {
+      const x = gl && gl.getExtension('WEBGL_debug_renderer_info');
+      c.gpu = gl ? String(gl.getParameter(x ? x.UNMASKED_RENDERER_WEBGL : gl.RENDERER)) : '–';
+    } catch (e) {
+      c.gpu = '–';
+    }
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '',
+      b = ua.match(/(Firefox|Edg|OPR|Chrome|Version)\/(\d+)/);
+    c.browser = b ? `${{ Edg: 'Edge', OPR: 'Opera', Version: 'Safari' }[b[1]] || b[1]} ${b[2]}` : ua.slice(0, 40);
+    c.os = /Windows/.test(ua) ? 'Windows' : /Mac OS/.test(ua) ? 'macOS' : /Android/.test(ua) ? 'Android' : /Linux/.test(ua) ? 'Linux' : '';
+    c.dpr = typeof devicePixelRatio !== 'undefined' ? devicePixelRatio : 1;
+    c.gfx = typeof G !== 'undefined' && G ? G.gfx : '';
+    return c;
+  },
+  median(a) {
+    if (!a.length) return NaN;
+    const s = [...a].sort((x, y) => x - y),
+      m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  },
+  /** EXT_disjoint_timer_query_webgl2 (null without it): begin() / end() round the draw, read(q) → ms | undefined (not yet) | null (lost). */
+  gpuTimer(gl) {
+    let x = null;
+    try {
+      x =
+        gl &&
+        typeof WebGL2RenderingContext !== 'undefined' &&
+        gl instanceof WebGL2RenderingContext &&
+        gl.getExtension('EXT_disjoint_timer_query_webgl2');
+    } catch (e) {
+      x = null;
+    }
+    if (!x) return null;
+    let open = null;
+    return {
+      name: 'GPU timer queries',
+      begin() {
+        if (open) return null;
+        open = gl.createQuery();
+        gl.beginQuery(x.TIME_ELAPSED_EXT, open);
+        return open;
+      },
+      end() {
+        if (!open) return;
+        gl.endQuery(x.TIME_ELAPSED_EXT);
+        open = null;
+      },
+      read(q) {
+        if (!gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE)) return undefined;
+        const lost = gl.getParameter(x.GPU_DISJOINT_EXT),
+          ns = gl.getQueryParameter(q, gl.QUERY_RESULT);
+        gl.deleteQuery(q);
+        return lost ? null : ns / 1e6;
+      },
+      drop: q => gl.deleteQuery(q)
+    };
+  },
+  /**
+   * The probe's sequencer (pure; the renderer calls it round its draw): items = [{ id, label, group ('layer' | 'look'), can?() → true
+   * | a reason it is n/a, mask?() → undo (switched off for one draw, undone right after it), hold?() → undo (switched off for the
+   * whole configuration: a resolution, a shadow map) }]. Configurations: everything on, each item off in turn, everything on again;
+   * each `warm` frames dropped, then `frames` samples ({ draw, js, calls, tris }). Per frame: pre() before the draw, mid() right after
+   * it (the masks undone, the GPU query closed), post(sample). abort() undoes whatever is on; done(D) once, D.aborted when cut.
+   */
+  probeRun(items, o = {}) {
+    const warm = o.warm ?? 6,
+      frames = Math.max(1, o.frames ?? 24),
+      gpu = o.gpu || null,
+      na = [],
+      cfg = [{ id: 'base', label: 'everything on', s: [], g: [] }];
+    for (const it of items) {
+      let ok = true;
+      try {
+        ok = it.can ? it.can() : true;
+      } catch (e) {
+        ok = e.message;
+      }
+      if (ok === true) cfg.push({ id: it.id, label: it.label, group: it.group, item: it, s: [], g: [] });
+      else na.push({ id: it.id, label: it.label, group: it.group, why: typeof ok === 'string' ? ok : 'not drawn now' });
+    }
+    cfg.push({ id: 'base2', label: 'everything on (again)', s: [], g: [] });
+    let ci = 0,
+      n = 0,
+      holdU = null,
+      q = null,
+      drain = 0;
+    const frameU = [],
+      pending = [];
+    const undoFrame = () => {
+      while (frameU.length) frameU.pop()();
+    };
+    const undoHold = () => {
+      const u = holdU;
+      holdU = null;
+      if (u) u();
+    };
+    const D = {
+      cfg,
+      na,
+      warm,
+      frames,
+      done: false,
+      aborted: false,
+      why: '',
+      watch: null,
+      /** Before the draw: this configuration's item off. */
+      pre() {
+        if (D.done || ci >= cfg.length) return;
+        const c = cfg[ci];
+        if (n === 0 && o.step) o.step(ci + 1, cfg.length, c.label, !c.item);
+        if (n === 0 && c.item && c.item.hold && !holdU) holdU = c.item.hold() || null;
+        if (c.item && c.item.mask) {
+          const u = c.item.mask();
+          if (u) frameU.push(u);
+        }
+        if (gpu && n >= warm) q = gpu.begin();
+      },
+      /** Right after the draw (before the GPU sync read): the masks undone, the query closed. */
+      mid() {
+        if (q) (gpu.end(), pending.push([q, ci]), (q = null));
+        undoFrame();
+      },
+      /** The frame's numbers: { draw (ms, the draw and a GPU sync), js (ms before the draw), calls, tris }. */
+      post(s) {
+        if (D.watch) D.watch();
+        if (D.done) return;
+        if (gpu)
+          for (let i = pending.length - 1; i >= 0; i--) {
+            const v = gpu.read(pending[i][0]);
+            if (v === undefined) continue;
+            if (v !== null) cfg[pending[i][1]].g.push(v);
+            pending.splice(i, 1);
+          }
+        if (ci >= cfg.length) {
+          if (!pending.length || ++drain > 30) finish(false);
+          return;
+        }
+        if (n >= warm && s) cfg[ci].s.push(s);
+        if (++n >= warm + frames) (undoHold(), ci++, (n = 0));
+        if (ci >= cfg.length && !pending.length) finish(false);
+      },
+      abort(why) {
+        if (D.done) return;
+        if (q) (gpu.end(), (q = null));
+        undoFrame();
+        undoHold();
+        D.why = why || '';
+        finish(true);
+      },
+      get at() {
+        return ci;
+      }
+    };
+    const finish = cut => {
+      if (D.done) return;
+      D.done = true;
+      D.aborted = !!cut;
+      undoFrame();
+      undoHold();
+      if (gpu) for (const [p] of pending.splice(0)) gpu.drop(p);
+      if (o.done) o.done(D);
+    };
+    return D;
+  },
+  /** The probe's numbers: the baseline (both everything-on runs), each item's saving (ms, % of the frame, calls, tris), ranked. */
+  probeResult(D) {
+    const M = PerfHUD.median,
+      stat = c => ({
+        draw: M(c.s.map(s => s.draw)),
+        js: M(c.s.map(s => s.js)),
+        calls: M(c.s.map(s => s.calls)),
+        tris: M(c.s.map(s => s.tris)),
+        gpu: c.g.length ? M(c.g) : NaN,
+        n: c.s.length
+      }),
+      b1 = D.cfg.find(c => c.id === 'base'),
+      b2 = D.cfg.find(c => c.id === 'base2'),
+      both = { s: [...b1.s, ...b2.s], g: [...b1.g, ...b2.g] },
+      base = stat(both),
+      rows = D.cfg.filter(c => c.item).map(c => ({ id: c.id, label: c.label, group: c.group, ...stat(c) })),
+      useG = Number.isFinite(base.gpu) && rows.every(r => Number.isFinite(r.gpu)),
+      key = useG ? 'gpu' : 'draw',
+      frame = base.js + base.draw;
+    for (const r of rows) {
+      r.save = base[key] - r[key];
+      r.pct = frame > 0 ? (100 * r.save) / frame : 0;
+      r.dCalls = base.calls - r.calls;
+      r.dTris = base.tris - r.tris;
+    }
+    rows.sort((a, b) => b.save - a.save);
+    return { key, base, b1: stat(b1), b2: stat(b2), frame, rows, na: D.na, warm: D.warm, frames: D.frames };
+  },
+  /** The plain-text report to paste (compact; one line per item). */
+  probeReport({ ctx = {}, gpu = null, res, js = null, spikes = [], restored = '', at = new Date() }) {
+    const f = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : '–'),
+      k = v =>
+        !Number.isFinite(v)
+          ? '–'
+          : Math.abs(v) >= 1e6
+            ? `${(v / 1e6).toFixed(2)}M`
+            : Math.abs(v) >= 1e3
+              ? `${(v / 1e3).toFixed(1)}k`
+              : String(Math.round(v)),
+      sg = (v, s) => (v > 0 ? `-${s(v)}` : v < 0 ? `+${s(-v)}` : '0'),
+      pad = (s, n) => (s.length >= n ? s : s + ' '.repeat(n - s.length)),
+      lpad = (s, n) => (s.length >= n ? s : ' '.repeat(n - s.length) + s),
+      B = res.base,
+      L = [],
+      C = ctx;
+    const stamp = `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')} ${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+    L.push(`Spite & Spike perf report · ${stamp} · ${C.kind === 'match' ? 'match' : 'map'}`);
+    L.push(`device   ${C.gpu || '–'} · ${C.browser || '–'}${C.os ? ` · ${C.os}` : ''}`);
+    L.push(
+      `canvas   ${C.css ? C.css.join('×') : '–'} css · ${C.px ? C.px.join('×') : '–'} px · dpr ${f(C.dpr, 2)} · scale ${f(C.scale, 2)}${C.res !== undefined ? ` (dyn ${f(C.res, 2)})` : ''} · ${C.look || C.gfx || '–'}`
+    );
+    L.push(`view     ${C.view || '–'}${C.place ? ` · ${C.place}` : ''}${C.time ? ` · ${C.time}` : ''}${C.extra ? ` · ${C.extra}` : ''}`);
+    L.push(
+      `probe    ${res.rows.length + 2} configs × ${res.frames} frames (first ${res.warm} dropped) · ${res.key === 'gpu' ? `GPU ms (${gpu})` : 'draw + GPU sync ms (no GPU timer)'}${restored ? ` · ${restored}` : ''}`
+    );
+    const drift = res.b1.draw > 0 ? (100 * (res.b2.draw - res.b1.draw)) / res.b1.draw : 0;
+    L.push(
+      `base     frame ${f(res.frame)} ms = JS ${f(B.js)} + draw ${f(B.draw)}${Number.isFinite(B.gpu) ? ` (GPU ${f(B.gpu)})` : ''} · ${k(B.calls)} calls · ${k(B.tris)} tris · re-run drift ${drift >= 0 ? '+' : ''}${f(drift, 0)}%`
+    );
+    L.push('costs    (what switching it off saves, ms and % of the frame, ranked; + = off costs more; calls / tris − = fewer)');
+    res.rows.forEach((r, i) =>
+      L.push(
+        ` ${lpad(String(i + 1), 2)} ${pad(r.label, 34)} ${lpad(`${r.save >= 0 ? '' : '+'}${f(Math.abs(r.save), 2)} ms`, 9)} ${lpad(`${r.save >= 0 ? '' : '+'}${f(Math.abs(r.pct), 0)}%`, 5)} ${lpad(sg(r.dCalls, k), 6)} calls ${lpad(sg(r.dTris, k), 7)} tris`
+      )
+    );
+    if (res.na.length) L.push(`n/a      ${res.na.map(r => `${r.label} (${r.why})`).join(' · ')}`);
+    if (js && js.p) {
+      const p = js.p;
+      L.push(
+        `JS/frame ${js.kind === 'map' ? `rules ${f(js.rules, 2)} · map ${f(p.update, 2)}` : `update ${f(p.update, 2)}`} · draw ${f(p.draw, 2)}${js.kind === 'map' ? ` · tags ${f(p.labels, 2)}` : ''} (ms, average)`
+      );
+      if (p.secs) {
+        const top = Object.entries(p.secs)
+          .filter(([, v]) => v >= 0.01)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 8);
+        if (top.length) L.push(`hot JS   ${top.map(([n, v]) => `${n} ${f(v, 2)}`).join(' · ')}`);
+      }
+    }
+    L.push(
+      `spikes   ${spikes.length ? `last ${spikes.length} (newest first): s · frame ms / median · what ran` : 'none recorded (a frame > 2× the median or > 50 ms)'}`
+    );
+    for (const s of [...spikes].reverse())
+      L.push(
+        ` ${lpad(f(s.t, 1), 7)}s ${lpad(f(s.ms, 0), 4)} / ${f(s.med, 0)}${s.kind === 'match' ? ' match' : ''}${s.js ? ` · JS ${f(s.js.update + s.js.draw + (s.js.labels || 0))}` : ''} · ${s.ev.length ? s.ev.join(' · ') : '–'}`
+      );
+    return L.join('\n');
   }
 };
 if (typeof addEventListener === 'function')
   addEventListener(
     'keydown',
     e => {
+      if (e.key === 'Escape' && PerfHUD.probe) return void (e.preventDefault(), e.stopPropagation(), PerfHUD.cancel('Esc'));
       if (e.key !== 'F3' || e.ctrlKey || e.metaKey || e.altKey) return;
       e.preventDefault(); // (the browser's find-next)
+      if (e.shiftKey) return void PerfHUD.measure();
       PerfHUD.toggle();
       if (typeof renderCareer === 'function' && CW && CW.gear) renderCareer();
     },

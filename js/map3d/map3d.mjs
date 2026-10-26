@@ -40,7 +40,7 @@ import { createNature } from './nature3d.mjs';
 import { createProps } from './props3d.mjs';
 import { createMapCam, STREET } from './mapcam3d.mjs';
 import { buildTerrain } from './terrain3d.mjs';
-import { lightScene, skyAt, SKY, LOOK, richLook, streetMat, STREET_FX } from './look3d.mjs';
+import { lightScene, skyAt, SKY, LOOK, PSKY, richLook, streetMat, STREET_FX } from './look3d.mjs';
 import { nightLayer, warLayer } from './layers3d.mjs';
 import { createStream, blockGrid, STREAM } from './stream3d.mjs';
 import { MAP_M, clamp, lerp, fogFactor, inside, edgeDist, sideDist } from './geo3d.mjs';
@@ -56,6 +56,65 @@ const IDLE_S = 3; // canvas detached this long → release the renderer
 const SHADOW_LAYER = 1; // the terrain's coarse shadow casters: seen by the sun's shadow camera only
 const EMA = (a, v, k = 0.1) => a + (v - a) * k;
 const FOG_LAG = 64; // m: at street level the fog's lantern (model.fog: round you) is redrawn only once you've moved this far
+/**
+ * The perf probe's layers (owner, 2026-10-26; PerfHUD Measure): every top-level object the map adds is tagged by the module that
+ * added it (userData.probe, from the caller's file in the stack — scene.add is wrapped once; adds are rare, never per frame).
+ */
+const PROBE_OF = {
+  terrain3d: 'terrain',
+  look3d: 'terrain',
+  town3d: 'town',
+  kit3d: 'town',
+  interior3d: 'interiors',
+  nature3d: 'nature',
+  props3d: 'props',
+  people3d: 'people',
+  life3d: 'people',
+  avatar3d: 'people',
+  players3d: 'people',
+  vehicles3d: 'vehicles',
+  layers3d: 'night',
+  pins3d: 'pins'
+};
+/** Wrap scene.add: an object without a tag gets the adding module's (table: file stem → layer id; 'other' when none matches). */
+export function tagAdds(scene, table, self) {
+  const add0 = scene.add;
+  scene.add = function (...objs) {
+    let k = null;
+    for (const o of objs)
+      if (o && o.userData && !o.userData.probe) {
+        if (k === null) {
+          k = 'other';
+          for (const m of String(new Error().stack).matchAll(/\/([\w-]+)\.m?js/g))
+            if (m[1] !== self && table[m[1]]) {
+              k = table[m[1]];
+              break;
+            }
+        }
+        o.userData.probe = k;
+      }
+    return add0.apply(this, objs);
+  };
+}
+/** A probe layer item: its tagged top-level objects hidden for one draw (what was visible comes back right after). */
+export function layerItem(scene, id, label, extra) {
+  const roots = () => scene.children.filter(o => o.userData.probe === id);
+  return {
+    id,
+    label,
+    group: 'layer',
+    can: () => roots().some(o => o.visible) || 'nothing drawn',
+    mask() {
+      const r = roots().filter(o => o.visible);
+      for (const o of r) o.visible = false;
+      const u = extra && extra();
+      return () => {
+        for (const o of r) o.visible = true;
+        if (u) u();
+      };
+    }
+  };
+}
 
 /** Free every geometry / material the map made (shared kit caches — userData.shared — survive a re-create), the GPU context. */
 function releaseScene(scene, renderer, sun) {
@@ -79,6 +138,9 @@ export function create(onIdle) {
     flatMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }),
     gfx = () => (typeof G !== 'undefined' && G && G.gfx) || 'auto';
   for (const m of [look.terrainMat, look.sea.material, water.material, flatMat]) m.userData.noStreetFx = true; // (the ground never fades)
+  water.userData.probe = look.sea.userData.probe = 'terrain';
+  for (const o of [sun, sun.target, hemi]) o.userData.probe = 'lights';
+  tagAdds(scene, PROBE_OF, 'map3d'); // (the perf probe's layers)
 
   let terrain = null,
     mesh = null,
@@ -200,6 +262,7 @@ export function create(onIdle) {
       shade.add(sc);
     }
     shade.position.y = -0.6;
+    mesh.userData.probe = shade.userData.probe = 'terrain';
     sun.shadow.camera.layers.enable(SHADOW_LAYER);
     scene.add(shade);
     look.setTerrain(terrain);
@@ -216,7 +279,9 @@ export function create(onIdle) {
     veh = createVehicles(scene, terrain.heightAt);
     nature = createNature(scene, terrain.heightAt, { grass: terrain.grassAt, colour: terrain.colourAt, clear: (x, z) => town.clear(x, z) }); // (T-370: the meadow)
     props = createProps(scene, terrain.heightAt, { solid: (x, z, m) => town.solid(x, z, m) }); // (T-372: street life)
+    const n0 = scene.children.length;
     war = warLayer(scene, terrain.heightAt);
+    for (const o of scene.children.slice(n0)) o.userData.probe = 'war';
     night = nightLayer(scene, terrain.heightAt);
     // streaming (T-364): the blocks are the terrain's chunks; a far chunk draws its coarse index
     const G = blockGrid(terrain.W, terrain.D, terrain.block[0], terrain.block[1]);
@@ -371,6 +436,7 @@ export function create(onIdle) {
     const key = JSON.stringify(f);
     if (key === fogKey) return;
     fogKey = key;
+    fogN++;
     const attr = terrain.geo.attributes.color,
       pos = terrain.geo.attributes.position.array,
       base = terrain.base,
@@ -436,8 +502,55 @@ export function create(onIdle) {
     P.labels = EMA(P.labels, t3 - t2);
     P.calls = renderer.info.render.calls;
     P.tris = renderer.info.render.triangles;
+    for (const k in secR) secE[k] = EMA(secE[k] || 0, secR[k]);
     const H = typeof PerfHUD !== 'undefined' ? PerfHUD : null;
-    if (H && H.on) H.frame('map', api.perf());
+    if (!H || !H.on) return;
+    P.raw = { update: t1 - t0, draw: t2 - t1, labels: t3 - t2 };
+    P.ev = frameEvents(t1 - t0);
+    H.frame('map', api.perf());
+  };
+  /** The spike log's notes for this frame (perf overlay on): what changed since the last frame — counters the parts already keep. */
+  const evLast = {};
+  const frameEvents = js => {
+    const ev = [],
+      E = evLast,
+      d = (k, v, f) => {
+        if (E[k] !== undefined && v !== E[k]) ev.push(f(v - E[k], E[k], v));
+        E[k] = v;
+      },
+      ri = town && town.ringInfo ? town.ringInfo() : null,
+      S = stream && stream.info(),
+      Pi = props && props.info(),
+      L = look.info();
+    d('progs', (renderer.info.programs || []).length, n => `shader compile ${n > 0 ? '+' : ''}${n}`);
+    d('tex', renderer.info.memory.textures, n => `textures ${n > 0 ? '+' : ''}${n} (VRM load / dress?)`);
+    d('geo', renderer.info.memory.geometries, n => `geometries ${n > 0 ? '+' : ''}${n}`);
+    if (ri) d('ring', ri.builds, () => `ring rebuild (${ri.lots} lots, ${(ri.ms || 0).toFixed(1)} ms)`);
+    if (S) (d('sprep', S.preps || 0, n => `stream: ${n} block(s) prepared`), d('sshow', S.shows || 0, () => 'stream: near blocks shown'));
+    if (Pi) (d('pprep', Pi.preps || 0, n => `props: ${n} block(s) prepared`), d('ppick', Pi.picks || 0, () => 'props re-pick'));
+    if (L.sky) d('sky', L.sky.bakes, n => `sky bake ${n} face(s)`);
+    d('res', L.res, (n, a, b) => `render scale ${a} → ${b}`);
+    d('fx', fxInfo.sweeps, () => 'street finish sweep');
+    d('upd', updN, n => `map update ×${n}`);
+    d('fog', fogN, () => 'fog re-dim (terrain colours)');
+    d('vrm', life ? life.count().vrm || 0 : 0, (n, a, b) => `people VRMs ${a} → ${b}`);
+    if (js > 4) {
+      const top = Object.entries(secR)
+        .filter(([, v]) => v > 1.5)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 2);
+      if (top.length) ev.push(`slow JS: ${top.map(([k, v]) => `${k} ${v.toFixed(1)} ms`).join(', ')}`);
+    }
+    return ev;
+  };
+  /** The JS split of this frame by part (secR, ms) and its average (secE): lap(name) closes the part since the last lap. */
+  const secR = {},
+    secE = {};
+  let lapT = 0;
+  const lap = k => {
+    const n = performance.now();
+    secR[k] = n - lapT;
+    lapT = n;
   };
   /**
    * Street level's finish (T-369) before each draw: every shown built-in mesh material gets the toon bands and the occluder fade
@@ -487,7 +600,219 @@ export function create(onIdle) {
     fxInfo.ms = EMA(fxInfo.ms, performance.now() - t0);
   };
   renderer.info.autoReset = false; // (the post draws several passes: info counts the whole frame)
-  const draw = () => (renderer.info.reset(), look.on ? look.render() : renderer.render(scene, cam));
+  const draw = () => (renderer.info.reset(), look.on && !pPlain ? look.render() : renderer.render(scene, cam));
+  // ---- the perf probe (owner, 2026-10-26; PerfHUD Measure): its driver runs round the draw (pre → draw → mid → GPU sync → post)
+  let pdrv = null,
+    pPlain = false, // (the "post chain" item: the scene drawn straight to the canvas)
+    pFrozen = null,
+    updN = 0,
+    fogN = 0;
+  const px1 = new Uint8Array(4);
+  const probeAfter = (pz, t0, t1) => {
+    pz.mid();
+    const gl = renderer.getContext();
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px1); // (waits for the GPU: the draw's real cost)
+    pz.post({ draw: performance.now() - t1, js: t1 - t0, calls: renderer.info.render.calls, tris: renderer.info.render.triangles });
+  };
+  /** Swap a value for one draw: set(v) now, the old value back on undo (skipped — null — when it is already off). */
+  const swap = (o, k, v) => {
+    if (!o || o[k] === v) return null;
+    const a = o[k];
+    o[k] = v;
+    return () => (o[k] = a);
+  };
+  const probeItems = () => {
+    const P = look.parts ? look.parts() : {},
+      on = look.on,
+      sh = renderer.shadowMap,
+      L = (id, label, extra) => layerItem(scene, id, label, extra);
+    return [
+      L('terrain', 'terrain + sea'),
+      L('town', 'town + detail ring'),
+      L('interiors', 'interiors'),
+      L('nature', 'nature + grass clumps'),
+      L('props', 'street life (props)'),
+      L('people', 'people + VRMs + you'),
+      L('vehicles', 'vehicles'),
+      L('night', 'night lights + pools'),
+      L('war', 'war borders'),
+      {
+        ...L('pins', 'pins + tags'),
+        can: () => !!furn || 'none',
+        hold: () => furn && swap(furn.layer.style, 'visibility', 'hidden') // (the DOM tags: off for the configuration)
+      },
+      {
+        id: 'sky',
+        label: 'sky bake + painted sky',
+        group: 'layer',
+        can: () => on || 'Fast: no baked sky',
+        hold() {
+          const a = LOOK.sky.every,
+            b = PSKY.every;
+          LOOK.sky.every = PSKY.every = Infinity;
+          return () => ((LOOK.sky.every = a), (PSKY.every = b));
+        },
+        mask: () => (scene.background && scene.background.isTexture ? swap(scene, 'background', skyCol) : null)
+      },
+      {
+        id: 'shadow',
+        label: 'shadows (the shadow pass)',
+        group: 'look',
+        can: () => (sh.enabled && sun.castShadow) || 'off',
+        mask: () => swap(sh, 'autoUpdate', false)
+      },
+      {
+        id: 'shmap',
+        label: `shadow map ${sun.shadow.mapSize.x} → ${Math.max(512, sun.shadow.mapSize.x / 2)}`,
+        group: 'look',
+        can: () => (sh.enabled && sun.shadow.mapSize.x > 512) || 'off',
+        hold() {
+          const S = LOOK.shadow,
+            a = [S.map, S.mapHi],
+            s0 = sun.shadow.mapSize.x,
+            s1 = Math.max(512, s0 / 2),
+            set = s => (sun.shadow.mapSize.set(s, s), sun.shadow.map && (sun.shadow.map.dispose(), (sun.shadow.map = null)));
+          S.map = S.mapHi = s1;
+          set(s1);
+          return () => (([S.map, S.mapHi] = a), set(s0));
+        }
+      },
+      {
+        id: 'ao',
+        label: 'AO (GTAO)',
+        group: 'look',
+        can: () => (on && P.gtao && P.gtao.enabled) || 'High only',
+        mask: () => swap(look.parts().gtao, 'enabled', false)
+      },
+      {
+        id: 'bloom',
+        label: 'bloom',
+        group: 'look',
+        can: () => (on && P.bloom && P.bloom.enabled) || 'off now',
+        mask: () => swap(P.bloom, 'enabled', false)
+      },
+      {
+        id: 'fxaa',
+        label: 'FXAA (edge smoothing)',
+        group: 'look',
+        can: () => (on && P.fxaa && P.fxaa.enabled) || 'street level only',
+        mask: () => swap(P.fxaa, 'enabled', false)
+      },
+      {
+        id: 'grade',
+        label: 'colour grade',
+        group: 'look',
+        can: () => (on && P.grade && P.grade.enabled) || 'street level only',
+        mask: () => swap(P.grade, 'enabled', false)
+      },
+      {
+        id: 'post',
+        label: 'post chain (straight to canvas)',
+        group: 'look',
+        can: () => on || 'Fast: no post',
+        mask: () =>
+          swap(
+            {
+              get v() {
+                return pPlain;
+              },
+              set v(x) {
+                pPlain = x;
+              }
+            },
+            'v',
+            true
+          )
+      },
+      {
+        id: 'toon',
+        label: 'toon bands',
+        group: 'look',
+        can: () => STREET_FX.uFdToon.value > 0.001 || 'street level only',
+        mask: () => swap(STREET_FX.uFdToon, 'value', 0)
+      },
+      {
+        id: 'fade',
+        label: 'occluder fade',
+        group: 'look',
+        can: () => STREET_FX.uFdK.value > 0 || 'street level only',
+        mask: () => swap(STREET_FX.uFdK, 'value', 0)
+      },
+      {
+        id: 'res1',
+        label: `render scale held at 1 (dyn ${P.dyn ? P.dyn.res : '–'})`,
+        group: 'look',
+        can: () => (P.dyn && P.dyn.res !== 1) || 'already 1',
+        hold() {
+          const d = look.parts().dyn,
+            a = d.res;
+          d.res = 1;
+          look.resize(cw, ch);
+          return () => ((d.res = a), look.resize(cw, ch));
+        }
+      }
+    ];
+  };
+  const probeApi = {
+    kind: 'map',
+    gl: () => renderer.getContext(),
+    items: probeItems,
+    /** The probe runs: the shown clock, the camera and the dynamic resolution hold (all as they were on stop). */
+    start(drv) {
+      const d = look.parts ? look.parts().dyn : null;
+      pFrozen = d && { ...d };
+      if (d) d.t = -1e12; // (adapt never reaches its second)
+      pdrv = drv;
+    },
+    stop() {
+      pdrv = null;
+      pPlain = false;
+      const d = look.parts ? look.parts().dyn : null;
+      if (d && pFrozen) {
+        const r = d.res;
+        Object.assign(d, pFrozen, { last: 0 });
+        if (d.res !== r) look.resize(cw, ch);
+      }
+      pFrozen = null;
+    },
+    /** What the probe may touch, as it is now (compared before / after: everything restored). */
+    state() {
+      const P = look.parts ? look.parts() : {},
+        o = {
+          drv: !!pdrv,
+          plain: pPlain,
+          shadowAuto: renderer.shadowMap.autoUpdate,
+          shadowMap: sun.shadow.mapSize.x,
+          lookShadow: `${LOOK.shadow.map}/${LOOK.shadow.mapHi}`,
+          skyEvery: `${LOOK.sky.every}/${PSKY.every}`,
+          res: P.dyn ? P.dyn.res : null,
+          pins: furn ? furn.layer.style.visibility : '',
+          clockHeld: held
+        };
+      for (const [k, p] of Object.entries(P)) if (p && 'enabled' in p) o[k] = p.enabled;
+      for (const c of scene.children)
+        if (c.userData.probe && c.userData.probe !== 'lights') o[`${c.userData.probe}:${c.uuid.slice(0, 6)}`] = c.visible;
+      return o;
+    },
+    ctx() {
+      const L = look.info(),
+        I = interiors && interiors.info();
+      return {
+        css: [cw, ch],
+        px: [canvas.width, canvas.height],
+        scale: L.scale,
+        res: L.res,
+        look: { fast: 'Fast', detailed: 'Auto', high: 'High' }[L.look] || L.look,
+        view: `${I && I.active && I.active.length && st > 0.5 ? 'inside' : st > 0.5 ? 'street' : 'map'} (street ${st.toFixed(2)}, d ${C.view ? Math.round(C.view.d) : '–'} m)`,
+        place: I && I.active && I.active.length && st > 0.5 ? I.active.join(', ') : '',
+        time: `${String(Math.floor(tod * 24)).padStart(2, '0')}:${String(Math.floor((tod * 1440) % 60)).padStart(2, '0')}`,
+        extra: `you ${api
+          .youPos()
+          .map(v => Math.round(v))
+          .join(', ')} m`
+      };
+    }
+  };
   const frame = t => {
     raf = 0;
     if (dead) return;
@@ -498,39 +823,57 @@ export function create(onIdle) {
       if (gone > IDLE_S) return onIdle && onIdle(); // the career screen is gone: release the GPU objects
     } else {
       gone = 0;
-      const t0 = performance.now();
+      const t0 = performance.now(),
+        pz = pdrv; // (the perf probe measures: the clock and the camera hold)
+      lapT = t0;
       st = C.street();
       frustum.setFromProjectionMatrix(projM.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)); // (last frame's camera)
       lodView.px = (ch || 1) / (2 * Math.tan((cam.fov * Math.PI) / 360));
       avatar.setLife(st);
       avatar.tick(dt * walkK, terrain.heightAt, lodView); // your walk at the chosen speed (setWalk; the others keep theirs)
       for (const f of figs.values()) (f.setLife(st), f.tick(dt, terrain.heightAt, lodView)); // (the guide, the rival, the aces: life size too)
-      clock += dt;
-      clockStep(dt);
+      lap('avatars');
+      if (!pz) clock += dt;
+      if (!pz) clockStep(dt);
       scene.background = bgCol; // (skyAt mixes into the colour)
       lit = cur && cur.time ? skyAt(cur.time.keys, tod, sun, hemi, scene) : ((hemi.intensity = 0.9), 0);
       if (look.on) hemi.intensity *= lerp(LOOK.hemi[0], LOOK.hemi[1], lit); // (by day the sky's environment light adds the rest)
       if (C.view) life.ringScale((14 * 2 * C.view.d * Math.tan((cam.fov * Math.PI) / 360)) / (ch || 1) / 0.7); // a ring ≥ ~14 px
       const gclock = wt === null ? clock : wt * 24 * ((cur && cur.time && cur.time.scale) || 90); // (the shown clock in ×1 seconds)
+      lap('sky');
       life.tick(dt, gclock, tod, cam, st);
+      lap('life');
       veh.tick(dt, gclock, wt, avatar.ride()); // (cam: the nearest named people on screen as VRMs; st: life size and the near VRMs at street level)
+      lap('vehicles');
       hoverStep();
+      lap('hover');
       town.tick(dt);
       nature.tick(dt, clock);
       furn.pulse(clock);
       war.pulse(clock);
-      C.step(dt);
+      lap('town+nature');
+      if (!pz) C.step(dt);
       st = C.street();
+      lap('camera');
       streamStep(dt);
+      lap('stream');
       nature.near(avatar.pos(), st); // (T-370: street level's grass round you)
+      lap('grass');
       props.tick(dt, clock, avatar.pos(), st, low); // (T-372: street life near you)
+      lap('props');
       if (cur && st < STREAM.show && fogDrawn !== cur.fog) fogSync(cur); // (up from street level: the lantern catches up)
+      lap('fog');
       streetLook();
+      lap('ring+haze');
       interStep(dt);
+      lap('interiors');
       if (cur && cur.time) sun.position.copy(sun.target.position).addScaledVector(SKY.dir, 150); // the hour's sun (after the camera placed it)
       night.set(lit, (ch * renderer.getPixelRatio()) / (2 * Math.tan((cam.fov * Math.PI) / 360)), renderer.getPixelRatio());
+      lap('night');
       look.step(dt, clock, lit, tod, C.view, gfx(), st);
+      lap('look');
       fxStep(dt);
+      lap('street fx');
       const n = avatar.lapse(),
         txt = n ? `×${n < 2 ? n.toFixed(1) : Math.round(n)}` : '';
       if (badge && badge.textContent !== txt) {
@@ -538,7 +881,12 @@ export function create(onIdle) {
         badge.hidden = !txt;
       }
       const t1 = performance.now();
-      draw();
+      if (pz) pz.pre();
+      try {
+        draw();
+      } finally {
+        if (pz) probeAfter(pz, t0, t1);
+      }
       const t2 = performance.now();
       furn.tick(cam, cw, ch, C.view.d);
       perfStep(t, t0, t1, t2, performance.now());
@@ -585,6 +933,7 @@ export function create(onIdle) {
       if (!furn) return;
       cur = m;
       fxDirty = true;
+      updN++;
       const fall = m.borders && m.borders.fall ? m.borders.fall.key : null;
       if (fallSeen !== undefined && fall && fall !== fallSeen)
         (m.pins || []).some(p => p.id === m.borders.fall.pin) ? C.flyTo(m.borders.fall.pin) : C.overview(); // a unit destroyed: the camera goes to see (spec §4.34)
@@ -608,6 +957,7 @@ export function create(onIdle) {
       for (const [id, f] of want) {
         if (!figs.has(id)) {
           const g = new THREE.Group(); // (its own group: streaming hides it far off)
+          g.userData.probe = 'people';
           scene.add(g);
           figRoot.set(id, g);
           figs.set(id, createAvatar(g, { kit: f.kit }));
@@ -800,7 +1150,11 @@ export function create(onIdle) {
         blocks: S && S.on ? S.near : null,
         look: { fast: 'Fast', detailed: 'Auto', high: 'High' }[L.look] || L.look,
         ao: L.ao,
-        shadow: sun.shadow.mapSize.x
+        shadow: sun.shadow.mapSize.x,
+        raw: P.raw,
+        secs: { ...secE, draw: P.draw, tags: P.labels },
+        ev: P.ev,
+        src: probeApi
       };
     },
     info: () => ({
@@ -829,8 +1183,11 @@ export function create(onIdle) {
       }, // (= canvas: no stretch)
       fx: { ms: +fxInfo.ms.toFixed(3), sweeps: fxInfo.sweeps } // (T-369: the street finish — JS ms a frame, scene sweeps so far)
     }),
+    /** The perf probe (PerfHUD Measure): items(), start(drv), stop(), ctx(). */
+    probe: probeApi,
     dispose() {
       dead = true;
+      if (pdrv) pdrv.abort('the map closed');
       if (avatar) avatar.dispose();
       for (const a of figs.values()) a.dispose();
       figs.clear();

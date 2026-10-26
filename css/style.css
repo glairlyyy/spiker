@@ -601,7 +601,7 @@ td i {
   color: var(--mute);
   font-weight: 600;
 }
-.perfhud div:not(.ph) {
+.perfhud .phs > div:not(.ph) {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -628,6 +628,50 @@ td i {
   border-radius: 4px;
   color: var(--ink);
   font: inherit;
+}
+/* Measure (owner, 2026-10-26): the probe's buttons, status and the report to copy — the only clickable part of the overlay */
+.perfhud .phx {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  pointer-events: auto;
+}
+.perfhud .phb {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.perfhud .phb .btn {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.perfhud .phst {
+  margin: 4px 0;
+  color: var(--mute);
+}
+.perfhud .phst:empty {
+  display: none;
+}
+.perfhud .phr {
+  display: block;
+  width: min(640px, calc(100vw - 48px));
+  height: 260px;
+  padding: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--ink);
+  font:
+    12px/1.35 ui-monospace,
+    'SFMono-Regular',
+    Menlo,
+    Consolas,
+    monospace;
+  white-space: pre;
+  resize: both;
+}
+.perfhud .phr[hidden] {
+  display: none;
 }
 
 /* The hesitation moment (spec §2.39, T-367): the two options over the court, a draining timer; lit duel cards on the bar */

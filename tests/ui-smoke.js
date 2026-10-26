@@ -259,6 +259,50 @@ const step = async (name, fn) => {
       return `tag: ${tag}; popup ${side}`;
     }
   );
+  await step('perf overlay Measure (owner, 2026-10-26): F3, Measure → a report with ≥ 5 ranked costs, everything restored', async () => {
+    await pg.waitForFunction(() => MapView.m3 && MapView.m3.info().calls > 0, null, { timeout: 120000 });
+    await ev(() => {
+      PerfHUD.toggle(false);
+      PerfHUD.opt = { warm: 0, frames: 1, only: ['terrain', 'town', 'nature', 'people', 'pins', 'shadow', 'bloom', 'post'] }; // (headless frames are slow: a short probe)
+    });
+    await pg.keyboard.press('F3');
+    await pg
+      .waitForFunction(() => PerfHUD.on && document.querySelector('.perfhud [data-a="m"]'), null, { timeout: 120000, polling: 250 })
+      .catch(async () => {
+        throw new Error(
+          `no overlay: ${JSON.stringify(await ev(() => ({ on: PerfHUD.on, el: !!PerfHUD.el, hud: document.querySelectorAll('.perfhud').length, m3: !!MapView.m3 })))}`
+        );
+      });
+    if (!/<kbd>⇧F3<\/kbd>/.test(await ev(() => document.querySelector('.perfhud .phx').innerHTML)))
+      throw new Error('Measure hotkey not printed');
+    await pg.$eval('.perfhud [data-a="m"]', b => b.click()); // (the overlay redraws 4× a second: not 'stable' for a pointer click)
+    await pg.waitForFunction(() => !PerfHUD.probe && PerfHUD.restored, null, { timeout: 240000 });
+    const r = await ev(() => {
+      const ta = document.querySelector('.perfhud .phr');
+      return {
+        text: PerfHUD.text,
+        shown: !!ta && !ta.hidden && ta.value === PerfHUD.text,
+        restored: PerfHUD.restored,
+        status: PerfHUD.status
+      };
+    });
+    if (!r.restored.ok) throw new Error(`not restored: ${r.restored.off.join(', ')}`);
+    const ranked = r.text.split('\n').filter(l => /^ {1,2}\d+ /.test(l));
+    if (ranked.length < 5) throw new Error(`${ranked.length} ranked entries: ${r.text.slice(0, 300)}`);
+    if (!r.shown) throw new Error('the report is not in the textarea');
+    if (!/^device /m.test(r.text) || !/^base /m.test(r.text) || !/^spikes /m.test(r.text)) throw new Error('report sections missing');
+    await pg.$eval('.perfhud [data-a="c"]', b => b.click()); // (the clipboard may be refused headless: the text is selected instead)
+    const qa = process.env.PROBE_SHOT;
+    if (qa) await pg.screenshot({ path: qa });
+    if (process.env.PROBE_TXT) fs.writeFileSync(process.env.PROBE_TXT, r.text);
+    // Esc cancels a probe and restores
+    await ev(() => PerfHUD.measure({ warm: 50, frames: 50 }));
+    await pg.keyboard.press('Escape');
+    const c = await ev(() => ({ probe: !!PerfHUD.probe, restored: PerfHUD.restored, status: PerfHUD.status }));
+    if (c.probe || !c.restored.ok || !/cancelled/.test(c.status)) throw new Error(`Esc: ${JSON.stringify(c)}`);
+    await ev(() => ((PerfHUD.opt = null), PerfHUD.toggle(false)));
+    return `${ranked.length} ranked; top: ${ranked[0].trim().replace(/\s+/g, ' ')}`;
+  });
   await step('the figure menu (T-340): right-click a figure → the menu → Talk → a diary line', async () => {
     await ev(() => MapView.m3.setClock(Math.floor(MapModel.weekTime(RUN)) + 0.5)); // noon: people stand at their places (it holds there)
     const hit = await pg

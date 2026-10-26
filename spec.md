@@ -1976,6 +1976,20 @@ the AI coach fills every slot you leave with the same function. Built and measur
     **Perf overlay** (dev): F3 on the map and in a match (also ⚙ › Perf overlay and the title's Dev tab; off by default, remembered):
     fps, frame ms and the worst frame of the last 2 s, JavaScript ms split (rules · map · draw · tags), draw calls, triangles,
     render scale and canvas px, AO and the shadow map, VRMs drawn, street blocks loaded.
+    **Measure and the spike log (owner, 2026-10-26: "a measurement tab that measures which drawing causes a big performance hit, or
+    any dynamic auto-detect, so I can paste the result for you to fix") [built 2026-10-26]**: the overlay has Measure (Shift+F3; Esc
+    cancels) and Copy report. Measure holds the clock, the camera and the render scale for a few seconds and draws the same view with
+    everything on, then with each part off in turn — on the map terrain, town + detail ring, interiors, nature + grass, street life,
+    people + VRMs + you, vehicles, night lights, war borders, pins + tags, the sky bake; then shadows, the shadow map at half size, AO,
+    bloom, FXAA, the colour grade, the whole post chain, toon bands, the occluder fade, the render scale at 1; in a match the court,
+    the venue, the crowd, the players, effects, trails, the venue's air, shadows, shadow maps and the render scale — and then
+    everything on again. Each part's saving (GPU ms with GPU timer queries, else the draw waited for), its share of the frame, draw
+    calls and triangles go into a plain-text report, ranked, with the device (GPU name, browser), canvas and render scale, setting,
+    view (map / street / inside), time of day, the frame's JavaScript split and its biggest parts, and the spike log. Everything is
+    switched back exactly (the report says so); measuring changes no game state. The spike log (while the overlay is on): a frame
+    over 2× the median or over 50 ms keeps what ran just before it (a shader compile, a ring rebuild, blocks prepared, a props
+    re-pick, a sky bake face, a map update, the fog re-dim, textures for a VRM, renderCareer / MapModel.build / a save with their ms;
+    else "a gap": a GC or browser stall); the last 20. Copy falls back to selecting the text when the clipboard is blocked.
     **Inside a building (owner, 2026-10-25: "the frame rate bug happens when I try to walk inside interior") [built 2026-10-25]**:
     the cost inside is today's people at the stations, all VRMs right by the camera (~43 draw calls and ~110k triangles each with
     their shadow; the gym has 7). Now at most 4 of an interior's station people are VRMs (the nearest; the rest stay the light
