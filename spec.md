@@ -2473,6 +2473,34 @@ mood)`.
 
 ## 9. UI guidelines [locked; built]
 - §9.0 VoiceBox (owner, 2026-10-27: "improve the UI by the new design.md — override the old design with anything in the new design, else leave it as is") **[draft — UI agents 2026-10-27]**: `design/voicebox-DESIGN.md` is the UI's design system where it speaks (colours, type, spacing, 0 radius, flat with borders, buttons, cards, inputs, chips, lists, checkboxes / radios, tooltips, focus ring, do's and don'ts); the rest of §9 stands. The 3D scenes keep their own look.
+  - **Foundation [built 2026-10-27]** (css/theme.css tokens, css/style.css + theme.css base components, index.html fonts, dom.js tooltip delay). Light, flat, 0 radius (9999px avatars only), no shadows (3D/canvas effects kept), 2px borders, focus ring `--ring` (2px #FAFAFA + 2px #0A0A0A). **Type**: 11px is allowed for the Overline only (h3 / h4 / `.overline`); everything else keeps the 12px floor. Buttons are uppercase (VoiceBox overrides §9.3's sentence case). Selected ≠ primary stays: selected = `sel-bg` + black border + 3px ink underline; primary = black fill → red on hover. `--cyan` stays only for the 3D scenes (venues, drone, title arena read it); the UI uses `--info` / `--sel-line` (black). The old fonts (Dela Gothic One, M PLUS Rounded 1c, Rajdhani, Inter) stay loaded for canvas / 3D text only.
+
+    | Token | VoiceBox role | Value |
+    |---|---|---|
+    | `bg` · `surf` · `surf2` | Background · Surface · Surface Raised | #FAFAFA · #F5F5F5 · #E5E5E5 |
+    | `ink` · `mute` · `faint` | Text Primary · Secondary · Tertiary | #0A0A0A · #525252 · #A3A3A3 |
+    | `line` · `line-strong` · `line-ink` | Border Subtle · Medium · Strong | #E5E5E5 · #D4D4D4 · #0A0A0A |
+    | `hot` · `hot-active` · `hot-deep` | Secondary red accent (brand + danger) · active · pressed | #EF4444 · #DC2626 · #B91C1C |
+    | `good` · `warn` · `bad` (+ `-bg` tints) | Success · Warning · Error | #16A34A · #CA8A04 · #EF4444 |
+    | `info` · `sel-line` · `on-ink` | Info / focus · selected border · text on ink | #0A0A0A · #0A0A0A · #FAFAFA |
+    | `hud` · `glass` · `glass2` · `sel-bg` | HUD ground over 3D (solid) · card ground · button / hover ground · selected ground | #FAFAFA · #FAFAFA · #F5F5F5 · #E5E5E5 |
+    | `gold` | stars / rewards (darkened to read on white) | #A16207 |
+    | `disp` · `body` · `mono` | Archivo Black · Work Sans · Space Mono | — |
+    | `r` · `r-full` · `s1`–`s8` · `ring` | radius 0 · avatars · 8-px scale 4…96 · focus ring | — |
+    | `wei` `wu` `shu` `outlaws`, `court-*`, `el-*`, `rank-*`, `gift`, `cyan` | data / scene colours (not VoiceBox): chips, borders, banners, 3D only | unchanged |
+
+    | Component | Class |
+    |---|---|
+    | Button Secondary (default) · Primary · Ghost · Destructive | `.btn` · `.btn.hot` · `.btn.ghost` / `.btn.quiet` · `.btn.danger` (quiet danger = red text) |
+    | Button sizes S · M · L; disabled | `.btn.sm` · `.btn` · `.btn.big` / `.btn.lg`; `:disabled` 0.35 |
+    | Card default · hover · elevated | `.card` (`.panel`, `.ocard`, `.pl`…) · `.card.link` / `a.card` · `.card.elev` (4px red top) |
+    | Input, select, textarea; label; helper | element styles (44px, 2px #D4D4D4, black on focus); `.lbl` / `label.field`; `.help` (`.help.err`) |
+    | Checkbox · radio | `input[type=checkbox]` · `input[type=radio]` |
+    | Filter chip · status chip | `.fchip` (`.on`) · `.schip.good` / `.warn` / `.bad` |
+    | List item | `.vlist > li` · `.vrow` |
+    | Tooltip | `.tipbox` (black, 12px 600, ≤ 220px; 250 ms enter, 0 ms leave) |
+    | Overline · display · headline · subhead · lede · caption | `h3` / `h4` / `.overline` · `.display` · `.headline` · `.subhead` / `h2` · `.lede` · `.caption` |
+    | kbd · pull quote · red underline | `kbd` (Space Mono) · `blockquote` / `.pullq` · `.uline` / `.navon` |
 
 Source: the design system artifact https://claude.ai/artifact/DWxheHjahb7L4k8GAWbRGq — `project/README.md` (rules),
 `status.md` (which card is built, where it lives in the code, open drift and refactor targets — checked 2026-10-04),
