@@ -434,6 +434,9 @@
 .hub .ttabs .btn.on {
   box-shadow: inset 0 -3px 0 var(--hot);
 }
+.hub .ttabs .btn[aria-label='Settings'].on {
+  box-shadow: inset 0 -3px 0 var(--ink); /* ⚙ open: its red is Abandon run */
+}
 .hub .badge {
   font-style: normal;
   min-width: 16px;
