@@ -147,9 +147,12 @@ html.reduced .mtag {
   border-radius: 0;
   background: var(--hud);
 }
-.hub:has(.sheet) .mapwalk {
+.hub:has(.sheet) .mapwalk,
+.hub:has(.spotcard.open) .mapwalk,
+.hub:has(.fmenu) .mapwalk,
+.hub:has(.gearpop) .mapwalk {
   top: auto;
-  bottom: 16px; /* a sheet open: the clock controls drop to its foot, clear of its title row and ✕ */
+  bottom: 16px; /* a sheet, a card or ⚙ open at the top right: the clock controls drop to the foot, clear of its title row and ✕ */
 }
 .hub .mapwalk .lab {
   margin-right: 4px;
