@@ -7,7 +7,7 @@
   overflow: hidden;
   background: var(--surf);
   display: block;
-  --hudbg: rgba(12, 14, 20, 0.82);
+  --hudbg: var(--hud); /* VoiceBox: solid surfaces over the 3D map */
   --gap: max(16px, env(safe-area-inset-left));
   --tbar: 56px;
   --rail: 340px;
@@ -19,11 +19,8 @@
   position: absolute;
   z-index: 2;
   background: var(--hudbg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  border: 2px solid var(--ink); /* VoiceBox: flat, the border does the work over the map */
+  border-radius: 0;
 }
 /* resources, top left */
 .hub .hd {
@@ -65,7 +62,7 @@
   background: var(--tc);
   color: var(--on-ink);
   font-size: 12px;
-  border-radius: 8px;
+  border-radius: 0;
   padding: 0 5px;
 }
 .hub .me .who {
@@ -90,14 +87,14 @@
 }
 .hub .me .mini i {
   height: 5px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
   overflow: hidden;
 }
 .hub .me .mini u {
   display: block;
   height: 100%;
-  background: var(--cyan);
+  background: var(--info);
 }
 /* day clock, top right */
 .hub .clock {
@@ -105,9 +102,6 @@
   right: var(--gap);
   background: none;
   border: 0;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -121,13 +115,11 @@
 .hub .clock .days i {
   width: 9px;
   height: 9px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--day-dot);
-  box-shadow: 0 0 6px rgba(245, 184, 46, 0.6);
 }
 .hub .clock .days i.used {
-  background: rgba(255, 255, 255, 0.18);
-  box-shadow: none;
+  background: color-mix(in srgb, var(--ink) 18%, transparent);
 }
 .hub .btn .dt {
   opacity: 0.7;
@@ -165,7 +157,7 @@
   pointer-events: none;
 }
 .hub .hubmodal.dim {
-  background: rgba(0, 0, 0, 0.5);
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
   pointer-events: auto;
 }
 .hub .hubcard {
@@ -174,10 +166,10 @@
   max-height: 100%;
   overflow: auto;
   background: var(--surf);
-  border: 1px solid var(--line);
-  border-radius: 16px;
+  border: 2px solid var(--line);
+  border-top: 4px solid var(--hot); /* VoiceBox elevated card: the one featured card on screen */
+  border-radius: 0;
   padding: 6px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
 }
 .hub .hubcard.wide {
   width: min(960px, 100%);
@@ -198,7 +190,7 @@
     width: auto;
     padding: 4px;
     bottom: calc(var(--gap) + 66px);
-    border-radius: 50%;
+    border-radius: 0;
   }
   .hub .me .who {
     display: none;
@@ -219,8 +211,8 @@
   align-items: center;
   gap: 4px;
   padding: 2px 4px 2px 10px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  border: 2px solid var(--line);
+  border-radius: 0;
   font-size: 13px;
 }
 .chipm .x {
@@ -230,9 +222,9 @@
 .hub kbd {
   margin-left: 6px;
   padding: 0 4px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  font: 600 12px/16px var(--body);
+  border: 2px solid var(--line);
+  border-radius: 0;
+  font: 400 12px/16px var(--mono, 'Space Mono', monospace);
   color: var(--mute);
 }
 
@@ -311,11 +303,11 @@
   gap: 24px;
   padding: 0 16px;
   background: var(--surf);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 2px solid var(--ink);
 }
 .hub .tbrand {
-  font: 600 15px var(--disp);
-  letter-spacing: 0.3em;
+  font: 400 16px/1 var(--disp);
+  letter-spacing: -0.01em;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -330,7 +322,9 @@
   line-height: 1.2;
 }
 .hub .tres small {
-  font-size: 12px;
+  font: 700 12px/1.4 var(--body);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--mute);
 }
 .hub .tres b {
@@ -341,7 +335,7 @@
   white-space: nowrap;
 }
 .hub .tres .disp {
-  font: 600 16px var(--disp);
+  font: 400 16px var(--disp);
 }
 .hub .tres .sbar {
   width: 72px;
@@ -363,8 +357,8 @@
   align-items: center;
   gap: 2px;
   padding: 2px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 2px solid var(--line);
+  border-radius: 0;
   background: none;
   cursor: pointer;
 }
@@ -387,7 +381,7 @@
   right: -5px;
   min-width: 16px;
   height: 16px;
-  border-radius: 999px;
+  border-radius: 0;
   font: 700 12px/16px var(--body);
   font-style: normal;
   text-align: center;
@@ -426,13 +420,27 @@
 .hub .ttabs kbd {
   margin: 0;
 }
+/* VoiceBox nav: ghost tabs; the open sheet's tab carries the red underline (the one red on the bar) */
+.hub .ttabs .btn,
+.hub .ttabs .btn.on {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ink);
+}
+.hub .ttabs .btn:hover {
+  background: transparent;
+  color: var(--hot);
+}
+.hub .ttabs .btn.on {
+  box-shadow: inset 0 -3px 0 var(--hot);
+}
 .hub .badge {
   font-style: normal;
   min-width: 16px;
   padding: 0 5px;
-  border-radius: 999px;
-  background: var(--hot);
-  color: var(--white);
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--on-ink);
   font: 700 12px/16px var(--body);
 }
 .hub .wrail {
@@ -449,11 +457,11 @@
   gap: 16px;
   overflow-y: auto;
   background: var(--surf);
-  border-right: 1px solid var(--line);
+  border-right: 2px solid var(--ink);
 }
 .hub .wrail .lab {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--mute);
@@ -496,7 +504,7 @@
 .hub .mbar4 {
   display: block;
   height: 6px;
-  border-radius: 3px;
+  border-radius: 0;
   background: var(--surf2);
   overflow: hidden;
 }
@@ -504,7 +512,7 @@
   display: block;
   width: var(--w);
   height: 100%;
-  background: var(--cyan);
+  background: var(--info);
 }
 .hub .wh {
   display: flex;
@@ -519,9 +527,9 @@
 }
 .hub .dslot {
   height: 56px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surf2);
-  border: 1px solid transparent;
+  border: 2px solid transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -533,7 +541,7 @@
   line-height: 1.1;
 }
 .hub .dslot.done {
-  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
 }
 .hub .dslot.match {
   grid-column: 1 / -1;
@@ -604,7 +612,7 @@
   line-height: 1.1;
 }
 .hub .wleft b {
-  font: 600 20px var(--disp);
+  font: 400 20px var(--disp);
   font-variant-numeric: tabular-nums;
 }
 .hub .wleft small {
@@ -630,8 +638,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 2px solid var(--line);
+  border-radius: 0;
   background: var(--surf2);
   color: var(--ink);
   font: 16px var(--body);
@@ -668,7 +676,7 @@
   max-height: calc(100vh - var(--tbar) - 32px);
   padding: 16px;
   background: var(--surf);
-  border-radius: 12px;
+  border-radius: 0;
 }
 .hub .hubmodal {
   inset: var(--tbar) 0 0 var(--rail);
@@ -699,15 +707,15 @@
   white-space: nowrap;
 }
 .hub .dslot.trip {
-  background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0 6px, transparent 6px 12px);
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ink) 7%, transparent) 0 6px, transparent 6px 12px);
 }
 .hub .dslot.ghost {
-  border: 1px dashed var(--cyan);
+  border: 2px dashed var(--info);
   background: var(--sel-bg);
 }
 .hub .dslot.ghost i,
 .hub .dslot.ghost b {
-  color: var(--cyan);
+  color: var(--info);
 }
 /* place panel anatomy (T-119) */
 .plc .lab {
@@ -715,17 +723,16 @@
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--mute);
 }
 .plc .ptitle {
   margin: 4px 0 8px;
-  font-size: 20px;
-  font-weight: 600;
+  font: 400 24px/1.2 var(--disp);
   text-transform: none;
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
   color: var(--ink);
 }
 .plc .ptags {
@@ -738,10 +745,12 @@
   align-items: center;
   height: 22px;
   padding: 0 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
+  border: 2px solid var(--line-strong);
+  border-radius: 0;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--mute);
 }
 .plc .ptag.warn {
@@ -768,7 +777,7 @@
 .plc .pgain .pi {
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surf2);
   display: grid;
   place-items: center;
@@ -808,7 +817,7 @@
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surf2);
   font-size: 13px;
   font-weight: 600;
@@ -831,8 +840,8 @@
   gap: 6px;
   min-height: 32px;
   padding: 0 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
+  border: 2px solid var(--line-strong);
+  border-radius: 0;
   background: transparent;
   color: var(--ink);
   font: inherit;
@@ -873,9 +882,8 @@
   max-width: 320px;
   padding: 14px;
   background: var(--surf);
-  border: 1px solid var(--line-strong);
-  border-radius: 10px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  border: 2px solid var(--line-strong);
+  border-radius: 0;
   color: var(--ink);
   font-size: 13px;
 }
@@ -884,7 +892,7 @@
 }
 .peek .lab {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--mute);
@@ -901,8 +909,8 @@
   top: var(--y);
   z-index: 1001;
   padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--cyan);
+  border-radius: 0;
+  background: var(--info);
   color: var(--on-ink);
   font: 700 12px/16px var(--body);
   pointer-events: none;
@@ -1056,7 +1064,7 @@
   cursor: pointer; /* a friend's greeting in the dialogue box (training together, owner 2026-10-05): click / Space goes on */
 }
 .hub .actlock.dim {
-  background: rgba(0, 0, 0, 0.45);
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
   cursor: default;
   animation: lkfade 0.18s ease-out;
 }
@@ -1066,9 +1074,9 @@
   gap: 10px;
   margin-left: var(--rail);
   padding: 8px 16px;
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--hud);
-  border: 1px solid var(--line-strong);
+  border: 2px solid var(--line-strong);
   font-size: 14px;
   font-weight: 600;
 }
@@ -1080,41 +1088,40 @@
   max-width: 380px;
   margin-left: var(--rail);
   padding: 28px 32px 20px;
-  border-radius: 16px;
+  border-radius: 0;
   background: var(--surf);
-  border: 1px solid var(--line-strong);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+  border: 2px solid var(--line-strong);
   text-align: center;
   animation: lkpop 0.22s ease-out;
 }
 .hub .tfx > b {
-  font: 600 22px/1.2 var(--disp);
-  letter-spacing: 0.04em;
+  font: 400 24px/1.2 var(--disp);
+  letter-spacing: -0.01em;
 }
 .hub .tfx.ok {
-  border-top: 3px solid var(--good);
+  border-top: 4px solid var(--good);
 }
 .hub .tfx.bad {
-  border-top: 3px solid var(--bad);
+  border-top: 4px solid var(--bad);
 }
 .hub .tfi {
   display: grid;
   place-items: center;
   width: 56px;
   height: 56px;
-  border-radius: 50%;
+  border-radius: 0;
   font-size: 28px;
   font-weight: 700;
   animation: lkpop 0.3s ease-out;
 }
 .hub .tfx.ok .tfi {
   color: var(--good);
-  background: rgba(74, 222, 128, 0.12); /* good at 12% */
+  background: color-mix(in srgb, var(--good) 12%, transparent);
   border: 2px solid var(--good);
 }
 .hub .tfx.bad .tfi {
   color: var(--bad);
-  background: rgba(255, 46, 77, 0.12); /* bad at 12% */
+  background: color-mix(in srgb, var(--bad) 12%, transparent);
   border: 2px solid var(--bad);
 }
 .hub .tfr {
@@ -1129,7 +1136,7 @@
   align-items: center;
   gap: 10px;
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surf2);
   text-align: left;
   font-size: 14px;
@@ -1147,9 +1154,9 @@
   display: inline-block;
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: 0;
   border: 3px solid var(--line-strong);
-  border-top-color: var(--cyan);
+  border-top-color: var(--ink);
   animation: lkspin 0.8s linear infinite;
 }
 .hub .spin.sm {
@@ -1198,7 +1205,7 @@
   overflow: auto;
   padding: 16px;
   background: var(--surf);
-  border-radius: 12px;
+  border-radius: 0;
   border-color: var(--line-strong);
   cursor: default;
 }
@@ -1219,7 +1226,7 @@
   height: 32px;
   margin: 0;
   padding: 0 8px;
-  border-radius: 8px;
+  border-radius: 0;
   white-space: nowrap;
 }
 .hub .fmenu > .x kbd {
@@ -1238,7 +1245,8 @@
   min-width: 0;
 }
 .hub .fmh b {
-  font-size: 16px;
+  font: 400 24px/1.2 var(--disp);
+  letter-spacing: -0.01em;
 }
 .hub .fmh small {
   font-size: 13px;
@@ -1285,7 +1293,7 @@
 }
 .hub .fmb b {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
 }
 .hub .fmb .oln {
   font-size: 12px;
@@ -1389,7 +1397,7 @@
   position: relative;
   height: 40px;
   margin: 4px 0 12px;
-  border-radius: 6px;
+  border-radius: 0;
   background: linear-gradient(var(--surf2), var(--surf2)) top / 100% 24px no-repeat;
 }
 .hub .dstrip .db {
@@ -1397,11 +1405,11 @@
   top: 4px;
   height: 16px;
   min-width: 2px;
-  border-radius: 3px;
+  border-radius: 0;
   background: var(--mute);
 }
 .hub .dstrip .db.train {
-  background: var(--cyan);
+  background: var(--info);
 }
 .hub .dstrip .db.trip {
   background: repeating-linear-gradient(135deg, var(--line-strong) 0 3px, transparent 3px 6px);
@@ -1416,13 +1424,13 @@
 }
 .hub .dstrip .db.ghost {
   background: var(--sel-bg);
-  border: 1px dashed var(--sel-line);
+  border: 2px dashed var(--sel-line);
 }
 .hub .dstrip .db.match {
   top: 2px;
   height: 20px;
   background: transparent;
-  border: 1px solid var(--warn);
+  border: 2px solid var(--warn);
 }
 .hub .dstrip .dnow {
   position: absolute;
@@ -1457,15 +1465,15 @@
   position: absolute;
   z-index: 3;
   top: calc(var(--tbar) + 16px);
-  left: calc(var(--rail) + 120px);
+  left: calc(var(--rail) + 152px); /* right of ◎ Me (VoiceBox's uppercase button is wider) */
   height: 40px;
   padding: 0 12px;
   display: flex;
   align-items: center;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 0;
   background: var(--hud);
-  font: 600 16px var(--disp);
+  font: 700 16px var(--mono, 'Space Mono', monospace);
   color: var(--ink);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;

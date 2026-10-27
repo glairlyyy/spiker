@@ -6,7 +6,7 @@
   cursor: pointer;
 }
 .sbox-layer.dark {
-  background: var(--bg);
+  background: var(--ink); /* VoiceBox: the scene's black — stark white type on it */
 }
 .sbox-layer.bars::before,
 .sbox-layer.bars::after {
@@ -15,7 +15,7 @@
   left: 0;
   right: 0;
   height: 9vh;
-  background: var(--bg);
+  background: var(--ink);
 }
 .sbox-layer.bars::before {
   top: 0;
@@ -35,8 +35,8 @@
   gap: 20px;
   padding: 20px 24px 28px;
   background: var(--surf);
-  border: 1px solid var(--line-strong);
-  border-radius: 12px;
+  border: 2px solid var(--ink);
+  border-radius: 0;
 }
 .sbox-layer.dark .sbox {
   background: transparent;
@@ -46,7 +46,7 @@
   flex: none;
   width: 72px;
   height: 72px;
-  border-radius: 10px;
+  border-radius: 0;
   overflow: hidden;
   background: var(--surf2);
 }
@@ -57,8 +57,8 @@
 .sb-name {
   display: inline-block;
   margin-bottom: 8px;
-  font: 600 16px/1 var(--disp);
-  letter-spacing: 0.08em;
+  font: 400 16px/1 var(--disp);
+  letter-spacing: 0;
   text-transform: uppercase;
   color: var(--ink);
 }
@@ -80,8 +80,22 @@
   font-style: italic;
   color: var(--mute);
 }
+.sbox-layer.dark .sb-title,
+.sbox-layer.dark .sb-name,
+.sbox-layer.dark .sb-text,
+.sbox-layer.dark .sb-more,
 .sbox-layer.dark .sbox.narration .sb-text {
-  color: var(--ink);
+  color: var(--on-ink);
+}
+.sbox-layer.dark .sb-keys {
+  color: var(--faint);
+}
+.sbox-layer.dark kbd {
+  color: var(--on-ink);
+  border-color: var(--on-ink);
+  background: transparent;
+}
+.sbox-layer.dark .sbox.narration .sb-text {
   font-size: 22px;
   text-align: left; /* (owner, 2026-10-05: left-aligned like every other line) */
 }
@@ -143,8 +157,8 @@
   overflow: auto;
   padding: 20px 24px;
   background: var(--surf);
-  border: 1px solid var(--line-strong);
-  border-radius: 12px;
+  border: 2px solid var(--ink);
+  border-radius: 0;
   cursor: default;
 }
 .sb-log ol {
@@ -173,8 +187,9 @@
   inset: 0;
   display: grid;
   place-items: center;
-  font: 700 clamp(72px, 12vw, 160px) / 1 var(--disp);
-  letter-spacing: 0.08em;
+  font: 400 clamp(72px, 12vw, 160px) / 1.05 var(--disp);
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
   color: var(--ink);
   animation: sbFade 1.2s ease-out both;
 }

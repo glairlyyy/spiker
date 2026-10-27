@@ -49,22 +49,22 @@
   gap: 2px;
   margin-top: -34px;
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--hud);
-  border: 1px solid var(--line-strong);
-  color: var(--white);
+  border: 2px solid var(--ink);
+  color: var(--ink);
   font: 600 12px/16px var(--body);
   white-space: nowrap;
-  box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
   animation: mtagin var(--dur-fast, 150ms) var(--ease-out, ease-out);
 }
 .mtag b {
-  font: 700 14px/18px var(--body);
+  font: 400 14px/18px var(--disp);
+  text-transform: uppercase;
   color: var(--ink);
 }
 .mtag em.mgl {
   font-style: normal;
-  color: var(--cyan);
+  color: var(--info);
   letter-spacing: 1px;
 }
 .mtag span {
@@ -85,7 +85,7 @@ html.reduced .mtag {
   color: var(--gold);
 }
 .mlab {
-  color: color-mix(in srgb, var(--tc, var(--parchment)) 75%, var(--white));
+  color: color-mix(in srgb, var(--tc, var(--ink)) 45%, var(--ink)); /* VoiceBox: ink on a paper halo over the map */
   font: 700 14px var(--disp);
   letter-spacing: 0.06em;
   white-space: nowrap;
@@ -100,7 +100,7 @@ html.reduced .mtag {
   letter-spacing: 0.12em;
 }
 .mlab.ap {
-  color: var(--parchment);
+  color: var(--ink);
   font: 600 12px var(--body);
   letter-spacing: 0;
 }
@@ -131,6 +131,7 @@ html.reduced .mtag {
   top: calc(var(--tbar) + 16px);
   left: calc(var(--rail) + 16px);
   background: var(--hud);
+  border-color: var(--ink);
 }
 /* Walking speed (map, top right, T-214): above the walk lock so it works mid-walk */
 .hub .mapwalk {
@@ -142,9 +143,13 @@ html.reduced .mtag {
   align-items: center;
   gap: 4px;
   padding: 4px 4px 4px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 0;
   background: var(--hud);
+}
+.hub:has(.sheet) .mapwalk {
+  top: auto;
+  bottom: 16px; /* a sheet open: the clock controls drop to its foot, clear of its title row and ✕ */
 }
 .hub .mapwalk .lab {
   margin-right: 4px;
@@ -167,10 +172,9 @@ html.reduced .mtag {
 }
 .hub .mapwalk .tchip {
   margin-right: 6px;
-  font-size: 12px;
+  font: 400 12px var(--mono, 'Space Mono', monospace);
   color: var(--mute);
   white-space: nowrap;
-  font-variant-numeric: tabular-nums;
 }
 .hub .mapwalk .tchip.held {
   color: var(--warn);
@@ -207,7 +211,7 @@ html.reduced .mtag {
 .wstr {
   position: relative;
   height: 6px;
-  border-radius: 3px;
+  border-radius: 0;
   background: var(--line);
   overflow: hidden;
 }
@@ -217,7 +221,7 @@ html.reduced .mtag {
   top: 0;
   bottom: 0;
   width: var(--w);
-  border-radius: 3px;
+  border-radius: 0;
   background: var(--good);
 }
 .wstr.s1 i {
@@ -233,8 +237,8 @@ html.reduced .mtag {
 /* the war stage chip in match prep (spec §4.34) */
 .prep .wstage {
   padding: 1px 8px;
-  border: 1px solid var(--bad-soft);
-  border-radius: 8px;
+  border: 2px solid var(--bad-soft);
+  border-radius: 0;
   color: var(--bad-soft);
   font-size: 12px;
 }
@@ -248,12 +252,14 @@ html.reduced .mtag {
   align-items: center;
   gap: 8px;
   padding: 6px 14px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
+  border: 2px solid var(--ink);
+  border-radius: 0;
   background: var(--hud);
   color: var(--ink);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   pointer-events: none;
 }
 .mapload::before {
@@ -262,11 +268,30 @@ html.reduced .mtag {
   height: 10px;
   border: 2px solid var(--line-strong);
   border-top-color: var(--ink);
-  border-radius: 50%;
+  border-radius: 0;
   animation: mapload-spin 0.8s linear infinite;
 }
 @keyframes mapload-spin {
   to {
     transform: rotate(360deg);
   }
+}
+/* the F3 perf overlay's panel (VoiceBox, 2026-10-27; base rules in style.css): flat, square, 2px ink border, mono figures */
+.perfhud {
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  font-family: var(--mono, 'Space Mono', monospace);
+}
+.perfhud .ph {
+  font: 700 12px/1.4 var(--body);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.perfhud kbd,
+.perfhud .phr {
+  border-width: 2px;
+  border-radius: 0;
+}
+.perfhud .phr {
+  font-family: var(--mono, 'Space Mono', monospace);
 }
