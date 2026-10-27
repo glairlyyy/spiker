@@ -302,6 +302,13 @@ button.card:hover {
 .btn.ghost.danger {
   color: var(--bad);
 }
+/* rich buttons (option rows: name + cost → result): only the label is uppercase; the detail lines read as body text */
+.btn small,
+.btn .sub {
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-weight: 500;
+}
 /* sizes: S 6/16 12px · M 10/24 14px (default) · L 14/32 16px */
 .btn.sm {
   padding: 6px 16px;
