@@ -2522,3 +2522,24 @@ html.reduced .hc.fusein {
   letter-spacing: 0.12em;
   color: var(--mute);
 }
+/* the labs' control rows are not theme.css's VoiceBox list rows (.vrow): no list padding, divider or hover there */
+.vlab .vrow,
+.vfxpanel .vrow {
+  padding: 0;
+  border-bottom: 0;
+  font-size: 13px;
+}
+.vlab .vrow:hover,
+.vfxpanel .vrow:hover,
+.vlab .vrow:active,
+.vfxpanel .vrow:active {
+  background: none;
+}
+/* (perf, not look) the HUD panels keep the old backdrop blur: over the solid --hud ground it shows nothing, but without it
+   the court's frames cost ~1.5× under SwiftShader (measured 2026-10-27: the Animation lab's load 105 s → 160 s) */
+.match .mtop,
+.match .cbar,
+.xbox,
+.hand .hlist {
+  backdrop-filter: blur(10px);
+}
