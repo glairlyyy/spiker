@@ -99,6 +99,8 @@ Build chat loop, one task at a time:
   blocked (textures are decoded in memory — keep it that way).
 - Escape all user/data strings in innerHTML with esc().
 - Desktop-only UI for now; don't spend effort on mobile layouts.
+- UI (owner, 2026-10-27): `design/voicebox-DESIGN.md` (VoiceBox: black / white / one red accent, Archivo Black + Work Sans + Space Mono,
+  0 radius, no shadows, 2px borders) overrides the older design system below wherever they differ; everything it doesn't cover stays as below.
 - UI (owner, 2026-10-03): every UI change follows spec §9 and the design system artifact
   https://claude.ai/artifact/DWxheHjahb7L4k8GAWbRGq (`project/README.md` rules, `tokens.json`, components, `short-copy.md`).
   Colours only from theme.css tokens; one `ink`-filled primary per card; `hot` = brand/danger only; faction colours only

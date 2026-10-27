@@ -2472,6 +2472,7 @@ mood)`.
 - New-run setup + results screens. Hype scene frequency tuning (§2.3). More music, crowd, voice clips. Living map B/C. Endless mode.
 
 ## 9. UI guidelines [locked; built]
+- §9.0 VoiceBox (owner, 2026-10-27: "improve the UI by the new design.md — override the old design with anything in the new design, else leave it as is") **[draft — UI agents 2026-10-27]**: `design/voicebox-DESIGN.md` is the UI's design system where it speaks (colours, type, spacing, 0 radius, flat with borders, buttons, cards, inputs, chips, lists, checkboxes / radios, tooltips, focus ring, do's and don'ts); the rest of §9 stands. The 3D scenes keep their own look.
 
 Source: the design system artifact https://claude.ai/artifact/DWxheHjahb7L4k8GAWbRGq — `project/README.md` (rules),
 `status.md` (which card is built, where it lives in the code, open drift and refactor targets — checked 2026-10-04),
