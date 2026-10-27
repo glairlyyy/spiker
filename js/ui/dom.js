@@ -293,10 +293,19 @@ const pop = (label, body, cls = '') =>
     box.style.left = x + 'px';
     box.style.top = y + 'px';
   };
-  const hide = () => box && (box.style.display = 'none');
+  // VoiceBox (spec §9.0): 250 ms to enter, 0 ms to leave
+  let wait = 0,
+    cur = null;
+  const hide = () => (clearTimeout(wait), (cur = null), box && (box.style.display = 'none'));
+  const later = el => {
+    if (el === cur) return;
+    hide();
+    cur = el;
+    wait = setTimeout(() => cur === el && el.isConnected && show(el), 250);
+  };
   const at = e => (e.target && e.target.closest ? e.target.closest('[data-tip]') : null);
-  document.addEventListener('mouseover', e => (at(e) ? show(at(e)) : hide()));
-  document.addEventListener('focusin', e => (at(e) ? show(at(e)) : hide()));
+  document.addEventListener('mouseover', e => (at(e) ? later(at(e)) : hide()));
+  document.addEventListener('focusin', e => (at(e) ? later(at(e)) : hide()));
   document.addEventListener('focusout', hide);
   addEventListener('scroll', hide, true);
   // pop-over menus: one open at a time, closed by an outside click or Esc

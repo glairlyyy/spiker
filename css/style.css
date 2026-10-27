@@ -52,7 +52,7 @@ h4 {
   display: inline-block;
   width: 10px;
   height: 10px;
-  border-radius: 3px;
+  border-radius: 0;
   background: var(--tc);
   margin-right: 6px;
   flex: none;
@@ -67,10 +67,10 @@ h4 {
 }
 .panel {
   background: var(--surf);
-  border: 1px solid var(--line);
-  border-radius: 16px;
+  border: 2px solid var(--line);
+  border-radius: 0;
   padding: 16px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 .loading {
   display: grid;
@@ -100,9 +100,9 @@ h4 {
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   background: var(--surf);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 14px;
+  border: 2px solid var(--line);
+  border-radius: 0;
+  padding: 16px;
 }
 .bcol {
   display: flex;
@@ -111,8 +111,8 @@ h4 {
   gap: 10px;
 }
 .bm {
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  border: 2px solid var(--line);
+  border-radius: 0;
   overflow: hidden;
 }
 .br {
@@ -156,8 +156,9 @@ h4 {
   right: 12px;
   top: 10px;
   border: 0;
-  background: var(--surf2);
-  border-radius: 50%;
+  background: transparent;
+  border-radius: 0;
+  font-weight: 700;
   width: 34px;
   height: 34px;
   cursor: pointer;
@@ -169,9 +170,9 @@ h4 {
   margin: 14px 0;
 }
 .pl {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 12px;
+  border: 2px solid var(--line);
+  border-radius: 0;
+  padding: 16px;
   background: var(--bg);
 }
 .pl.star.op {
@@ -185,7 +186,7 @@ h4 {
 .num {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
+  border-radius: 0;
   display: grid;
   place-items: center;
   background: var(--tc);
@@ -212,14 +213,14 @@ h4 {
   background: var(--bc);
 }
 .bar.wit i {
-  background: linear-gradient(90deg, var(--cyan), var(--hot));
+  background: var(--ink);
 }
 .bar b {
   position: relative;
   font-size: 12px;
   padding-left: 6px;
   color: var(--white);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  mix-blend-mode: difference;
 }
 .pl p {
   margin: 6px 0 0;
@@ -323,7 +324,7 @@ h4 {
 }
 .zone {
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 0;
   color: var(--mute);
   opacity: 0.35;
 }
@@ -334,7 +335,6 @@ h4 {
 .opstar {
   color: var(--bad);
   font-weight: 800;
-  text-shadow: 0 0 6px rgba(255, 46, 77, 0.55);
 }
 @keyframes zapf {
   50% {
@@ -347,7 +347,7 @@ h4 {
   flex: none;
   width: 64px;
   height: 64px;
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--tc);
   display: grid;
   place-items: center;
@@ -367,13 +367,13 @@ h4 {
   vertical-align: middle;
 }
 .rot i.fr {
-  box-shadow: inset 0 -2px 0 var(--cyan);
+  box-shadow: inset 0 -3px 0 var(--ink);
 }
 .sbar {
   display: inline-block;
   width: 34px;
   height: 6px;
-  border-radius: 3px;
+  border-radius: 0;
   overflow: hidden;
   vertical-align: middle;
 }
@@ -388,7 +388,7 @@ h4 {
   place-items: center;
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--warn-hi);
   color: var(--court-ink);
   font: 800 12px var(--body);
@@ -425,21 +425,21 @@ h4 {
   }
 }
 .over {
-  background: rgba(6, 9, 30, 0.4) !important;
+  background: rgba(10, 10, 10, 0.4) !important;
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
   grid-template-rows: minmax(0, 100%);
-  background: rgba(6, 9, 30, 0.62);
+  background: rgba(10, 10, 10, 0.6);
   padding: 12px;
 }
 .over[hidden] {
   display: none;
 }
 .ocard {
-  border-radius: 16px;
-  padding: 18px 22px;
+  border-radius: 0;
+  padding: 24px;
   max-width: 420px;
   width: 100%;
   text-align: center;
@@ -451,7 +451,7 @@ h4 {
 .ocard > .btn.big {
   position: sticky;
   bottom: 0;
-  box-shadow: 0 -10px 12px var(--surf);
+  box-shadow: 0 -8px 0 var(--bg);
 }
 .ocard p {
   margin: 6px 0;
@@ -575,9 +575,7 @@ td i {
 }
 /* Fired up (spec §4.30): the only on-screen trace of the hidden Drive bar — a warm ring round your portrait */
 .portrait.fired {
-  box-shadow:
-    0 0 0 2px var(--gold),
-    0 0 12px var(--gold);
+  box-shadow: 0 0 0 3px var(--gold);
 }
 
 /* The perf overlay (owner, 2026-10-25; map-view.js PerfHUD, F3): small, out of the way, numbers in tabular figures. */
@@ -588,8 +586,8 @@ td i {
   z-index: 9000;
   min-width: 240px;
   padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 0;
   background: var(--hud);
   color: var(--ink);
   font: 12px/1.45 var(--body);
@@ -625,9 +623,9 @@ td i {
   margin-left: 4px;
   padding: 0 4px;
   border: 1px solid var(--line-strong);
-  border-radius: 4px;
+  border-radius: 0;
   color: var(--ink);
-  font: inherit;
+  font: 12px/1.45 var(--mono);
 }
 /* Measure (owner, 2026-10-26): the probe's buttons, status and the report to copy — the only clickable part of the overlay */
 .perfhud .phx {
@@ -657,16 +655,11 @@ td i {
   width: min(640px, calc(100vw - 48px));
   height: 260px;
   padding: 6px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
+  border: 2px solid var(--line-strong);
+  border-radius: 0;
   background: var(--bg);
   color: var(--ink);
-  font:
-    12px/1.35 ui-monospace,
-    'SFMono-Regular',
-    Menlo,
-    Consolas,
-    monospace;
+  font: 12px/1.35 var(--mono);
   white-space: pre;
   resize: both;
 }
@@ -686,11 +679,10 @@ td i {
   gap: 8px;
   width: min(520px, 90%);
   padding: 12px 16px;
-  border: 1px solid var(--line-strong);
-  border-top: 3px solid var(--tc, var(--cyan));
-  border-radius: 12px;
+  border: 2px solid var(--ink);
+  border-top: 4px solid var(--tc, var(--ink));
+  border-radius: 0;
   background: var(--hud);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
   color: var(--ink);
 }
 .hes .hesh {
@@ -734,8 +726,8 @@ td i {
 }
 .hes .hest {
   height: 4px;
-  border-radius: 2px;
-  background: var(--glass2);
+  border-radius: 0;
+  background: var(--surf2);
   overflow: hidden;
 }
 .hes .hest i {
@@ -750,9 +742,9 @@ td i {
   align-items: center;
   gap: 4px;
   padding: 0 8px 4px;
-  border: 1px dashed var(--line-strong);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--hud) 60%, transparent);
+  border: 2px dashed var(--line-strong);
+  border-radius: 0;
+  background: var(--hud);
 }
 .hand .hduel > .lab {
   font-size: 12px;
@@ -767,15 +759,13 @@ td i {
 }
 .hand .hduel.on {
   border-style: solid;
-  border-color: var(--cyan);
+  border-color: var(--ink);
 }
 .hand .hduel.on > .lab {
   color: var(--ink);
 }
 .hc.duel {
-  border-color: var(--cyan);
-  box-shadow:
-    var(--glow),
-    0 8px 24px rgba(0, 0, 0, 0.5);
+  border-color: var(--ink);
+  box-shadow: var(--glow);
   transform: translateY(-12px);
 }
