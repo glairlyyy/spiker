@@ -356,12 +356,14 @@ function clockIdle(run, h) {
 function mapFF(p, F) {
   const run = RUN,
     via = roadStart(p),
+    from = City.pos(run).slice(),
     walk = City.trip(run, p) ? City.walkTo(run, p) : '';
   if (walk === null) return;
   F.walk = walk || '';
   Run.save(run);
   actLock(null, null, null, walk ? roadAfter(run, via) : null);
   CW.lock.ff = { ...F, done: 0 };
+  if (walk) walkCut(CW.lock, from, 0);
   renderCareer();
 }
 /** The walk is over: the fast-forward starts (its rules checked again: the road may have changed things), else unlock. */
@@ -487,6 +489,7 @@ function lockWalk(L) {
     if (CW.lock !== L) return clearInterval(actLock.iv);
     if (L.phase !== 'walk') return;
     t += 120 * (t < LOCK.min ? 1 : MapView.CLK.on); // (×1 / ×2 / ×4; paused: it waits)
+    L.f = gh > 0 ? Math.min(1, t / (gh * CLOCK.scale * 1000)) : 1; // (how far along, without the 3D map: Stop's share)
     if (W && W.held) return L.enc ? lockPhase('enc') : W.go(); // (a stop with nothing to show: walk on)
     if (t > LOCK.min && (!MapView.busy() || t > max)) {
       if (L.enc) return lockPhase('enc'); // no stop on the way (no 3D map, a short walk): it meets you on arrival
@@ -551,7 +554,7 @@ function lockLayer() {
   const L = CW.lock;
   if (!L) return '';
   if (L.phase === 'walk')
-    return `<div class="actlock walk" id="actlock" role="status" aria-live="polite"><span class="lkpill"><i class="spin sm" aria-hidden="true"></i>${L.by ? `By ${esc(L.by.toLowerCase())}${L.to ? ` to ${esc(L.to)}` : ''}` : L.to ? `Walking to ${esc(L.to)}` : 'On the way'}</span></div>`;
+    return `<div class="actlock walk free" id="actlock" role="status" aria-live="polite"><span class="lkpill"><i class="spin sm" aria-hidden="true"></i>${L.off ? esc(L.off) : L.by ? `By ${esc(L.by.toLowerCase())}${L.to ? ` to ${esc(L.to)}` : ''}` : L.to ? `Walking to ${esc(L.to)}` : 'On the way'}${L.cut && !L.off ? `<button class="btn" onclick="walkStop()"><kbd>Esc</kbd> Stop → stand here</button>` : ''}</span></div>`;
   if (L.phase === 'greet') {
     const P = L.greet.person;
     return `<div class="actlock greet" id="actlock" role="dialog" aria-live="polite" onclick="lockGreetDone()"><div class="sbox">${P ? `<span class="sb-face">${faceSVG(P, 0, 72)}</span>` : ''}<div class="sb-body">${P ? `<b class="sb-name">${esc(P.name)}</b>` : ''}<p class="sb-text">${esc(L.greet.text)}</p>${L.greet.sub ? `<small class="mute">${esc(L.greet.sub)}</small>` : ''}</div><span class="sb-keys"><kbd>Space</kbd> next</span></div></div>`;
@@ -627,6 +630,8 @@ function mapScout(ti) {
 function mapTravel(x, y, how = 'walk') {
   if (CW.lock) return;
   const via = roadStart([x, y]),
+    from = City.pos(RUN).slice(),
+    money = RUN.money,
     line = City.travelTo(RUN, [x, y], how);
   if (!line) return;
   Run.log(RUN, line);
@@ -635,6 +640,41 @@ function mapTravel(x, y, how = 'walk') {
   Run.save(RUN);
   actLock(null, null, null, enc);
   if (TRANSPORT[how]) CW.lock.by = TRANSPORT[how].name; // the pill: "By bus" (spec §4.42)
+  walkCut(CW.lock, from, money - RUN.money);
+  renderCareer();
+}
+/**
+ * Stopping a trip on the way (owner, 2026-10-27; spec §4.43): lock L may be stopped (Stop / Esc while it walks) when the rules allow
+ * it (City.cutWhy: a plain walk or a ride; not a run or a bike ride) — from = where it began, fare = the $ it took.
+ */
+function walkCut(L, from, fare) {
+  if (L && !City.cutWhy(RUN)) L.cut = { from, fare: Math.max(0, fare || 0) };
+}
+/**
+ * Stop / Esc while you walk or ride: the rules count only the time on the way and put you where you stop (City.cutWalk — off at the
+ * bus's next stop, the ferry's pier), nothing of the arrival happens (no road stop, card, session or greeting); the map stops you
+ * there (a bus / ferry rides on to its stop first) and doesn't pan.
+ */
+function walkStop() {
+  const L = CW.lock;
+  if (!L || L.phase !== 'walk' || !L.cut || L.off || !RUN) return;
+  const m3 = MapView.m3,
+    P = m3 && m3.progress ? m3.progress() : null,
+    r = City.cutWalk(RUN, P ? P.f : L.f || 0, { from: L.cut.from, fare: L.cut.fare, at: P && P.at });
+  if (!r) return;
+  if (L.enc) {
+    const S = Encounter.of(RUN); // (the road stop not reached: it wasn't met — Encounter.open counted it as the trip began)
+    S.n = Math.max(0, S.n - 1);
+    delete S.met[L.enc.key];
+  }
+  Run.log(RUN, r.line);
+  Run.save(RUN);
+  L.enc = L.encDone = L.greet = L.ff = L.res = L.fx = null; // (no arrival: nothing happens there)
+  roadClear();
+  if (m3 && m3.halt) m3.halt(r.tw);
+  const off = /\(off the (?:bus|ferry) at ([^)]+)\)/.exec(r.line);
+  if (MapView.busy()) L.off = off ? `Getting off at ${off[1]}` : 'Stopping';
+  else (clearInterval(actLock.iv), lockEnd());
   renderCareer();
 }
 /**
@@ -1237,7 +1277,10 @@ function mapStation(st, click) {
 function roadKey(e) {
   if (A || e.ctrlKey || e.metaKey || e.altKey || !document.querySelector('.career.hub')) return;
   const L = CW.lock;
-  if (L && L.phase === 'enc') {
+  if (L && L.phase === 'walk' && e.key === 'Escape') {
+    if (!L.cut || L.off) return;
+    walkStop(); // stop on the way (spec §4.43)
+  } else if (L && L.phase === 'enc') {
     if (L.encDone != null) {
       if (![' ', 'Enter', 'Escape'].includes(e.key)) return;
       encOn(L);
@@ -1283,3 +1326,16 @@ function figKey(e, menu) {
   return true;
 }
 if (typeof addEventListener === 'function') addEventListener('keydown', roadKey, true);
+/** While you walk the map takes the camera's input (no freeze, owner 2026-10-27) but the hub's other controls still wait: a click outside the map and the pill (Stop) does nothing. */
+if (typeof addEventListener === 'function')
+  addEventListener(
+    'click',
+    e => {
+      const L = CW.lock,
+        t = e.target;
+      if (!L || L.phase !== 'walk' || !t || !t.closest || !t.closest('.career.hub') || t.closest('#mapwrap, #actlock')) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    },
+    true
+  );

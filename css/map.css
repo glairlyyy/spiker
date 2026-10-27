@@ -270,3 +270,10 @@ html.reduced .mtag {
     transform: rotate(360deg);
   }
 }
+/* walking (owner 2026-10-27: no camera freeze): the map under the lock takes the camera's input; only the pill (Stop) is a control */
+.hub .actlock.free {
+  pointer-events: none;
+}
+.hub .actlock.free .lkpill {
+  pointer-events: auto;
+}

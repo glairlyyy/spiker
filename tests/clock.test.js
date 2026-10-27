@@ -251,3 +251,35 @@ test('WASD stop catch-up (pacing follow-up 2026-10-27): nothing due → no rende
   eq(env.renders, 3, 'a lesson due: the full render');
   eq(roam.why, 'lesson', 'why: the lesson');
 });
+
+test('stopping a walk on the way (owner 2026-10-27): ¼ / ½ / ¾ — the clock counts the time walked, you stand on the road there', () => {
+  for (const f of [0.25, 0.5, 0.75]) {
+    const [g, run] = clockRun(),
+      from = run.pos.slice(),
+      to = g.City.at(run, 'harbor'),
+      h0 = g.City.hour(run),
+      H = g.City.trip(run, to);
+    assert(g.City.travelTo(run, to), 'walked');
+    eq(g.City.cutWhy(run), '', 'a walk can be stopped');
+    const pts = g.City.route(from, to),
+      r = g.City.cutWalk(run, f, { from }),
+      want = Math.min(H, Math.ceil((H * f) / g.CLOCK.min - 1e-6) * g.CLOCK.min);
+    eq(r.h, want, `f ${f}: the time walked (${g.City.hrs(r.h)} of ${g.City.hrs(H)})`);
+    assert(near(g.City.hour(run), h0 + want, 1e-9), `f ${f}: the clock ${g.City.hhmm(g.City.hour(run))}`);
+    const at = g.City.along(pts, f);
+    eq(g.City.pos(run).join(','), at.map(Math.round).join(','), `f ${f}: you stand f of the way along the road`);
+    const blk = g.City.clock(run).log.slice(-1)[0];
+    assert(blk.k === 'trip' && near(blk.h, want), "today's strip: the walk's block shortened");
+    const T = g.City.clock(run).last;
+    assert(near((T.walk[1] - T.walk[0]) * 24, want, 1e-9) && !T.act, 'the map: the walk as walked, nothing after it');
+    assert(/Stopped on the way after/.test(r.line), r.line);
+  }
+  const [g, run] = clockRun();
+  const from = run.pos.slice();
+  const runTo = Object.keys(g.SPOTS).find(id => !g.City.noRun(run, g.City.at(run, id)) && g.City.trip(run, g.City.at(run, id)) > 0);
+  assert(runTo && g.City.travelTo(run, g.City.at(run, runTo), 'run'), 'ran');
+  eq(g.City.cutWhy(run), 'it trains as it starts', 'a run plays to the end');
+  eq(g.City.cutWalk(run, 0.5, { from }), null, '…and is not stopped');
+  const [g2, r2] = clockRun();
+  eq(g2.City.cutWhy(r2), 'nothing on the way', 'no trip: nothing to stop');
+});
