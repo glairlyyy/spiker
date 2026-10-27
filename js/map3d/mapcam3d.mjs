@@ -144,7 +144,9 @@ export function createMapCam(cam, canvas, sun, S) {
     hit = new THREE.Vector3();
   let view = null, // { x, z, d }: the camera target on the ground and its distance (kept across re-mounts)
     fly = null, // a camera move: { x0, z0, d0, x1, z1, d1, t }
-    follow = false, // the camera follows the avatar while it walks (until the user drags)
+    follow = false, // the camera follows the avatar while it walks — only after ◎ / C asked for it (until the user drags; owner 2026-10-27)
+    was = false, // the avatar walked last frame (its arrival: the camera pans onto you)
+    hush = false, // the walk was stopped on the way: no pan when it ends
     grab = null,
     down = null,
     yaw = 0, // street level: the orbit round you (0 = the map's fixed heading; scaled by s, reset when s reaches 0)
@@ -260,7 +262,7 @@ export function createMapCam(cam, canvas, sun, S) {
     clampView();
     place();
   };
-  /** While your player walks the camera stays on them and the map takes no input (owner, 2026-10-03). */
+  /** Your player is walking (owner, 2026-10-27: the camera stays free meanwhile — pan, orbit, zoom, tilt; only a click picks nothing). */
   const walking = () => !!(S().avatar && S().avatar.busy());
   /** WASD may move you: street level, nothing walking, the UI idle (on.canWalk: no lock, event, sheet or match). */
   const canRoam = () => st > 0.5 && !walking() && canvas.isConnected && !!S().on && (!S().on.canWalk || S().on.canWalk());
@@ -268,7 +270,7 @@ export function createMapCam(cam, canvas, sun, S) {
   // input: drag pans (grab the ground point) — at street level it orbits —, a right-drag orbits, wheel zooms, a click (< CLICK_PX) picks a map point
   const onDown = e => {
     if (e.button === 1 && st > 0.5) e.preventDefault(); // (a middle drag at street level orbits / tilts: no autoscroll)
-    if ((e.button !== 0 && e.button !== 2 && !(e.button === 1 && st > 0.5)) || walking()) return;
+    if (e.button !== 0 && e.button !== 2 && !(e.button === 1 && st > 0.5)) return;
     if (e.button === 2 && st < 0.3) return; // (a right-click on the map: the figure menu, map3d)
     fly = null; // the player takes the camera
     down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, moved: 0, b: e.button, orbit: e.button !== 0 || st > 0.5 };
@@ -285,6 +287,7 @@ export function createMapCam(cam, canvas, sun, S) {
         yaw -= (e.clientX - down.lx) * STREET.drag;
         if (st > 0.5) ((tilt = clampTilt(tilt - (e.clientY - down.ly) * TILT.drag)), (tiltT = 0)); // (drag up: look up)
         if (down.b === 2) dragged = true;
+        swing = 0; // (the player took the camera: no swing behind you)
         place();
       }
       down.lx = e.clientX;
@@ -303,7 +306,7 @@ export function createMapCam(cam, canvas, sun, S) {
     if (!down) return;
     const click = down.moved < CLICK_PX && down.b === 0;
     down = grab = null;
-    if (!click || !S().on || !S().mesh) return;
+    if (!click || walking() || !S().on || !S().mesh) return; // (a click while you walk picks nothing)
     const r = canvas.getBoundingClientRect(),
       sx = e.clientX - r.left,
       sy = e.clientY - r.top;
@@ -318,7 +321,6 @@ export function createMapCam(cam, canvas, sun, S) {
   };
   const onWheel = e => {
     e.preventDefault();
-    if (walking()) return;
     view.d *= Math.exp(e.deltaY * 0.0012);
     fit();
   };
@@ -328,7 +330,17 @@ export function createMapCam(cam, canvas, sun, S) {
     const k = e.code;
     if (!(k in KEYS) && !(k in TILT_KEYS) && k !== 'KeyQ' && k !== 'KeyE') return;
     if (e.type === 'keyup') return void held.delete(k);
-    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || typing(e) || st < 0.5 || !canvas.isConnected) return;
+    // (walking: the hub swallows keys — the camera's Q / E and tilt keys still work)
+    if (
+      (e.defaultPrevented && !(walking() && !(k in KEYS))) ||
+      e.ctrlKey ||
+      e.metaKey ||
+      e.altKey ||
+      typing(e) ||
+      st < 0.5 ||
+      !canvas.isConnected
+    )
+      return;
     if (k in KEYS && !canRoam()) return;
     held.add(k);
     e.preventDefault();
@@ -461,6 +473,7 @@ export function createMapCam(cam, canvas, sun, S) {
     /** End a camera flight where it is (QA: a jump). */
     land() {
       fly = null;
+      was = false;
     },
     /** The orbit angle round you (rad). */
     yaw: () => yaw,
@@ -520,21 +533,29 @@ export function createMapCam(cam, canvas, sun, S) {
       fly = flight(x, z, off ? Math.max(view.d, 80) : view.d);
       follow = false;
     },
-    /** Your walk starts at map point (x0, z0): a drag in progress ends, the camera flies onto the player and follows (at street level it stays down, behind you). */
-    walkFrom(x0, z0) {
-      down = grab = null;
+    /**
+     * Your walk starts (owner, 2026-10-27: no camera freeze): the camera stays where the player has it — no flight, no follow (at
+     * street level it is on you anyway and swings behind you until you orbit); on arrival it pans onto you (step), unless quiet().
+     */
+    walkFrom() {
       roam = false;
-      follow = true;
-      if (st > 0) return void (swing = STREET.behind * 4);
-      fly = flight(x0, z0, clamp(view.d, 45, 110));
+      follow = false;
+      hush = false;
+      if (st > 0) swing = STREET.behind * 4;
     },
+    /** The walk was stopped on the way: no pan onto you when it ends. */
+    quiet() {
+      hush = true;
+    },
+    /** The arrival's pan onto you is playing (the UI waits for it before the place card). */
+    arriving: () => !!(fly && fly.arr),
     /** Per frame: a flight in progress, then holding the camera on your walking player; street level: on you, orbit, WASD. */
     step(dt) {
       if (st > 0)
         dt = smoothDt(sdt, dt); // (pacing, street level: one long frame doesn't jerk the camera — avatar3d's walk the same)
       else sdt.debt = 0;
       if (fly) {
-        fly.t = Math.min(1, fly.t + dt / FLY_S);
+        fly.t = Math.min(1, fly.t + dt / (fly.dur || FLY_S));
         const k = smooth(0, 1, fly.t);
         view.x = fly.x0 + (fly.x1 - fly.x0) * k;
         view.z = fly.z0 + (fly.z1 - fly.z0) * k;
@@ -544,6 +565,15 @@ export function createMapCam(cam, canvas, sun, S) {
       }
       const A = S().avatar;
       if (!view || !A) return;
+      const busy = A.busy();
+      if (was && !busy && !hush && !fly && streetPose(view.d).s <= 0) {
+        // arrived (not stopped on the way): an eased pan onto you, 0.6–1 s by the distance; then the UI shows the place card
+        const [ax, az] = A.pos(),
+          far = Math.hypot(ax - view.x, az - view.z);
+        if (far > 1) fly = { ...flight(ax, az, view.d), dur: clamp(0.6 + far / 300, 0.6, 1), arr: true };
+      }
+      if (was && !busy) hush = false;
+      was = busy;
       if (view.d < DIST[0] && !allowed()) {
         view.d += (DIST[0] - view.d) * (1 - Math.exp(-dt * STREET.back)); // out of the district: back up to the map's closest
         if (DIST[0] - view.d < 0.05) view.d = DIST[0];
@@ -573,9 +603,9 @@ export function createMapCam(cam, canvas, sun, S) {
         yaw = wrap(yaw);
         roamStep(dt);
         fit();
-      } else if ((follow || A.busy()) && A.busy() && !fly) {
+      } else if (follow && A.busy() && !fly) {
         const [ax, az] = A.pos(),
-          k = 1 - Math.exp(-dt * 8); // held on the player for the whole walk
+          k = 1 - Math.exp(-dt * 8); // on the player while they walk — only after ◎ / C (a drag lets go)
         view.x += (ax - view.x) * k;
         view.z += (az - view.z) * k;
         fit();

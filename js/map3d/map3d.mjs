@@ -22,7 +22,7 @@
 // Transport (spec §4.42, vehicles3d.mjs): the timetable buses / ferry (model.transit, by the shown clock wt), stops and piers, your ride's
 // vehicle (avatar.ride()); a ride's legs (model.you.ride) replace the road and its progress() drives the clock.
 // The player's avatar (avatar3d.mjs) stands at model.you.at — inside the place there (you.inside, spec §4.40: in through its door) — and
-// walks when it changes (out of the door it stood inside first: you.exit); the camera follows it.
+// walks when it changes (out of the door it stood inside first: you.exit); the camera stays free meanwhile and pans onto you on arrival (halt(T): stopped on the way — no pan).
 // Units: map (x, y) → world (x·MAP_M, 0, y·MAP_M) metres (1 map unit = 0.5 m). One renderer and canvas live across
 // re-mounts (the career screen re-creates its #mapwrap each render); the view (target, distance) survives them.
 // Performance (owner, 2026-10-25): the terrain's shadow is cast by its coarse chunks (a shadow-only copy on layer SHADOW_LAYER);
@@ -204,6 +204,7 @@ export function create(onIdle) {
     walkLen = null,
     prog = 1,
     lastWalk = null, // model.time.walk[0] last seen: a change = a new action
+    halted = false, // the trip was stopped on the way (halt): the rules' new point is where you stop — no walk to it
     hoverId = null,
     facHov = null, // the facility under the pointer (spec §4.40: it lights up; a click picks it)
     ray = new THREE.Raycaster(),
@@ -1125,6 +1126,8 @@ export function create(onIdle) {
           !(m.you.ride && m.you.ride.legs) &&
           Math.hypot(at[0] * MAP_M - ax, at[1] * MAP_M - az) < STAY_M;
       if (seen === null) avatar.snap(standAt(m));
+      else if (halted)
+        halted = false; // (stopped on the way: you stand there — or ride on to the stop — already)
       else if (key !== seen && here)
         seen = key; // (a WASD stop: the rules' point is where you stand, rounded — you stay put)
       else if (key !== seen) {
@@ -1143,7 +1146,7 @@ export function create(onIdle) {
         for (let i = 1; i < walkPts.length; i++)
           walkLen.push(walkLen[i - 1] + Math.hypot(walkPts[i][0] - walkPts[i - 1][0], walkPts[i][1] - walkPts[i - 1][1]));
         prog = 0;
-        C.walkFrom(x0, z0); // a drag in progress ends: the camera is the walk's, onto the player first
+        C.walkFrom(); // (the camera stays free while you walk; it pans onto you on arrival — mapcam3d)
       }
       seen = key;
     },
@@ -1241,7 +1244,23 @@ export function create(onIdle) {
     /** QA: the facility lit by the pointer ({ id, k }) and the always-on rims' count. */
     facHover: () => (town ? town.hovered() : null),
     /** True while your player is walking to a new place (the UI locks its actions until they arrive). */
-    busy: () => C.walking(),
+    busy: () => C.walking() || C.arriving(),
+    /** How far along the trip you are now (0–1: the walk's road or the ride's own clock) and where you stand (map units). */
+    progress() {
+      if (!avatar) return null;
+      const [x, z] = avatar.pos();
+      return { f: walkProgress(), at: [x / MAP_M, z / MAP_M] };
+    },
+    /**
+     * Stop the trip on the way (spec §4.43; the rules already have you at the stop point): a ride goes on to week time T (the bus's
+     * next stop, the ferry's pier) when that is ahead, else you stand where you are; no pan onto you when it ends.
+     */
+    halt(T) {
+      if (!avatar) return;
+      avatar.cut(T);
+      halted = true;
+      C.quiet();
+    },
     /** Street level (T-336a): 0 = the map, 1 = the follow camera behind you. */
     street: () => st,
     /** Your avatar's world position [x, y (ground), z] (m). */

@@ -202,3 +202,70 @@ test('transport: the bike trains a little; a bus / ferry / taxi skips the road s
   const l3 = g3.City.travelTo(r3, to);
   assert(/Walked/.test(l3) && g3.City.hour(r3) === 7 + walkH, `Walk: ${walkH} h as before (${l3})`);
 });
+
+test('stopping a ride on the way (owner 2026-10-27): before boarding the fare back; aboard a bus off at its next stop; a taxi where it is', () => {
+  const pick = () => {
+    for (const [o, p] of [
+      ['home', 'arena'],
+      ['academy', 'harbor'],
+      ['gym', 'harbor'],
+      ['home', 'harbor']
+    ]) {
+      const [g, run] = tRun(o);
+      const to = g.SPOTS[p] ? g.City.at(run, p) : g.VENUES[p].at,
+        W = g.City.way(run, to, 'bus');
+      if (W && !W.why && W.legs.some(l => l.m === 'bus') && W.legs[0].m === 'walk') return { o, to };
+    }
+    return null;
+  };
+  const P = pick();
+  assert(P, 'a bus trip with a walk to the stop');
+  const ride = f => {
+    const [g, run] = tRun(P.o),
+      from = run.pos.slice(),
+      m0 = run.money,
+      h0 = g.City.hour(run);
+    g.City.travelTo(run, P.to, 'bus');
+    const fare = m0 - run.money,
+      T = g.City.clock(run).last,
+      R = T.ride;
+    return { g, run, from, m0, h0, fare, T, R, r: f(g, run, from, fare, T, R) };
+  };
+  // walking to the stop (¼ of the walk leg): the fare back, you stand on that road
+  let X = ride((g, run, from, fare, T, R) => {
+    const L = R.legs[0],
+      f = ((L.w + (L.b - L.w) / 4 - T.walk[0]) / (T.walk[1] - T.walk[0])) * 0.999;
+    return g.City.cutWalk(run, f, { from, fare });
+  });
+  eq(X.run.money, X.m0, 'not aboard yet: the fare back');
+  assert(/fare back/.test(X.r.line), X.r.line);
+  assert(X.r.h > 0 && X.g.City.hour(X.run) < X.h0 + (X.T.walk[1] - X.T.walk[0]) * 24, 'the clock: only the walk so far');
+  // aboard the bus halfway along its leg: off at the next stop (a bus stop node), the fare kept
+  X = ride((g, run, from, fare, T, R) => {
+    const L = R.legs.find(l => l.m === 'bus'),
+      f = (L.a + (L.b - L.a) / 2 - T.walk[0]) / (T.walk[1] - T.walk[0]);
+    return g.City.cutWalk(run, f, { from, fare });
+  });
+  const N = X.g.ROADS.nodes,
+    stop = X.g.City.busStops().find(id => Math.hypot(N[id][0] - X.r.at[0], N[id][1] - X.r.at[1]) <= 1);
+  assert(stop, `off at a bus stop (${X.r.at})`);
+  eq(X.run.money, X.m0 - X.fare, 'aboard: the fare is spent');
+  assert(/off the bus at/.test(X.r.line), X.r.line);
+  const L = X.R.legs.find(l => l.m === 'bus');
+  assert(X.r.tw >= L.a + (L.b - L.a) / 2 - 1e-9 && X.r.tw <= L.b + 1e-9, 'the clock: to the next stop, not past the leg');
+  assert(!X.g.City.clock(X.run).last.ride, 'the ride is over (the map replays nothing)');
+  // a taxi at ½: where it is, on its road
+  const [g, run] = tRun('weiPower'),
+    from = run.pos.slice(),
+    to = g.VENUES.arena.at;
+  g.City.travelTo(run, to, 'taxi');
+  const R = g.City.clock(run).last.ride,
+    m1 = run.money,
+    r = g.City.cutWalk(run, 0.5, { from, fare: 10 });
+  eq(run.money, m1, 'a taxi: boarded at once — the fare is spent');
+  eq(r.at.join(','), g.City.along(R.legs[0].pts, 0.5).map(Math.round).join(','), 'a taxi: off where it is');
+  // the bike trains as it starts: it plays to the end
+  const [g3, r3] = tRun('weiPower');
+  r3.ride = { bike: 1 };
+  if (g3.City.travelTo(r3, to, 'bike')) eq(g3.City.cutWhy(r3), 'it trains as it starts', 'the bike: no stop');
+});

@@ -161,7 +161,7 @@ const MapView = {
   /** The part of the day the UI is playing (see the header): 'idle' | 'walk' | 'order'. */
   phase() {
     const L = CW.lock;
-    return !L ? 'idle' : ['spin', 'done', 'res'].includes(L.phase) ? 'order' : 'walk';
+    return !L || L.off ? 'idle' : ['spin', 'done', 'res'].includes(L.phase) ? 'order' : 'walk'; // (L.off: stopped on the way, the rules' clock is right)
   },
   /** A named figure's entry in the shown model (life.people), or null. */
   who: id => ((MapView.model && MapView.model.life && MapView.model.life.people) || []).find(p => p.id === id) || null,

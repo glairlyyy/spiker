@@ -295,3 +295,10 @@ html.reduced .mtag {
 .perfhud .phr {
   font-family: var(--mono, 'Space Mono', monospace);
 }
+/* walking (owner 2026-10-27: no camera freeze): the map under the lock takes the camera's input; only the pill (Stop) is a control */
+.hub .actlock.free {
+  pointer-events: none;
+}
+.hub .actlock.free .lkpill {
+  pointer-events: auto;
+}

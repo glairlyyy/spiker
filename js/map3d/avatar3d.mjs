@@ -1,7 +1,7 @@
 // The player on the 3D map: your own model (Main_v2, as in matches and your portrait; the default model if it fails), idle-breathing, walking or running to wherever the rules put
 // the player. Display only — the rules move instantly; this animates from the previously shown position.
 //   createAvatar(scene, opts?) → { setTarget([x, y], path?, { head?, tail?, legs?, dur?, scale? }), snap([x, y]), face([x, y]), tick(dt, heightAt, view?), busy(), pos(), lapse(),
-//                                  heading(), drive(x, z, v, yaw), setLife(k), progress(), ride(), act(k), deck(roads), lift(), dispose() }
+//                                  heading(), drive(x, z, v, yaw), setLife(k), progress(), ride(), cut(T), act(k), deck(roads), lift(), dispose() }
 // deck(model.land.roads): a walk / ride along the overpass climbs its deck as town3d draws it (lift() = the metres over the ground).
 // act('drill' | 'sleep' | null): while a session or a sleep fast-forwards (spec §4.43) you hop block jumps / lie down where you stand.
 // A ride (spec §4.42): o.legs = the trip's legs ([{ m: 'walk' | 'bus' | 'bike' | 'scooter' | 'ferry' | 'taxi', pts, w, a, b }], map
@@ -391,6 +391,20 @@ export function createAvatar(scene, opts = {}) {
       S.yaw = Math.atan2(x - S.x, z - S.z);
     },
     busy: () => !!S.walk || !!S.ride || S.held,
+    /**
+     * Stop the trip on the way (spec §4.43): a ride goes on to week time T (off at the bus's next stop, the ferry's pier) when that is
+     * still ahead, else you stand where you are now (a walk, the wait at a stop, a taxi / scooter). True while it still rides on.
+     */
+    cut(T) {
+      const Rd = S.ride;
+      if (Rd && !S.held && T != null) {
+        const tau = Rd.T0 + (Rd.T1 - Rd.T0) * clamp(Rd.t / Rd.dur, 0, 1);
+        if (T > tau + 1e-6) return ((Rd.end = T), (Rd.hold = null), true);
+      }
+      S.walk = S.next = S.ride = null;
+      if (S.held) S.held = me ? (WALK.held = false) : false;
+      return false;
+    },
     /** How far through the trip (0–1) a ride has come in its own time; null when not riding. */
     progress: () => (S.ride ? clamp(S.ride.t / S.ride.dur, 0, 1) : null),
     /** While on a ride's vehicle leg: { m, x, z, yaw, v (m/s) } (vehicles3d draws your bus / ferry / taxi / bike / scooter), else null. */
@@ -447,7 +461,7 @@ export function createAvatar(scene, opts = {}) {
       const Rd = S.ride;
       if (Rd && !S.held) {
         Rd.t += dt;
-        const tau = Rd.T0 + (Rd.T1 - Rd.T0) * clamp(Rd.t / Rd.dur, 0, 1);
+        const tau = Math.min(Rd.T0 + (Rd.T1 - Rd.T0) * clamp(Rd.t / Rd.dur, 0, 1), Rd.end ?? Infinity); // (stopped: rides on to Rd.end)
         if (Rd.hold !== null && tau >= Rd.hold) {
           Rd.t = ((Rd.hold - Rd.T0) / (Rd.T1 - Rd.T0)) * Rd.dur;
           S.held = true; // an encounter on the bike's road: wait here for WALK.go()
@@ -471,7 +485,7 @@ export function createAvatar(scene, opts = {}) {
         Rd.v = Rd.t < 0 || tau <= L.a || f >= 1 || S.held ? 0 : L.dist / Math.max(0.05, ((L.b - L.a) / (Rd.T1 - Rd.T0)) * Rd.dur);
         if (L.pts.length > 1 && Rd.v > 0) S.yaw += wrap(segYaw(L.pts, Math.min(i, L.pts.length - 2)) - S.yaw) * (1 - Math.exp(-dt / 0.08));
         v = L.m === 'walk' ? Math.min(Rd.v, SPEED) : 0;
-        if (Rd.t >= Rd.dur) S.ride = null;
+        if (Rd.t >= Rd.dur || tau >= (Rd.end ?? Infinity)) S.ride = null;
       }
       if (W) {
         W.t += dt;

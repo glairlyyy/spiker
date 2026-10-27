@@ -1076,9 +1076,19 @@
   padding: 8px 16px;
   border-radius: 0;
   background: var(--hud);
-  border: 2px solid var(--line-strong);
+  border: 2px solid var(--ink);
   font-size: 14px;
   font-weight: 600;
+}
+/* the walk's Stop (owner, 2026-10-27): a small secondary button in the pill, its key printed */
+.hub .lkpill .btn {
+  height: 32px;
+  margin: -2px -10px -2px 4px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+.hub .lkpill .btn kbd {
+  margin: 0 6px 0 0;
 }
 .hub .tfx {
   display: grid;

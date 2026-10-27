@@ -448,6 +448,124 @@ const step = async (name, fn) => {
     return `${r1.log} · walk ${h0} → ${h1} h · slept 6 h: ${r3.head.trim()} · map clock ${r3.clock}`;
   });
   await step(
+    'auto walk (owner, 2026-10-27): the camera is free while you walk; Esc stops you halfway; a whole walk pans onto you, then unlocks',
+    async () => {
+      await pg.waitForFunction(() => MapView.m3 && MapView.m3.info().calls > 0, null, { timeout: 240000 });
+      // (a software GPU can draw a frame every few seconds: the clock is paused while the test acts, and the lock's give-up waits)
+      const S = await ev(() => {
+        const was = Encounter.pref(),
+          max = LOCK.max;
+        Encounter.setPref('never'); // (no road stop in this step)
+        LOCK.max = 900000;
+        RUN.clock = City.freshClock();
+        RUN.event = null;
+        City.moveTo(RUN, City.at(RUN, 'harbor').slice());
+        CW.briefWeek = briefKey(RUN);
+        CW.spot = null;
+        MapView.setWalk(4);
+        renderCareer();
+        MapView.m3.jump();
+        // a walk of ~10–15 game minutes along the road to the Academy's gym
+        const from = City.pos(RUN),
+          far = City.at(RUN, 'acaGym'),
+          H = City.trip(RUN, far),
+          to = City.along(City.route(from, far), Math.min(1, 0.22 / H)).map(Math.round);
+        return { was, max, to, back: from.slice() };
+      });
+      const bad = [];
+      const box = await ev(() => {
+        const r = document.querySelector('#mapwrap canvas').getBoundingClientRect();
+        return [r.left + r.width * 0.55, r.top + r.height * 0.45];
+      });
+      const drag = async (dx, dy) => {
+        await pg.mouse.move(box[0], box[1]);
+        await pg.mouse.down();
+        await pg.mouse.move(box[0] + dx, box[1] + dy, { steps: 4 });
+        await pg.mouse.up();
+      };
+      const h0 = await ev(t => {
+        const h = City.hour(RUN);
+        mapTravel(t[0], t[1]);
+        MapView.pause(true);
+        return h;
+      }, S.to);
+      await pg.waitForFunction(() => CW.lock && CW.lock.phase === 'walk' && document.querySelector('#actlock .lkpill .btn'), null, {
+        timeout: 30000
+      });
+      // the camera while walking: a wheel zooms, a drag pans (no freeze, no follow)
+      const v0 = await ev(() => MapView.m3.viewState());
+      await pg.mouse.move(box[0], box[1]);
+      await pg.mouse.wheel(0, -300);
+      await drag(160, 90);
+      await pg.waitForFunction(v => Math.abs(MapView.m3.viewState().d - v.d) > 0.5, v0, { timeout: 60000 }).catch(() => null);
+      const v1 = await ev(() => ({ ...MapView.m3.viewState(), busy: MapView.busy() }));
+      if (!v1.busy) bad.push('the walk ended before the camera test');
+      if (!(Math.abs(v1.d - v0.d) > 0.5)) bad.push(`the wheel did not zoom while walking (${v0.d.toFixed(1)} → ${v1.d.toFixed(1)})`);
+      if (!(Math.hypot(v1.x - v0.x, v1.z - v0.z) > 2)) bad.push('the drag did not pan while walking');
+      await ev(() => MapView.setWalk(2)); // (runs again, slower: the stop lands mid-walk even on slow frames)
+      await pg.waitForFunction(() => MapView.m3.progress().f >= 0.3 && (MapView.pause(true), true), null, { timeout: 240000, polling: 20 });
+      const f = await ev(() => MapView.m3.progress().f);
+      await pg.keyboard.press('Escape');
+      await pg.waitForFunction(() => !CW.lock, null, { timeout: 30000 });
+      const c = await ev(() => {
+        const T = City.clock(RUN).last,
+          y = MapView.m3.youPos();
+        return {
+          h: City.hour(RUN),
+          walked: T.walk ? (T.walk[1] - T.walk[0]) * 24 : 0,
+          pos: City.pos(RUN),
+          you: [y[0] / MAP_UNIT_M, y[2] / MAP_UNIT_M],
+          line: RUN.log[0].t,
+          spot: !!document.querySelector('#spot.open'),
+          busy: MapView.busy()
+        };
+      });
+      const full = await ev(t => City.walkH(City.at(RUN, 'harbor'), t), S.to);
+      if (!/Stopped on the way/.test(c.line)) bad.push(`diary: ${c.line}`);
+      if (!(c.walked > 0 && c.walked <= full + 1e-9 && f < 0.97))
+        bad.push(`the clock: ${c.walked} h of ${full} h walked (f ${f.toFixed(2)})`);
+      if (Math.abs(c.h - (h0 + c.walked)) > 1e-6) bad.push(`the hour ${c.h} ≠ ${h0} + ${c.walked}`);
+      if (Math.hypot(c.pos[0] - S.to[0], c.pos[1] - S.to[1]) < 3) bad.push('stopped at the destination');
+      if (Math.hypot(c.pos[0] - c.you[0], c.pos[1] - c.you[1]) > 1.5)
+        bad.push(`the rules (${c.pos}) ≠ where you stand (${c.you.map(Math.round)})`);
+      if (c.spot) bad.push('a card opened after the stop');
+      if (c.busy) bad.push('still walking after the stop');
+      // a whole walk (back): drag the camera away meanwhile; it pans back onto you before the lock lets go
+      await ev(t => (mapTravel(t[0], t[1]), MapView.pause(true)), S.back);
+      await pg.waitForFunction(() => CW.lock && CW.lock.phase === 'walk', null, { timeout: 30000 });
+      await drag(-200, -120);
+      const arr = await ev(
+        () =>
+          new Promise(ok => {
+            let far = 0;
+            MapView.pause(false);
+            const tick = () => {
+              const v = MapView.m3.viewState(),
+                y = MapView.m3.youPos(),
+                d = Math.hypot(v.x - y[0], v.z - y[2]);
+              far = Math.max(far, d);
+              if (!CW.lock) return ok({ far, end: d });
+              requestAnimationFrame(tick);
+            };
+            tick();
+          })
+      );
+      if (!(arr.far > 3)) bad.push(`the camera followed the walk (max ${arr.far.toFixed(1)} m off you)`);
+      if (!(arr.end < 1.5)) bad.push(`no pan onto you before the unlock (${arr.end.toFixed(1)} m off)`);
+      const end = await ev(() => City.pos(RUN));
+      if (Math.hypot(end[0] - S.back[0], end[1] - S.back[1]) > 1) bad.push(`the whole walk ended at ${end}`);
+      await ev(S0 => {
+        Encounter.setPref(S0.was);
+        LOCK.max = S0.max;
+        MapView.setWalk(1);
+        RUN.clock = City.freshClock();
+        renderCareer();
+      }, S);
+      if (bad.length) throw new Error(bad.join('; '));
+      return `stopped at ${f.toFixed(2)}: ${c.walked.toFixed(2)} of ${full.toFixed(2)} h · camera ${arr.far.toFixed(0)} m off, pan → ${arr.end.toFixed(2)} m`;
+    }
+  );
+  await step(
     'the running clock (T-365): pause / speeds, idle time runs, Space pauses, a session fast-forwards, Esc cuts it short',
     async () => {
       const bad = [];

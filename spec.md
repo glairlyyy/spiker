@@ -1225,6 +1225,12 @@ the AI coach fills every slot you leave with the same function. Built and measur
 - §4.18c Map view (owner, 2026-10-03) **[built]**: the dark map lifts only round you and your home (explored places stay
   known — their pins show — but dark); a "◎ Me" button (key C) flies the camera to your player; the player model is drawn
   ~3.5× life size (6 m) so it reads on the island.
+  - **Free camera while you walk** **[built 2026-10-27]** (owner, 2026-10-27: "remove the camera freeze; only pan to the character
+    when you arrive"): during a walk or a ride the camera is yours — drag pans, the wheel zooms, at street level drag / Q / E / Z / X
+    orbit and tilt — and it does **not** follow the walker (◎ / C still flies to you, and then follows that walk until you drag).
+    Clicks on the map pick nothing while you walk. On arrival (not after Stop) the camera pans smoothly onto you (an eased move,
+    0.6–1 s by the distance), and only then the place card / the session / the result shows. At street level the camera is on you
+    anyway (no pan); the swing behind you on a click walk stops once you orbit.
 - §4.18a Training layout (owner, 2026-10-03) **[built]**: Wei's four gyms stand together in one training district
   round the jW1 junction (a short walk apart: little travel inside Wei); Wu's spread thin along the coast (pier by the
   airport, sand courts on the south-east beach, harbor on the east coast, dunes in the north-east); Shu's stay scattered.
@@ -2216,6 +2222,14 @@ the AI coach fills every slot you leave with the same function. Built and measur
     sheet, a figure menu, ⚙, an event, a scene, a card over the map, a road stop's card or a result. WASD: the rules wait while you
     move, the stop counts the walk. People and buses move on the shown clock (they stop when it does). Space = pause (also mid-walk);
     End week moved to **N** (Space still ends a spent week). Save unchanged (RUN_VERSION 25: `run.clock.hour` just carries minutes).
+  - **Stop on the way** **[built 2026-10-27]** (owner, 2026-10-27: "add an option to cancel the action"): while you walk or ride to a
+    place, a point or a session's place, the pill has **Stop → stand here** (`Esc`). The clock counts only the time on the way (in
+    5-minute steps, rounded up), you stand where you stopped, on the road; nothing of the arrival happens (no place card, no session,
+    no road stop after it — an unmet stop isn't counted for the week). A ride: on foot, waiting at the stop, in a taxi or on the scooter
+    you stop where you are; aboard a bus you get off at its **next stop** (it rides on to it — you can't step off a moving bus); on the
+    ferry at its **far pier** (no stepping off at sea). Money: a fare is spent once you have boarded; stopped before boarding (walking to
+    the stop, waiting) it comes back; the scooter's fuel stays spent. A **run** and a **bike** ride can't be stopped (their training is
+    counted as they start). Save unchanged.
 - §4.44 Street view, anime-styled (owner, 2026-10-25: "plan to improve the visual quality of the street view"; "stylized anime";
   "sometimes entering street view a model loads oddly — skin gone, dress not loaded") **[draft — T-368–T-373]**:
   - **Direction**: an anime background look — soft toon shading (2–3 light bands, coloured shadows, not grey), painted colours
@@ -2649,8 +2663,8 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
 - §10.1b No coach's goal (owner, 2026-10-03): the per-block goal (`Goals.set/check`, `run.goal`, `GOAL_REWARD`, `BLOCKS`)
   is removed — no goal on the rail, brief, Season sheet, calendar or Week report. Skill points and fans come from matches,
   battles and sponsors only. Old saves keep a dead `run.goal` (ignored, no version bump). Sponsors stay. Task T-170.
-- §10.1d Action lock (owner, 2026-10-03): while your player walks to a place the map camera holds on them and the hub takes no
-  input (a "Walking to {place}" pill; 20 s failsafe). A training day then shows a cut-in — spinner, then ✓ Training complete /
+- §10.1d Action lock (owner, 2026-10-03): while your player walks to a place the hub takes no input (a "Walking to {place}" pill;
+  20 s failsafe) — **[changed 2026-10-27]** the map camera no longer holds on them: it stays free (§4.18c) and pans onto them on arrival. A training day then shows a cut-in — spinner, then ✓ Training complete /
   ✕ failed with what changed (click / Space / Enter / Esc, auto after 3.2 s; the top bar keeps the before-values until then);
   a simmed match shows the §10.6 card instead. The map key (Club HQ / Venue / Street battle, faction colours) lives in the
   Encyclopedia (Map key), not over the map.

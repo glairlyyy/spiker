@@ -974,6 +974,97 @@ const City = {
       rest = out.filter(Boolean).join(', ');
     return `${verb} to ${REGIONS[City.loc(run)].name} (${City.hrs(W.h)}${W.cost ? `, −$${W.cost}` : ''})${rest ? `: ${rest}` : ''}.${City.upLate(run)}`;
   },
+  // ---- stopping a walk / a ride on the way (owner, 2026-10-27; spec §4.43) -------------------------------------------------
+  /** The map point share f (0–1) of the way along polyline pts (by length). */
+  along(pts, f) {
+    if (!pts || !pts.length) return null;
+    let L = 0;
+    for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    let s = clamp(f, 0, 1) * L;
+    for (let i = 1; i < pts.length; i++) {
+      const d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+      if (s <= d || i === pts.length - 1) {
+        const u = d > 0 ? clamp(s / d, 0, 1) : 0;
+        return [pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * u, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * u];
+      }
+      s -= d;
+    }
+    return pts[0].slice();
+  },
+  /**
+   * Why the trip just begun can't be stopped on the way ('' = it can): only a plain walk or a ride (City.travelTo / walkTo / rideTo
+   * — nothing done at its end yet), not one that ended the day (02:00), not a run or a bike ride (they train as they start).
+   */
+  cutWhy(run) {
+    const C = City.clock(run),
+      T = C.last,
+      b = C.log[C.log.length - 1];
+    if (!T || !T.walk || T.act) return 'nothing on the way';
+    if (T.ride ? T.ride.k === 'bike' : b && b.k === 'trip' && b.label === 'Run') return 'it trains as it starts';
+    return '';
+  },
+  /**
+   * Stop the trip just begun after share f (0–1) of its time (the map's progress): the clock counts only the time on the way (in
+   * CLOCK.min steps, rounded up), you stand where you stopped (on the road). A walk: `o.at` (the map point you stand at) or the point
+   * f of the way along `o.pts` (default: the road from `o.from`, where it began). A ride (run.clock.last.ride): on foot, waiting at
+   * the stop, on a taxi or a scooter — where you are; aboard a bus — off at its next stop; on the ferry — off at its pier. The fare
+   * (`o.fare`, $) comes back only when you hadn't boarded yet. Nothing of the arrival happens. → { at, h, line } or null (cutWhy).
+   */
+  cutWalk(run, f, o = {}) {
+    if (City.cutWhy(run) || !o.from) return null;
+    const C = City.clock(run),
+      T = C.last,
+      [a, b] = T.walk,
+      H = (b - a) * 24,
+      R = T.ride;
+    f = clamp(f || 0, 0, 1);
+    let at,
+      tw = a + f * (b - a),
+      off = '',
+      back = 0;
+    if (R && R.legs && R.legs.length) {
+      const legs = R.legs,
+        L = legs.find(l => tw <= l.b + 1e-9) || legs[legs.length - 1],
+        first = legs.find(l => l.m !== 'walk'),
+        u = L.b > L.a ? clamp((tw - L.a) / (L.b - L.a), 0, 1) : 1;
+      if (first && tw <= first.a + 1e-9 && o.fare > 0) back = o.fare; // (not aboard yet: the fare comes back)
+      if (tw <= L.a + 1e-9) at = L.pts[0].slice();
+      else if (L.m === 'bus') {
+        const N = ROADS.nodes,
+          stops = City.busStops(),
+          cum = [0];
+        for (let i = 1; i < L.pts.length; i++)
+          cum.push(cum[i - 1] + Math.hypot(L.pts[i][0] - L.pts[i - 1][0], L.pts[i][1] - L.pts[i - 1][1]));
+        const s = u * cum[cum.length - 1];
+        let i = cum.findIndex(
+          (c, j) => c >= s - 1e-9 && j > 0 && stops.some(id => Math.hypot(N[id][0] - L.pts[j][0], N[id][1] - L.pts[j][1]) < 0.2)
+        );
+        if (i < 0) i = L.pts.length - 1;
+        at = L.pts[i].slice();
+        tw = L.a + (cum[i] / (cum[cum.length - 1] || 1)) * (L.b - L.a);
+        const id = stops.find(q => Math.hypot(N[q][0] - at[0], N[q][1] - at[1]) < 0.2); // (the legs' points are rounded to 0.1)
+        off = ` (off the bus at ${id ? City.stopName(id) : 'the next stop'})`;
+      } else if (L.m === 'ferry') {
+        const nx = legs[legs.indexOf(L) + 1],
+          q = nx ? nx.pts[1] || nx.pts[0] : null; // (the pier on land, not the sea line's end)
+        at = (q || L.pts[L.pts.length - 1]).slice();
+        tw = L.b;
+        off = ` (off the ferry at ${L.to || 'the pier'})`;
+      } else at = o.at && L.m === 'walk' ? o.at.slice() : City.along(L.pts, u);
+    } else at = o.at ? o.at.slice() : City.along(o.pts && o.pts.length > 1 ? o.pts : City.route(o.from, City.pos(run)), f);
+    const h = Math.min(H, Math.ceil(((tw - a) * 24) / CLOCK.min - 1e-6) * CLOCK.min),
+      blk = C.log[C.log.length - 1];
+    C.hour -= H - h;
+    if (blk && blk.k === 'trip') {
+      if (h > 0) blk.h = h;
+      else C.log.pop();
+    }
+    C.last = { walk: h > 0 ? [a, a + h / 24] : null, act: null };
+    if (back) run.money += back;
+    City.moveTo(run, at);
+    City.last = null;
+    return { at: run.pos.slice(), h, tw, line: `Stopped on the way after ${City.hrs(h)}${off}${back ? `, the $${back} fare back` : ''}.` };
+  },
   /** Why you can't buy ride k at the Harbor Market now ('' if you can). */
   buyWhy(run, k) {
     const T = TRANSPORT[k];
