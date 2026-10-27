@@ -81,7 +81,7 @@ function renderEncyclopedia() {
   };
   const passive = ids.filter(id => !SKILLS[id].tech);
   $('#app').innerHTML = `<section class="ency">
-    <div class="ency-top"><h2>Encyclopedia${info(`Techniques fire automatically for any player who meets the stat requirement (or who learned it in career). ${teams.length ? 'Players shown are from your career league.' : 'Start a career to see which players can use each one.'}`)}</h2><button class="btn" onclick="navigate('menu')">Back <kbd>Esc</kbd></button></div>
+    <div class="ency-top"><div><span class="lab">Reference</span><h2>Encyclopedia${info(`Techniques fire automatically for any player who meets the stat requirement (or who learned it in career). ${teams.length ? 'Players shown are from your career league.' : 'Start a career to see which players can use each one.'}`)}</h2></div><button class="btn" onclick="navigate('menu')">Back <kbd>Esc</kbd></button></div>
     <nav class="ency-nav seg" aria-label="Sections">${ENCY_SECS.map(([id, n]) => `<button class="btn" data-sec="${id}" onclick="encyGo('${id}')">${n}</button>`).join('')}</nav>
     ${packs
       .map(
