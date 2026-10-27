@@ -84,7 +84,7 @@ function prepHabits(m, i) {
 function prepDraw() {
   const el = $('#prep');
   if (!el || !A.prepS) return;
-  el.innerHTML = `<div class="ocard prep"><div class="phead"><span class="lab">${esc(A.fx.round || 'Match prep')}</span></div>
+  el.innerHTML = `<div class="ocard prep inkwin ink-hold"><div class="phead"><span class="lab">${esc(A.fx.round || 'Match prep')}</span></div>
     <div class="pcols">${[0, 1].map(prepTeam).join('<div class="pvs">VS</div>')}</div>
     <div class="acts"><button class="btn hot" onclick="prepStart()">Start match <kbd>Enter</kbd></button></div></div>`;
 }

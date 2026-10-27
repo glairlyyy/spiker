@@ -1566,6 +1566,30 @@ copy; new inbox rows `.new`, day slots `fillin` / `gin` / `clear` (`dayMotion`),
 does the same for the popup (`spotSwap` = glide + cross-fade) and the ghost slots; `pins3d.select` rings a newly selected
 pin (`.pulse`). Match: `board` bumps the scorer's digit; `.mrail` / `.over .ocard` animate when un-hidden (css only).
 
+## Ink popups (spec §9.0, owner 2026-10-27)
+
+One window component for every transient UI. **Look** (css/ink.css, loaded last; tokens `--ink-brush` / `--ink-dim` / `--ink-lite` /
+`--ink-bw` in theme.css `:root`): `.inkwin` = the brush frame (an inline SVG as `border-image`, slice 40 / `--ink-bw` 18 px, stretched; paper
+as a background inset 9 px so the stroke's rough outer edge stays open), the inner rule (inset shadows) and the backdrop — a 200vmax
+outline (offset −8 px: under the stroke's rough edge, no undimmed sliver) just under the window, so it survives the hub's whole re-renders and
+needs no element; frame properties are `!important` (they win over each container's own border / shadow). Modifiers: `.ink-hold` (must be answered), `.ink-thru` (clicks pass to the screen under it — map
+cards), `.ink-lite` (light dim), `.ink-nodim`, `.ink-free` (frame only: no dim, focus or keys). `.inkframe` / `.sbox` / `.runend > .panel`
+take the frame alone. Title band: `.inkhead` (`.inkover` overline + `.inktitle`) or a container's own head (`.sheet-h`, `.plc > .ptitle`, `.fmh`,
+`.phead`, `.rhead`, `.rhd`, a hub card's first `h2` / `h3`) ruled off in ink; `.inkwin > .btn.x` sits top-right with "Esc" printed (`::after`).
+The persistent HUD sits above the backdrop (`.wrail` z 6, `.tbar` z 5) and its clicks pass.
+**Behaviour** (`Ink`, js/ui/dom.js): no registry — the stack is read from the DOM (`Ink.top()` = the visible non-free `.inkwin` with the
+highest level: peek 60, ⚙ / pop-over 50, lock layer 45, rail 40, sheet / ocard 30, hub card 20, else 10, + 100 per `.inkwin` around it).
+Window capture listeners: Esc → the top window's close (`[data-ink-x]` / its own `.btn.x` click, a pop-over's `details.open = false`, a peek's
+`CW.peek = null`) unless it is `.ink-hold` / has none (then the screen's own Esc runs, e.g. hubKey, roadKey, hesKey); Tab cycles inside the top
+window; pointer events outside the top window (not `.ink-thru`, not on the HUD list) are swallowed and a click closes it (hold: nothing).
+A MutationObserver (only records that touch an `.inkwin` / `details.pop`) schedules `sync` once a frame: a new top window takes focus
+(`tabindex=-1`, the opener remembered per window key), a closed one returns it; a re-render that dropped focus refocuses the window.
+Containers carry the classes: `hubSheet` (`.sheet`), `#spot` / `#figmenu` (thru + lite), `.hubcard` (hold; cup / eval cards thru + lite),
+`gearPop`, `peek()` (✕ + band), `pop(label, body, cls, title)` (✕ + band), the dossier `.dossierwin` (sheetWorld, over the Factions list),
+`#stprompt` / `.tfx` / `#hes` (free), the road's `.fmenu.road` (hold), `.ocard.prep` / `resultScreen` (hold; `#prep` / `#over` drop their tint,
+the lock layer's `res` phase has no `.dim`), `#mrail`. A sheet hides the place card by `.hub.sheeton` (renderCareer). No `:has()` in ink.css:
+under the map's per-frame overlay mutations it made every frame's style recalc slow (the map tests timed out).
+
 ## Full-court match screen (spec §9.9, T-252)
 
 `.match` is fixed full-screen; `#stage` (court canvases, result `.over`) fills it and the HUD floats

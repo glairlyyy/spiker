@@ -83,8 +83,8 @@ the real net kit there), `trails3d`, `ambient3d` (the venue's air by crowd heat 
 
 CSS (`css/`, loaded in this order): `style.css` (page base: tokens use, buttons, panels, glossary terms), `match.css` (the match screen and the dev VFX lab / panel; T-273), `career.css` (career screens layout: menu, create, cards,
 sheets), `map.css` (island map frame, 3D overlay pins/labels, legend, hex tile labels), `hub.css` (hub HUD + shell: top bar, week
-rail, day track, place panel; the layout grid `.acts`/`.rowcta`), `people.css` (People sheet), `theme.css` (the surface: colours, borders, shadows; the only `:root` token set). A selector may appear in several files; a property is declared
-in one file only (T-084) — theme.css overrides by being last, so never repeat an earlier file's property there.
+rail, day track, place panel; the layout grid `.acts`/`.rowcta`), `people.css` (People sheet), `theme.css` (the surface: colours, borders, shadows; the only `:root` token set), `ink.css` (the ink popup window `.inkwin`: frame, backdrop, title band — spec §9.0; last, its frame properties `!important`). A selector may appear in several files; a property is declared
+in one file only (T-084) — theme.css overrides by being last, so never repeat an earlier file's property there (ink.css is the one exception: it restyles the windows' frame).
 
 ## How to add…
 

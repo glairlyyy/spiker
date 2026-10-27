@@ -66,10 +66,12 @@ function startMatch(fx) {
         <button class="btn" onclick="toggleFullscreen()" ${tip('Fullscreen court')} aria-label="Fullscreen">⛶ <kbd>Shift+F</kbd></button>
         <button class="btn" id="snd" onclick="toggleSound()" aria-label="Sound">${SND.on ? '🔊' : '🔇'}</button>
         ${fx.vfx ? `<button class="btn" onclick="devOpen('vfx', () => vfxToggle())" ${tip('Tune every effect live while the game plays; Export the values')}>VFX <kbd>V</kbd></button>` : ''}
-        ${pop('⚙', settingsMenu(), 'setpop')}</div>
+        ${pop('⚙', settingsMenu(), 'setpop', 'Settings')}</div>
     </div>
     ${fx.vfx ? '<aside class="panel vfxpanel vfxp" id="vfxp" hidden aria-label="VFX tuning"></aside>' : ''}
-    <aside class="mrail" id="mrail" hidden aria-label="Match details"><div class="rhd"><div class="tabs">${Object.entries(RAIL_TABS)
+    <aside class="mrail inkwin" id="mrail" role="dialog" hidden aria-label="Match details"><div class="rhd"><div class="tabs">${Object.entries(
+      RAIL_TABS
+    )
       .map(([k, n]) => `<button class="btn" data-rt="${k}" onclick="railOpen('${k}')">${n}</button>`)
       .join('')}</div><button class="btn x" onclick="railOpen(null)" aria-label="Close">✕</button></div>
       <div class="rbody"><div class="rt" data-rt="box"><div id="box"></div></div><div class="rt" data-rt="reads"><div id="reads"></div></div>

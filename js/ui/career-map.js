@@ -559,15 +559,15 @@ function lockLayer() {
     const P = L.greet.person;
     return `<div class="actlock greet" id="actlock" role="dialog" aria-live="polite" onclick="lockGreetDone()"><div class="sbox">${P ? `<span class="sb-face">${faceSVG(P, 0, 72)}</span>` : ''}<div class="sb-body">${P ? `<b class="sb-name">${esc(P.name)}</b>` : ''}<p class="sb-text">${esc(L.greet.text)}</p>${L.greet.sub ? `<small class="mute">${esc(L.greet.sub)}</small>` : ''}</div><span class="sb-keys"><kbd>Space</kbd> next</span></div></div>`;
   }
-  if (L.phase === 'res') return `<div class="actlock dim res" id="actlock" role="dialog" aria-live="polite">${L.res}</div>`;
+  if (L.phase === 'res') return `<div class="actlock res" id="actlock" role="dialog" aria-live="polite">${L.res}</div>`;
   if (L.phase === 'enc') return encLayer(L);
   if (L.phase === 'ff')
     return `<div class="actlock walk ff" id="actlock" role="status" aria-live="polite"><span class="lkpill"><b>${esc(L.ff.name)}</b><span class="ffb" id="ffbadge">${esc(ffText(L.ff))}</span>${L.ff.cut ? '<span class="mute"><kbd>Esc</kbd> stop</span>' : ''}</span></div>`;
   const F = L.fx;
   if (L.phase === 'spin')
-    return `<div class="actlock dim" id="actlock" role="status" aria-live="polite"><div class="tfx"><i class="spin" aria-hidden="true"></i><b>${esc(F.name)}</b><small class="mute">${esc(F.place)}</small></div></div>`;
+    return `<div class="actlock dim" id="actlock" role="status" aria-live="polite"><div class="tfx inkwin ink-free"><i class="spin" aria-hidden="true"></i><b>${esc(F.name)}</b><small class="mute">${esc(F.place)}</small></div></div>`;
   const rows = F.rows;
-  return `<div class="actlock dim" id="actlock" role="status" aria-live="polite" onclick="lockEnd()"><div class="tfx ${F.ok ? 'ok' : 'bad'}">
+  return `<div class="actlock dim" id="actlock" role="status" aria-live="polite" onclick="lockEnd()"><div class="tfx inkwin ink-free ${F.ok ? 'ok' : 'bad'}">
     <span class="tfi" aria-hidden="true">${F.ok ? '✓' : '✕'}</span><b>${F.ok ? `${esc(F.name)} — done` : F.injured ? `${esc(F.name)} failed — injured` : `${esc(F.name)} failed`}</b>
     ${rows.length ? `<div class="tfr">${rows.map(([ic, n, v, c, t]) => `<div ${t ? tip(t) : ''}>${ic}<span>${n}</span><b class="${c}">${v}</b></div>`).join('')}</div>` : ''}
     <small class="mute">Click or press Space</small></div></div>`;
@@ -1006,7 +1006,7 @@ function figRender() {
     if (el) el.remove();
     el = document.createElement('div');
     el.id = 'figmenu';
-    el.className = 'hud fmenu';
+    el.className = 'hud fmenu inkwin ink-thru ink-lite';
     el.setAttribute('role', 'dialog');
     hub.appendChild(el);
   }
@@ -1094,7 +1094,7 @@ function encLayer(L) {
   }
   const done = L.encDone != null,
     rows = done ? '' : figRows(encRows(run, E));
-  return `<div class="actlock greet enc" id="actlock" role="dialog" aria-live="polite" ${done ? 'onclick="encOn(CW.lock)"' : ''}><div class="hud fmenu road" aria-label="${esc(name)}">${figHead(P, name, sub)}<p class="fml">${esc(done ? L.encDone || `${first} nodded. That was it.` : text)}</p>${rows}<button class="btn fmb fmw" onclick="event.stopPropagation();encOn(CW.lock)"><kbd>Space</kbd><b>Walk on</b><span class="oln">→ nothing</span></button></div></div>`;
+  return `<div class="actlock greet enc" id="actlock" role="dialog" aria-live="polite" ${done ? 'onclick="encOn(CW.lock)"' : ''}><div class="hud fmenu road inkwin ink-hold" role="dialog" aria-label="${esc(name)}">${figHead(P, name, sub)}<p class="fml">${esc(done ? L.encDone || `${first} nodded. That was it.` : text)}</p>${rows}<button class="btn fmb fmw" onclick="event.stopPropagation();encOn(CW.lock)"><kbd>Space</kbd><b>Walk on</b><span class="oln">→ nothing</span></button></div></div>`;
 }
 /**
  * Answer the stop: walk on (the walk resumes), talk / invite (their memory / answer; then Space walks on), card (walk on, their card
@@ -1255,7 +1255,7 @@ function mapStation(st, click) {
     if (el) el.remove();
     el = document.createElement('div');
     el.id = 'stprompt';
-    el.className = 'hud stprompt';
+    el.className = 'hud stprompt inkwin ink-free';
     el.setAttribute('role', 'dialog');
     hub.appendChild(el);
     STP.key = '';

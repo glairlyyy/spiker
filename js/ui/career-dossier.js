@@ -83,13 +83,18 @@ function dossierCard(run, r) {
 const WORLD_TABS = { factions: 'Factions', clubs: 'My club', rank: 'Rankings' }; // key `clubs` kept: worldTab('clubs')
 function sheetWorld(run) {
   const t = WORLD_TABS[CW.wtab] ? CW.wtab : 'factions',
-    body = t === 'clubs' ? myClubCard(run) : t === 'rank' ? rankCard(run) : CW.dossier ? dossierCard(run, CW.dossier) : factionsCard(run);
+    body = t === 'clubs' ? myClubCard(run) : t === 'rank' ? rankCard(run) : factionsCard(run),
+    dos = t === 'factions' && CW.dossier; // the dossier: a popup over the Factions list (Esc / ✕ / ← back to it)
   return `<div class="sheet-h"><h2>World</h2><div class="seg pfil">${Object.entries(WORLD_TABS)
     .map(
       ([k, n]) =>
         `<button class="btn ${k === t ? 'on' : ''}" onclick="worldTab('${k}')" ${k === 'factions' ? tip(`Street battles move your standing and the Strength of the units on that border.`) : ''}>${n}</button>`
     )
-    .join('')}</div></div><div class="wsheet w-${t}">${body}</div>`;
+    .join('')}</div></div><div class="wsheet w-${t}">${body}</div>${
+    dos
+      ? `<div class="dossierwin inkwin" role="dialog" aria-label="Dossier"><button class="btn x" onclick="closeDossier()" aria-label="Close">✕</button>${dossierCard(run, CW.dossier)}</div>`
+      : ''
+  }`;
 }
 /** Rankings (World sheet): tabs for the three lists (Rank.*, js/career/rank.js), top rows then a gap and your own row. */
 const RANK_TABS = {

@@ -26,7 +26,7 @@ function worldTab(k) {
 }
 function hubSheet(run) {
   const [name, body] = HUB_SHEETS[CW.sheet];
-  return `<section class="sheet" aria-label="${name}"><button class="btn x" onclick="hubOpen(null)" aria-label="Close">✕</button>${body(run)}</section>`;
+  return `<section class="sheet inkwin" role="dialog" aria-label="${name}"><button class="btn x" onclick="hubOpen(null)" aria-label="Close">✕</button><span class="inkover">Sheet · ${HUB_TABS.findIndex(t => t[0] === CW.sheet) + 1}</span>${body(run)}</section>`;
 }
 
 function renderCareer() {
@@ -53,12 +53,12 @@ function renderCareer() {
   if (CW.railMini == null) CW.railMini = store.get(KEYS.rail) === '1'; // remembered per browser
   const was = motionBefore(); // what the last render showed: surfaces that open, close or change move once (spec §9.12)
   $('#app').innerHTML =
-    `<section class="career hub ${City.night(run) ? 'eve' : ''} ${CW.railMini ? 'railmini' : ''} ${scene ? 'cine' : ''}" style="--tc:${team.color}">
+    `<section class="career hub ${City.night(run) ? 'eve' : ''} ${CW.railMini ? 'railmini' : ''} ${scene ? 'cine' : ''} ${CW.sheet ? 'sheeton' : ''}" style="--tc:${team.color}">
     ${topBar(run)}${CW.railMini ? railStrip(run, armed) : weekRail(run, armed)}
     <div class="mapwrap" id="mapwrap"></div><button class="btn mapme" onclick="MapView.centre()" aria-label="Centre the map on you (C)">◎ Me <kbd>C</kbd></button>${walkSpeed()}
-    <div class="hud spotcard ${CW.spot && !card ? 'open' : ''}" id="spot">${CW.spot && !card ? spotCard(run) : ''}</div>
+    <div class="hud spotcard inkwin ink-thru ink-lite ${CW.spot && !card ? 'open' : ''}" id="spot" role="dialog" aria-label="Place">${CW.spot && !card ? spotCard(run) : ''}</div>
     ${CW.sheet ? hubSheet(run) : ''}
-    ${card ? `<div class="hubmodal ${card.dim ? 'dim' : ''}"><div class="hubcard ${card.cls || ''}">${card.html}</div></div>` : ''}
+    ${card ? `<div class="hubmodal ${card.dim ? 'dim' : ''}"><div class="hubcard inkwin ink-hold ${card.dim ? '' : 'ink-thru ink-lite'} ${card.cls || ''}" role="dialog">${card.html}</div></div>` : ''}
     ${lockLayer()}${storyBox(run)}
   </section>`;
   mapMount(run);
@@ -648,7 +648,7 @@ function gearToggle() {
   renderCareer();
 }
 function gearPop() {
-  return `<div class="gearpop" role="menu"><button class="btn" onclick="CW.gear=false;navigate('menu')">Main menu</button><button class="btn" onclick="Motion.set(Motion.pref === 'reduced' ? 'full' : 'reduced');renderCareer()" ${tip('Full: panels slide and fade, numbers count. Reduced: short fades only (also follows your system setting).')}>Motion: ${Motion.pref === 'reduced' ? 'Reduced' : 'Full'}</button>${
+  return `<div class="gearpop inkwin" role="menu" aria-label="Settings"><button class="btn x" onclick="gearToggle()" aria-label="Close">✕</button><header class="inkhead"><span class="inkover">Career</span><b class="inktitle">Settings</b></header><button class="btn" onclick="CW.gear=false;navigate('menu')">Main menu</button><button class="btn" onclick="Motion.set(Motion.pref === 'reduced' ? 'full' : 'reduced');renderCareer()" ${tip('Full: panels slide and fade, numbers count. Reduced: short fades only (also follows your system setting).')}>Motion: ${Motion.pref === 'reduced' ? 'Reduced' : 'Full'}</button>${
     /[?&]dev\b/.test(location.search) ? '<button class="btn" onclick="CW.gear=false;openDebug()">Debug log</button>' : ''
   }<button class="btn ${PerfHUD.on ? 'on' : ''}" onclick="PerfHUD.toggle();renderCareer()" aria-pressed="${PerfHUD.on}" ${tip('Frame rate, frame time, draw calls and render scale in the corner — for reporting slow frames')}>Perf overlay <kbd>F3</kbd>: ${PerfHUD.on ? 'On' : 'Off'}</button><p class="small mute" id="abandon"><button class="btn quiet danger" onclick="abandonRun()" ${tip('Your run saves automatically')}>Abandon run</button></p></div>`;
 }

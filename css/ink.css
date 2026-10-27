@@ -1,0 +1,224 @@
+/* Ink popups (owner, 2026-10-27; spec §9.0): every transient window is one component in the Total War: Three Kingdoms manner —
+   a framed window over a dimmed backdrop, a title band (overline + Archivo Black title), ✕ with Esc printed, VoiceBox paper
+   inside an ink-brush frame (an inline SVG border-image: uneven strokes, heavier corners, dry-brush ends) and a thin inner rule.
+   Behaviour (focus, Tab trap, Esc, backdrop clicks, the stack) is Ink in js/ui/dom.js. Loaded last.
+   .inkwin            a modal window: dims the screen around it; a backdrop click / Esc closes it (its ✕)
+   .inkwin.ink-hold   must be answered: backdrop clicks are swallowed, Esc is left to the screen's own keys
+   .inkwin.ink-thru   the screen under it stays live (map cards: the map picks / closes as before)
+   .inkwin.ink-lite   a light dim · .ink-nodim: no dim (its layer dims: .over, .actlock)
+   .inkwin.ink-free   the frame only — no dim, no focus, no keys (the hesitation, the station prompt, cut-ins)
+   .inkframe          the frame on a non-window card (story box, the career-end cards) */
+.inkwin,
+.inkframe,
+.sbox-layer:not(.dark) .sbox,
+.runend > .panel {
+  border: var(--ink-bw) solid transparent !important;
+  border-image: var(--ink-brush) 40 / var(--ink-bw) stretch !important;
+  border-radius: 0 !important;
+  /* paper under the brush's inner half; the stroke's rough outer edge stays open */
+  background: linear-gradient(var(--bg), var(--bg)) center / calc(100% - 18px) calc(100% - 18px) no-repeat border-box !important;
+  box-shadow:
+    inset 0 0 0 3px var(--bg),
+    inset 0 0 0 4px var(--ink) !important; /* the thin inner rule */
+  color: var(--ink);
+}
+/* the backdrop: a huge outline just under the window (re-render proof, no element; clicks on it are Ink's). Its inner edge sits
+   8 px inside the frame, under the brush's rough outer edge, so no undimmed sliver shows between the stroke and the backdrop */
+.inkwin:not(.ink-free):not(.ink-nodim) {
+  outline: 200vmax solid var(--ink-dim) !important;
+  outline-offset: -8px !important;
+}
+.inkwin.ink-lite:not(.ink-free):not(.ink-nodim) {
+  outline-color: var(--ink-lite) !important;
+}
+.inkwin.ink-free,
+.inkwin.ink-nodim {
+  outline: none !important;
+}
+/* the title band: overline category + Archivo Black title, ruled off in ink */
+.inkhead,
+.inkwin .sheet-h,
+.inkwin.hubcard > .panel > h2:first-of-type,
+.inkwin.hubcard > .panel > h3:first-of-type,
+.inkwin.hubcard .mph,
+.inkwin .plc > .ptitle,
+.inkwin .fmh,
+.inkwin .phead,
+.inkwin .rhead,
+.inkwin.mrail .rhd,
+.inkwin .hesh {
+  border-bottom: 2px solid var(--ink) !important;
+  padding-bottom: 12px !important;
+  margin-bottom: 16px !important;
+}
+.inkhead {
+  display: grid;
+  gap: 4px;
+  padding-right: 64px;
+}
+.inkover,
+.inkwin .plc > .lab,
+.inkwin.hubcard > .panel > .lab:first-child,
+.inkwin.hubcard > .panel > .evk:first-child {
+  display: block;
+  font: 700 11px/1.4 var(--body);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.inktitle,
+.inkwin .plc > .ptitle,
+.inkwin.hubcard > .panel > h2:first-of-type,
+.inkwin.hubcard > .panel > h3:first-of-type {
+  font: 400 24px/1.2 var(--disp);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin-top: 4px;
+}
+.inkwin .plc > .ptitle {
+  padding-right: 56px;
+}
+/* ✕ in the top-right corner with Esc printed */
+.inkwin > .btn.x {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  float: none;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  height: 32px;
+  padding: 0 8px;
+}
+.inkwin .btn.x {
+  width: auto !important;
+  min-width: 32px;
+}
+.inkwin .btn.x::after {
+  content: 'Esc';
+  padding: 0 4px;
+  border: 2px solid var(--line);
+  font: 400 12px/16px var(--mono, 'Space Mono', monospace);
+  color: var(--mute);
+}
+.inkwin .btn.x kbd {
+  display: none; /* (Esc is printed by ::after) */
+}
+
+/* ---------- the hub ---------- */
+.hub .wrail {
+  z-index: 6; /* persistent HUD: above the popups' backdrop (the top bar too, z 5) */
+}
+.hub.sheeton > #spot {
+  display: none !important; /* one popup at a time: a sheet hides the place card until it closes */
+}
+.hub .spotcard.inkwin,
+.hub .fmenu.inkwin {
+  padding: 12px 16px 16px;
+}
+.hub .sheet.inkwin {
+  top: calc(var(--tbar) + 24px);
+  left: calc(var(--rail) + 32px);
+  right: 32px;
+  bottom: 24px;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding: 16px 28px 28px;
+}
+.hub .sheet.inkwin > .inkover {
+  margin: 4px 0 2px;
+}
+.hub .sheet.inkwin .sheet-h {
+  margin-right: 72px;
+}
+.hub .sheet.inkwin .sheet-h h2 {
+  font-size: 30px;
+}
+.hub .hubmodal.dim {
+  background: none;
+}
+.hub .hubcard.inkwin {
+  padding: 4px;
+}
+.hub .gearpop.inkwin {
+  top: calc(var(--tbar) + 8px);
+  min-width: 260px;
+  padding: 12px 16px 16px;
+}
+.hub .gearpop .inkhead {
+  margin-bottom: 4px !important;
+}
+.dossierwin.inkwin {
+  position: fixed;
+  z-index: 6;
+  top: calc(var(--tbar) + 56px);
+  bottom: 48px;
+  left: calc(var(--rail) + 96px);
+  right: 96px;
+  max-width: 1080px;
+  margin-inline: auto;
+  overflow-y: auto;
+  padding: 16px 24px 24px;
+}
+.peek.inkwin {
+  padding: 10px 14px 14px;
+  min-width: 260px;
+  max-width: 360px;
+}
+.peek.inkwin .inkhead {
+  min-height: 24px;
+}
+.peek.inkwin .inkhead:empty {
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 0 4px !important;
+}
+.hub .actlock .fmenu.road.inkwin,
+.hub .tfx.inkwin {
+  background-color: transparent;
+}
+.hub .stprompt.inkwin {
+  padding: 6px 10px 10px;
+}
+
+/* ---------- the match ---------- */
+/* match prep / the result card: their .over layer no longer dims, the window does (no :has() here — it costs every map frame) */
+#over,
+#prep {
+  background: none !important;
+}
+.mrail.inkwin {
+  left: 0;
+  right: 0;
+  width: min(760px, 100vw - 64px);
+  margin-inline: auto;
+  overflow: hidden;
+}
+.mrail.inkwin .rhd {
+  margin: 0 !important;
+  padding: 8px 12px 12px !important;
+}
+.mrail.inkwin .rhd .btn.x {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.match .setpop > .popb.inkwin {
+  width: 480px;
+  padding: 12px 16px 16px;
+}
+.match .setpop > .popb.inkwin > .btn.x {
+  height: 28px;
+}
+.match .hes.inkwin {
+  z-index: 55; /* above an open rail: the moment is answered from the court */
+}
+.ocard.inkwin {
+  padding: 16px 24px 24px;
+}
+.match .setpop > .popb.inkwin .sset {
+  grid-template-columns: 120px 1fr;
+}

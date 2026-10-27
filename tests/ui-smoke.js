@@ -59,7 +59,7 @@ const step = async (name, fn) => {
 
 (async () => {
   const srv = await serve(),
-    url = `http://localhost:${srv.address().port}/index.html`,
+    url = `http://localhost:${srv.address().port}/index.html${process.env.UI_Q || ''}`,
     { chromium } = playwright(),
     browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] }),
     pg = await browser.newPage({ viewport: { width: 1440, height: 900 } }),
@@ -150,6 +150,82 @@ const step = async (name, fn) => {
       if (bad.length) throw new Error(bad.join('; '));
       return `${ids.length} cards`;
     })
+  );
+  await step(
+    'ink popups (owner, 2026-10-27): each hub popup opens in .inkwin, Esc closes the top one, a backdrop click closes it',
+    async () => {
+      try {
+        const top = () => ev(() => (Ink.top() ? `${Ink.top().className}` : ''));
+        const esc = () => pg.keyboard.press('Escape');
+        const need = async (what, re) => {
+          const t = await top();
+          if (!re.test(t)) throw new Error(`${what}: top window "${t}"`);
+        };
+        await ev(() => {
+          CW.briefWeek = briefKey(RUN); // (the week's brief closed: it is checked at the end)
+          renderCareer();
+          mapPick('harbor');
+        });
+        await need('place card', /spotcard/);
+        await esc();
+        if (await ev(() => CW.spot)) throw new Error('Esc did not close the place card');
+        for (const k of ['me', 'people', 'world', 'season']) {
+          await ev(k => hubOpen(k), k);
+          await need(`sheet ${k}`, /\bsheet\b.*inkwin|inkwin.*\bsheet\b/);
+          await pg
+            .waitForFunction(() => Ink.top() && Ink.top().contains(document.activeElement), null, { timeout: 30000 }) // (Ink syncs on the next frame)
+            .catch(() => {
+              throw new Error(`sheet ${k}: focus not in the window`);
+            });
+          await esc();
+          if (await ev(() => CW.sheet)) throw new Error(`Esc did not close sheet ${k}`);
+        }
+        // a peek opened from inside a sheet stacks over it; Esc closes the peek first, then the sheet
+        await ev(() => hubOpen('me'));
+        await ev(() => document.querySelector('.hub .sheet .peekt').click());
+        await need('peek', /\bpeek\b/);
+        await esc();
+        if (await ev(() => CW.peek || CW.sheet !== 'me')) throw new Error('Esc: not the peek first');
+        // the dossier over the World sheet: a click on the sheet around it (its backdrop) closes it, the sheet stays
+        await ev(() => {
+          openDossier(Object.keys(REGIONS).find(r => r !== 'open'));
+          CW.sheet = 'world';
+          renderCareer();
+        });
+        await need('dossier', /dossierwin/);
+        const at = await ev(() => {
+          const r = document.querySelector('.hub .sheet').getBoundingClientRect();
+          return [r.left + 40, r.top + 140];
+        });
+        await pg.mouse.click(at[0], at[1]);
+        if (await ev(() => CW.dossier || CW.sheet !== 'world')) throw new Error('a backdrop click did not close the dossier alone');
+        await esc();
+        await ev(() => gearToggle());
+        await need('⚙', /gearpop/);
+        await esc();
+        if (await ev(() => CW.gear)) throw new Error('Esc did not close ⚙');
+        // a card that must be answered (the Week brief): in .inkwin, Esc leaves it
+        await ev(() => {
+          CW.briefWeek = null;
+          renderCareer();
+        });
+        await need('week brief', /hubcard.*ink-hold/);
+        await esc();
+        if (!(await ev(() => !!document.querySelector('.hub .hubcard .brief')))) throw new Error('Esc closed the brief');
+        await ev(() => briefDone());
+        if (await top()) throw new Error(`a window left open: ${await top()}`);
+      } finally {
+        await ev(() => {
+          CW.peek = null;
+          CW.dossier = null;
+          CW.gear = false;
+          CW.sheet = null;
+          CW.spot = null;
+          CW.briefWeek = briefKey(RUN);
+          renderCareer(); // (nothing left open for the map steps)
+        });
+      }
+    }
   );
   await step('island map (spec §4.37): hover a named figure → their name; a night-time map', async () => {
     await pg.waitForFunction(() => MapView.m3 && MapView.m3.info().calls > 0, null, { timeout: 120000 });
@@ -1511,6 +1587,7 @@ const step = async (name, fn) => {
       if (Cards.my(A.m, 0) || D.by !== 'you') throw new Error('not the team hand');
       if (!A.myPick.length || !A.myPick.every(id => all.includes(id))) throw new Error('your picks are not in the team deck');
       if ($('#prep .cdeck .hmini').querySelectorAll('.hc').length !== 5) throw new Error('prep: not a hand of 5');
+      if (!Ink.top() || !Ink.top().matches('.ocard.prep.inkwin.ink-hold')) throw new Error('prep: not an ink window');
       prepStart();
       handTick(true);
       if ($('#hand').querySelectorAll('.hmain > .hcards .hslot').length !== 5 || $('#hand .hreq'))
@@ -1521,10 +1598,20 @@ const step = async (name, fn) => {
       await pg.keyboard.press(String(k + 1));
       if (!(await ev(() => A.m.deck[0].log.some(e => e.k === 'play')))) throw new Error('the key did not play the card');
     }
+    // ink popups (owner, 2026-10-27): ⚙ and the rail open as .inkwin, Esc closes each; the result card is one
+    await ev(() => ($('.setpop').open = true));
+    if (!(await ev(() => !!Ink.top() && Ink.top().matches('.setpop .popb.inkwin')))) throw new Error('⚙: not an ink window');
+    await pg.keyboard.press('Escape');
+    if (await ev(() => $('.setpop').open)) throw new Error('Esc did not close ⚙');
+    await ev(() => railOpen('box'));
+    if (!(await ev(() => !!Ink.top() && Ink.top().id === 'mrail'))) throw new Error('rail: not an ink window');
+    await pg.keyboard.press('Escape');
+    if (!(await ev(() => $('#mrail').hidden))) throw new Error('Esc did not close the rail');
     await ev(() => {
       A.hold = true;
       while (!A.m.over) playRally(A.m);
       finishMatch();
+      if (!$('#over .ocard.mres.inkwin')) throw new Error('the result card is not an ink window');
     });
   });
   await step(
@@ -1572,6 +1659,7 @@ const step = async (name, fn) => {
       if (!(await reach(false))) throw new Error('no hesitation in a whole match');
       const first = await ev(() => {
         if (!$('#hes') || $('#hes').querySelectorAll('.hesb').length !== 2) throw new Error('no panel with two options');
+        if (!$('#hes.inkwin.ink-free')) throw new Error('the hesitation panel has no ink frame (non-blocking)');
         if (!/<kbd>1<\/kbd>/.test($('#hes').innerHTML) || !/<kbd>2<\/kbd>/.test($('#hes').innerHTML))
           throw new Error('hotkeys 1 / 2 not printed');
         const kind = HES_KIND[A.hes.a.kind];

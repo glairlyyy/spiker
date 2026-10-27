@@ -1132,7 +1132,7 @@ function hesDraw() {
   const H = A && A.hes;
   if (!H) return void (el && el.remove());
   if (!el) {
-    st.insertAdjacentHTML('beforeend', '<div class="hes" id="hes" role="dialog" aria-label="Hesitation"></div>');
+    st.insertAdjacentHTML('beforeend', '<div class="hes inkwin ink-free" id="hes" role="dialog" aria-label="Hesitation"></div>');
     el = $('#hes');
   }
   const a = H.a,

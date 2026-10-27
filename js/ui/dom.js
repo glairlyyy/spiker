@@ -41,7 +41,7 @@ const kv = rows =>
  */
 const peek = (id, label, body, cls = '') => {
   const open = typeof CW !== 'undefined' && CW.peek === id;
-  return `<button class="peekt ${cls} ${open ? 'on' : ''}" data-peek="${esc(id)}" aria-expanded="${open}" onclick="peekToggle(this.dataset.peek)">${label}<i class="gt" aria-hidden="true">›</i></button><div class="peek" data-peek-of="${esc(id)}" role="dialog" hidden>${body}</div>`;
+  return `<button class="peekt ${cls} ${open ? 'on' : ''}" data-peek="${esc(id)}" aria-expanded="${open}" onclick="peekToggle(this.dataset.peek)">${label}<i class="gt" aria-hidden="true">›</i></button><div class="peek inkwin" data-peek-of="${esc(id)}" role="dialog" hidden><button class="btn x" onclick="peekToggle(this.parentNode.dataset.peekOf)" aria-label="Close">✕</button><header class="inkhead">${label ? `<b class="inktitle">${label}</b>` : ''}</header>${body}</div>`;
 };
 function peekToggle(id) {
   CW.peek = CW.peek === id ? null : id;
@@ -266,8 +266,10 @@ const FOLD = {};
 const fold = (key, summary, body, open = false) =>
   `<details class="fold" data-fold="${esc(key)}" ${(FOLD[key] ?? open) ? 'open' : ''} ontoggle="FOLD[this.dataset.fold]=this.open"><summary>${summary}</summary><div class="foldb">${body}</div></details>`;
 /** Pop-over menu (a button that opens a small panel); closes on outside click / Esc. `label` and `body` are HTML. */
-const pop = (label, body, cls = '') =>
-  `<details class="pop ${cls}"><summary class="btn">${label}</summary><div class="popb">${body}</div></details>`;
+const pop = (label, body, cls = '', title = '') =>
+  `<details class="pop ${cls}"><summary class="btn">${label}</summary><div class="popb inkwin" role="dialog" ${title ? `aria-label="${esc(title)}"` : ''}><button class="btn x" onclick="this.closest('details').open=false" aria-label="Close">✕</button>${
+    title ? `<header class="inkhead"><b class="inktitle">${esc(title)}</b></header>` : ''
+  }${body}</div></details>`;
 // Document-level listeners for tooltips and pop-overs: installed once at load (delegated, so re-renders never add more).
 (function uiTips() {
   if (typeof document === 'undefined') return;
@@ -331,6 +333,151 @@ const pop = (label, body, cls = '') =>
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') for (const d of document.querySelectorAll('details.pop[open]')) d.open = false;
   });
+})();
+
+// ---- ink popups (owner, 2026-10-27; spec §9.0): one window behaviour for every .inkwin (css/ink.css draws the frame and the dim) ----
+/**
+ * Ink keeps the popup stack from the DOM (re-renders recreate windows; nothing to register): the top window is the visible
+ * .inkwin (not .ink-free) with the highest level (LV, + 100 per .inkwin it sits inside). It focuses a window when it opens and
+ * returns focus to the opener when it closes, traps Tab, closes the top one on Esc and on a backdrop click (its ✕ —
+ * `[data-ink-x]` / `.btn.x` —, a pop-over's details, a peek); `.ink-hold` swallows backdrop clicks and leaves Esc to the screen,
+ * `.ink-thru` lets the screen under it take clicks. Clicks on the persistent HUD (HUD) always go through.
+ */
+const Ink = (() => {
+  const LV = [
+      ['.peek', 60],
+      ['.popb', 50],
+      ['.gearpop', 50],
+      ['.actlock .inkwin', 45],
+      ['#mrail', 40],
+      ['.sheet', 30],
+      ['.ocard', 30],
+      ['.hubcard', 20]
+    ],
+    HUD = '.hub .tbar, .hub .wrail, .hub .mapwalk, .tipbox, #dbg, .perfhud, .sbox-layer, .match .cbar, .inkwin.ink-free, #veil',
+    FOC =
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])',
+    backs = new Map();
+  let key = '',
+    q = 0;
+  const shown = el =>
+    el.isConnected &&
+    !el.closest('[hidden], .ghost-out, details.pop:not([open])') &&
+    (el.checkVisibility ? el.checkVisibility() : el.getClientRects().length > 0);
+  const level = el => {
+    let n = 10;
+    for (const [s, v] of LV)
+      if (el.matches(s)) {
+        n = v;
+        break;
+      }
+    for (let p = el.parentElement; p; p = p.parentElement) if (p.classList.contains('inkwin')) n += 100;
+    return n;
+  };
+  const wins = () => [...document.querySelectorAll('.inkwin:not(.ink-free)')].filter(shown);
+  function top() {
+    let best = null,
+      b = -1;
+    for (const el of wins()) {
+      const v = level(el);
+      if (v >= b) ((b = v), (best = el));
+    }
+    return best;
+  }
+  const keyOf = el =>
+    `${el.id || [...el.classList].find(c => !/^(inkwin|ink-|hud$|in$|swap$|glide$|open$|pinned$|on$|ported$)/.test(c)) || 'win'}|${el.getAttribute('aria-label') || ''}|${el.dataset.peekOf || ''}`;
+  /** The top window's close action, or null (a window that must be answered). */
+  function closer(el) {
+    if (!el || el.classList.contains('ink-hold')) return null;
+    const x = [...el.querySelectorAll('[data-ink-x], .btn.x')].find(b => b.closest('.inkwin') === el && !b.disabled);
+    if (x) return () => x.click();
+    if (el.matches('.popb')) return () => (el.closest('details').open = false);
+    if (el.matches('.peek') && typeof CW !== 'undefined') return () => ((CW.peek = null), peekSync());
+    return null;
+  }
+  const focusWin = el => {
+    if (el.classList.contains('ink-thru') && el.contains(document.activeElement)) return;
+    if (!el.hasAttribute('tabindex')) el.tabIndex = -1;
+    el.focus({ preventScroll: true });
+  };
+  /** After the DOM changed: focus a window that just became the top one; give focus back when it closed. */
+  function sync() {
+    q = 0;
+    const t = top(),
+      k = t ? keyOf(t) : '',
+      act = document.activeElement;
+    if (k !== key) {
+      const was = key,
+        still = was && wins().some(e => keyOf(e) === was),
+        r = was && !still ? backs.get(was) : null;
+      if (was && !still) backs.delete(was);
+      key = k;
+      if (t && !t.contains(act)) {
+        if (r && r.isConnected && t.contains(r)) r.focus({ preventScroll: true });
+        else {
+          if (!backs.has(k) && act && act !== document.body) backs.set(k, act);
+          focusWin(t);
+        }
+      } else if (!t && r && r.isConnected) r.focus({ preventScroll: true });
+    } else if (t && (!act || act === document.body) && !t.classList.contains('ink-thru')) focusWin(t); // (a re-render dropped focus)
+  }
+  const later = () => q || (q = requestAnimationFrame(sync));
+  const rel = n => n.nodeType === 1 && (n.classList.contains('inkwin') || n.matches('details.pop') || !!n.querySelector('.inkwin'));
+  /** A pointer event outside the top window: swallowed (the backdrop has it); a click closes the window when it may close. */
+  function back(e) {
+    const t = top(),
+      tg = e.target;
+    if (!t || t.classList.contains('ink-thru') || !tg || !tg.closest || !tg.isConnected) return;
+    if (t.contains(tg) || tg.closest(HUD)) return;
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    if (e.type === 'click' || e.type === 'contextmenu' || e.type === 'wheel') e.preventDefault();
+    if (e.type === 'click') {
+      const c = closer(t);
+      if (c) c();
+    }
+  }
+  function key_(e) {
+    if (e.key === 'Escape') {
+      const c = closer(top());
+      if (!c) return; // nothing open, or a window that must be answered: the screen's own Esc
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      c();
+    } else if (e.key === 'Tab') {
+      const t = top();
+      if (!t || t.classList.contains('ink-thru')) return;
+      const f = [...t.querySelectorAll(FOC)].filter(
+          x => !x.closest('.inkwin.ink-free') && (x.checkVisibility ? x.checkVisibility() : true)
+        ),
+        i = f.indexOf(document.activeElement);
+      if (!f.length) return void (e.preventDefault(), focusWin(t));
+      if (e.shiftKey ? i <= 0 : i < 0 || i === f.length - 1) {
+        e.preventDefault();
+        (e.shiftKey ? f[f.length - 1] : f[0]).focus();
+      }
+    }
+  }
+  if (typeof document !== 'undefined') {
+    for (const ty of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click', 'dblclick', 'contextmenu'])
+      addEventListener(ty, back, true);
+    addEventListener('wheel', back, { capture: true, passive: false });
+    addEventListener('keydown', key_, true);
+    addEventListener('DOMContentLoaded', () => {
+      new MutationObserver(recs => {
+        if (recs.some(r => (r.type === 'attributes' ? rel(r.target) : [...r.addedNodes, ...r.removedNodes].some(rel)))) later();
+      }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'open', 'class'] });
+    });
+  }
+  return {
+    top,
+    sync,
+    /** Close the top window (as Esc does); false when there is none or it must be answered. */
+    close() {
+      const c = closer(top());
+      return c ? (c(), true) : false;
+    }
+  };
 })();
 
 // ---- quiet updates (spec §4.39 pacing, owner 2026-10-27): change only what changed, off the frame -------------------------------
